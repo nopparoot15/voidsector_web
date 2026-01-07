@@ -23,6 +23,20 @@ async function initDb() {
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();');
 
   await pool.query('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS client_msg_id TEXT;');
+
+  // Whiteboard invites (notifications)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS whiteboard_invites (
+      id SERIAL PRIMARY KEY,
+      room_id TEXT NOT NULL,
+      from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      to_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_wbi_room_to ON whiteboard_invites(room_id, to_user_id);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_wbi_to_status_time ON whiteboard_invites(to_user_id, status, created_at DESC);');
 }
 
 module.exports = { pool, initDb };

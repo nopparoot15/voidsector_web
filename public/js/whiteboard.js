@@ -309,13 +309,14 @@
       }
       inviteBtn.disabled = true;
       try {
-        const r = await fetch(`/api/whiteboard/rooms/${encodeURIComponent(roomId)}/invite`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ friendIds: picks })
+        const j = await new Promise((resolve, reject) => {
+          const t = setTimeout(() => reject({ reason: 'timeout' }), 6000);
+          socket.emit('wb:invite', { roomId, friendIds: picks }, (resp) => {
+            clearTimeout(t);
+            if (!resp || resp.ok === false) return reject(resp || { reason: 'invite_failed' });
+            resolve(resp);
+          });
         });
-        const j = await r.json().catch(() => ({}));
-        if (!j.ok) throw new Error(j.reason || 'invite_failed');
         if (window.Swal) {
           Swal.fire({ icon: 'success', title: 'Invite สำเร็จ', text: `เพิ่ม ${j.added} คน`, timer: 1200, showConfirmButton: false, background: '#0b0f14', color: '#e6f7ff' });
         }

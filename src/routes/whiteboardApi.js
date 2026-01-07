@@ -2,6 +2,7 @@
 const express = require('express');
 const { requireLogin } = require('../middleware/requireLogin');
 const { whiteboardStore } = require('../whiteboard/store');
+const { pool } = require('../config/db');
 
 const router = express.Router();
 
@@ -24,6 +25,26 @@ router.post('/whiteboard/rooms/:roomId/invite', requireLogin, (req, res) => {
     return res.status(code).json({ ok: false, reason: out.reason });
   }
   res.json(out);
+});
+
+// Dismiss a pending whiteboard invite (used by notifications dropdown)
+router.post('/whiteboard/invites/:id/dismiss', requireLogin, async (req, res) => {
+  try {
+    const me = Number(req.session.user.id);
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, message: 'id required' });
+
+    await pool.query(
+      `UPDATE whiteboard_invites
+       SET status='dismissed'
+       WHERE id=$1 AND to_user_id=$2`,
+      [id, me]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.warn('dismiss invite failed:', e.code || e.message);
+    res.status(500).json({ ok: false, message: 'dismiss failed' });
+  }
 });
 
 // Basic room info (for UI)

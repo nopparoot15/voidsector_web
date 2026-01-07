@@ -238,3 +238,24 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_client_msg_id
 INSERT INTO chat_rooms (id, name, is_public)
 VALUES (1, 'Global', TRUE)
 ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================
+-- WHITEBOARD INVITES (private room notifications)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS whiteboard_invites (
+  id SERIAL PRIMARY KEY,
+  room_id TEXT NOT NULL,
+  from_user_id INTEGER NOT NULL,
+  to_user_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+
+  CONSTRAINT fk_wbi_from FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_wbi_to   FOREIGN KEY (to_user_id)   REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_wbi_room_to
+  ON whiteboard_invites(room_id, to_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_wbi_to_status_time
+  ON whiteboard_invites(to_user_id, status, created_at DESC);

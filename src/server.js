@@ -227,6 +227,86 @@ io.on('connection', async (socket) => {
     io.to(`wb:${rid}`).emit('wb:clear');
   }));
 
+  // ==================================================
+  // WHITEBOARD: invite friends (owner only) + notify
+  // ==================================================
+  socket.on('wb:invite', async ({ roomId, friendIds } = {}, cb) => {
+    try {
+      const rid = String(roomId || '');
+      const actorId = Number(socket.data.userId);
+      const actorName = String(socket.data.username || '');
+
+      if (!rid) return typeof cb === 'function' ? cb({ ok: false, reason: 'room_required' }) : null;
+      if (!Number.isFinite(actorId) || actorId <= 0 || !actorName) {
+        return typeof cb === 'function' ? cb({ ok: false, reason: 'not_identified' }) : null;
+      }
+
+      const room = whiteboardStore.get(rid);
+      if (!room || room.isPublic) {
+        return typeof cb === 'function' ? cb({ ok: false, reason: 'not_found' }) : null;
+      }
+
+      // Only owner can invite
+      if (Number(room.ownerId) !== Number(actorId)) {
+        return typeof cb === 'function' ? cb({ ok: false, reason: 'not_owner' }) : null;
+      }
+
+      // Normalize + validate friend list is actually your friends
+      const ids = (Array.isArray(friendIds) ? friendIds : [])
+        .map((n) => Number(n))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (ids.length === 0) {
+        return typeof cb === 'function' ? cb({ ok: false, reason: 'no_targets' }) : null;
+      }
+
+      const fr = await pool.query(
+        `SELECT friend_id
+         FROM friendships
+         WHERE user_id=$1 AND friend_id = ANY($2::int[])`,
+        [actorId, ids]
+      );
+      const friendOk = fr.rows.map(r => Number(r.friend_id)).filter(Boolean);
+      if (friendOk.length === 0) {
+        return typeof cb === 'function' ? cb({ ok: false, reason: 'not_friends' }) : null;
+      }
+
+      const out = whiteboardStore.invite(rid, actorId, friendOk);
+      if (!out.ok) {
+        return typeof cb === 'function' ? cb(out) : null;
+      }
+
+      // Persist invites + notify in realtime
+      let inserted = 0;
+      for (const toId of friendOk) {
+        try {
+          const ins = await pool.query(
+            `INSERT INTO whiteboard_invites (room_id, from_user_id, to_user_id)
+             VALUES ($1,$2,$3)
+             ON CONFLICT (room_id, to_user_id)
+             DO UPDATE SET status='pending', created_at=NOW(), from_user_id=EXCLUDED.from_user_id
+             RETURNING id`,
+            [rid, actorId, toId]
+          );
+          if (ins.rowCount) inserted += 1;
+        } catch (e) {
+          // ignore per-user insert errors
+        }
+
+        io.to(`user:${toId}`).emit('wb:invite_notify', {
+          roomId: rid,
+          from_user_id: actorId,
+          from_username: actorName,
+          at: new Date().toISOString(),
+        });
+      }
+
+      return typeof cb === 'function' ? cb({ ok: true, added: friendOk.length, saved: inserted }) : null;
+    } catch (e) {
+      console.error('wb:invite error:', e.code || e.message);
+      return typeof cb === 'function' ? cb({ ok: false, reason: 'server_error' }) : null;
+    }
+  });
+
   // --------------------
   // Global chat send
   // --------------------

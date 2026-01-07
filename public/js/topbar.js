@@ -131,12 +131,14 @@ function vsBumpDmToTop(container, friendId, ts){
   // Renderers
   // --------------------
 
-  function renderAlerts(friendRequests) {
+  function renderAlerts(friendRequests, wbInvites) {
     const list = document.getElementById('vsNotifList');
     if (!list) return;
 
     list.innerHTML = '';
-    if (!friendRequests || friendRequests.length === 0) {
+    const frList = Array.isArray(friendRequests) ? friendRequests : [];
+    const wbList = Array.isArray(wbInvites) ? wbInvites : [];
+    if (frList.length === 0 && wbList.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'vs-dd__empty';
       empty.textContent = 'No notifications yet';
@@ -144,7 +146,27 @@ function vsBumpDmToTop(container, friendId, ts){
       return;
     }
 
-    friendRequests.forEach((fr) => {
+    // Whiteboard invites (show first)
+    wbList.forEach((inv) => {
+      const item = document.createElement('div');
+      item.className = 'vs-dd__item';
+      item.dataset.wbInviteId = inv.id;
+      item.dataset.roomId = inv.room_id;
+
+      item.innerHTML = `
+        <div style="flex:1; min-width:0;">
+          <div class="vs-dd__itemTitle">🧩 Whiteboard invite</div>
+          <div class="vs-dd__itemMeta"><b>${escapeHtml(inv.username || 'Unknown')}</b> invited you · ${escapeHtml(fmtTime(inv.created_at))}</div>
+        </div>
+        <div class="vs-dd__actions">
+          <button class="vs-dd__act vs-dd__act--ok" type="button" data-action="wb-join">Join</button>
+          <button class="vs-dd__act vs-dd__act--bad" type="button" data-action="wb-dismiss">Dismiss</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+
+    frList.forEach((fr) => {
       const item = document.createElement('div');
       item.className = 'vs-dd__item';
       item.dataset.requestId = fr.id;
@@ -315,7 +337,7 @@ div.innerHTML = `
       setBadge('notifications', j.counts?.alerts || 0);
       setBadge('messages', j.counts?.messages || 0);
 
-      renderAlerts(j.friend_requests || []);
+      renderAlerts(j.friend_requests || [], j.whiteboard_invites || []);
 
       // Friends dropdown (list + preview)
       renderFriends(lastFriends || [], j.dm_threads || []);
@@ -344,6 +366,8 @@ div.innerHTML = `
     s.on('dm:new', () => fetchSummary());
     // when DM arrives but you are not in the room view
     s.on('dm:notify', () => fetchSummary());
+    // whiteboard invite notifications
+    s.on('wb:invite_notify', () => fetchSummary());
   };
 
   // --------------------
@@ -355,11 +379,31 @@ div.innerHTML = `
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
       const item = btn.closest('.vs-dd__item');
+      const action = btn.dataset.action;
+
+      // Whiteboard invite actions
+      if (action === 'wb-join' || action === 'wb-dismiss') {
+        const inviteId = item?.dataset.wbInviteId;
+        const roomId = item?.dataset.roomId;
+        if (!inviteId) return;
+        btn.disabled = true;
+        try {
+          await fetch(`/api/whiteboard/invites/${encodeURIComponent(inviteId)}/dismiss`, {
+            method: 'POST',
+            credentials: 'include'
+          });
+        } catch (_) {}
+        fetchSummary();
+        if (action === 'wb-join' && roomId) {
+          window.location.href = `/whiteboard/r/${encodeURIComponent(roomId)}`;
+        }
+        return;
+      }
+
+      // Friend request actions
       const id = item ? item.dataset.requestId : null;
       if (!id) return;
-
       btn.disabled = true;
-      const action = btn.dataset.action;
       try {
         const url = `/api/friends/requests/${encodeURIComponent(id)}/${action === 'accept' ? 'accept' : 'deny'}`;
         await fetch(url, { method: 'POST', credentials: 'include' });
