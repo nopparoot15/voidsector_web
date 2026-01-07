@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <title>VOIDSECTOR | Calculator</title>
+  <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/css/calculator.css" />
+</head>
+<body>
+  <div class="background"></div>
+  <%- include('../partials/topbar') %>
+
+  <main class="vs-page">
+    <section class="vs-card vs-calc">
+      <h1 class="vs-calc__title">🧮 Quantum Calculator</h1>
+      <div class="vs-calc__row">
+        <input id="expr" class="vs-input" type="text" placeholder="e.g. (2+3)*sin(pi/4) + sqrt(2)" autocomplete="off">
+        <button id="run" class="vs-btn" type="button">=</button>
+      </div>
+      <pre id="out" class="vs-calc__out"></pre>
+      <div id="hist" class="vs-calc__hist"></div>
+    </section>
+  </main>
+
+  <script defer src="/js/topbar.js"></script>
+  <script src="/vendor/mathjs/math.js"></script>
+  <script defer src="/js/calculator.js"></script>
+</body>
+</html>
