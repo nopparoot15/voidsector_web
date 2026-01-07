@@ -199,7 +199,9 @@ function drawText
     const rect = canvas.getBoundingClientRect();
     const px = x * rect.width;
     const py = y * rect.height;
-    item.el.style.transform = `translate(${px}px, ${py}px)`;
+    // Use left/top for positioning so CSS transforms can be reserved for the neon offset + scale animation
+    item.el.style.left = `${px}px`;
+    item.el.style.top = `${py}px`;
   }
 
   // Receive cursor updates from others
