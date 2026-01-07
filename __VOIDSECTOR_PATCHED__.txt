@@ -1,0 +1,5 @@
+VOIDSECTOR PATCHED BUILD
+- Topbar is the only nav (navbar removed)
+- Chat bubbles: ME right, others left (chat-dock, global chat widget, DM page)
+- Unified VOIDSECTOR cyber/space theme + fonts via views/partials/head.ejs
+Build timestamp: 2026-01-07

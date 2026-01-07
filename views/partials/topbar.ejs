@@ -1,0 +1,194 @@
+<header class="vs-topbar">
+  <!-- ================= LEFT ================= -->
+  <div class="vs-topbar__left">
+    <a class="vs-logo" href="/" title="Home" aria-label="Home">
+      <span class="vs-logo__dot"></span>
+      <span class="vs-logo__text">VOIDSECTOR</span>
+    </a>
+
+    <div class="vs-topbar__hint">
+      <span class="vs-chip">Cyber Portal</span>
+    </div>
+  </div>
+
+  <!-- ================= CENTER ================= -->
+  <nav class="vs-topbar__center" aria-label="Main">
+    <!-- HOME -->
+    <a class="vs-navbtn" href="/" title="Home" aria-label="Home">
+      <span class="vs-ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"
+                stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="vs-navbtn__label">Home</span>
+    </a>
+
+    <!-- (moved) Whiteboard is in QUICK TOOLS on Home (not in topbar) -->
+
+    <!-- ================= MESSAGES ================= -->
+    <details class="vs-menu" data-menu="messages">
+      <summary class="vs-navbtn vs-navbtn--btn" title="Messages" aria-label="Messages">
+        <span class="vs-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M20 14a4 4 0 0 1-4 4H8l-4 3V6a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v8Z"
+                  stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="vs-navbtn__label">Messages</span>
+        <span class="vs-badge" data-badge="messages" hidden>0</span>
+      </summary>
+
+      <div class="vs-dd" role="menu" aria-label="Messages">
+        <div class="vs-dd__head">
+          <div class="vs-dd__title">Messages</div>
+          <button type="button" class="vs-dd__close" data-menu-close aria-label="Close">✕</button>
+        </div>
+
+        <div class="vs-dd__body">
+          <div class="vs-dd__item" data-open-chat="global">
+            <div class="vs-dd__itemTitle">🌐 Global Chat</div>
+            <div class="vs-dd__itemMeta">ห้องรวมทุกคน</div>
+          </div>
+
+          <div class="vs-dd__divider"></div>
+
+          <div id="vsMessagesList" class="vs-dd__list" data-kind="messages">
+            <div class="vs-dd__empty">กำลังโหลด...</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- ================= FRIENDS ================= -->
+    <details class="vs-menu" data-menu="friends">
+      <summary class="vs-navbtn vs-navbtn--btn" title="Friends" aria-label="Friends">
+        <span class="vs-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M6 10a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 6 10Z" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M16 13c-3.3 0-6 2-6 4.5V21h12v-3.5C22 15 19.3 13 16 13Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M1 21v-2.5C1 16.6 3.1 15 6 15c1.1 0 2.1.2 3 .6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="vs-navbtn__label">Friends</span>
+        <span class="vs-badge" data-badge="friends" hidden>0</span>
+      </summary>
+
+      <div class="vs-dd" role="menu" aria-label="Friends">
+        <div class="vs-dd__head">
+          <div class="vs-dd__headLeft">
+            <div class="vs-dd__title">Friends</div>
+            <div class="vs-dd__sub">Click a friend to open DM dock.</div>
+          </div>
+          <button type="button" class="vs-dd__close" data-menu-close aria-label="Close">✕</button>
+        </div>
+
+        <div class="vs-dd__body">
+          <div id="vsFriendsList" class="vs-dd__list" data-kind="friends">
+            <div class="vs-dd__empty">กำลังโหลด...</div>
+          </div>
+
+          <div class="vs-dd__divider"></div>
+
+          <div class="vs-dd__row">
+            <input id="vsAddFriendInput" class="vs-dd__input" type="text"
+                   placeholder="Add friend by username…" autocomplete="off" />
+            <button id="vsAddFriendBtn" class="vs-dd__btn" type="button">Add</button>
+          </div>
+          <div id="vsAddFriendMsg" class="vs-dd__hint" aria-live="polite"></div>
+        </div>
+      </div>
+    </details>
+
+    <!-- ================= NOTIFICATIONS ================= -->
+    <details class="vs-menu" data-menu="notifications">
+      <summary class="vs-navbtn vs-navbtn--btn" title="Notifications" aria-label="Notifications">
+        <span class="vs-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M6 9a6 6 0 1 1 12 0c0 7 3 7 3 7H3s3 0 3-7Z"
+                  stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M9.5 19a2.5 2.5 0 0 0 5 0"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="vs-navbtn__label">Alerts</span>
+        <span class="vs-badge" data-badge="notifications" hidden>0</span>
+      </summary>
+
+      <div class="vs-dd" role="menu" aria-label="Notifications">
+        <div class="vs-dd__head">
+          <div class="vs-dd__title">Notifications</div>
+          <button type="button" class="vs-dd__close" data-menu-close aria-label="Close">✕</button>
+        </div>
+
+        <div class="vs-dd__body" id="vsNotifList">
+          <div class="vs-dd__empty">No notifications yet</div>
+        </div>
+      </div>
+    </details>
+  </nav>
+
+  <!-- ================= RIGHT ================= -->
+  <div class="vs-topbar__right">
+    <% if (user) { %>
+      <a class="vs-user" href="/profile" title="Profile">
+        <span class="vs-avatar" aria-hidden="true">
+          <% if (user.avatar_path) { %>
+            <img src="<%= user.avatar_path %>" alt="" onerror="this.onerror=null;this.remove();" />
+          <% } else { %>
+            <span class="vs-avatar__fallback">
+              <%= (user.username || 'U').slice(0,1).toUpperCase() %>
+            </span>
+          <% } %>
+        </span>
+        <span class="vs-user__name"><%= user.username %></span>
+      </a>
+
+      <form method="POST" action="/logout" class="vs-logout">
+        <button class="vs-btn vs-btn--ghost" type="submit">Logout</button>
+      </form>
+    <% } else { %>
+      <a class="vs-btn" href="/login">Login</a>
+      <a class="vs-btn vs-btn--ghost" href="/register">Register</a>
+    <% } %>
+  </div>
+</header>
+
+<script>
+  // expose current user to client scripts (chat dock, etc.)
+  window.VS_ME = <%- JSON.stringify(user ? { id: user.id, username: user.username, avatar_path: user.avatar_path } : null) %>;
+
+  // ✅ unify dropdown behavior: open one -> close others, close button works the same everywhere
+  (() => {
+    const menus = [...document.querySelectorAll('.vs-menu[data-menu]')];
+
+    // close helper
+    const closeMenu = (d) => { if (d && d.open) d.open = false; };
+
+    // when one opens, close the rest
+    menus.forEach((d) => {
+      d.addEventListener('toggle', () => {
+        if (!d.open) return;
+        menus.forEach((x) => { if (x !== d) closeMenu(x); });
+      });
+    });
+
+    // close buttons
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-menu-close]');
+      if (!btn) return;
+      const parent = btn.closest('.vs-menu');
+      closeMenu(parent);
+    });
+
+    // click outside closes all
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.vs-menu')) return;
+      menus.forEach(closeMenu);
+    }, { capture: true });
+  })();
+</script>
+
+<!-- ✅ Chat dock -->
+<div id="chatDock" class="chat-dock"></div>

@@ -1,0 +1,20 @@
+{
+  "name": "cyber-learning-portal",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "pg": "^8.11.0",
+    "bcrypt": "^5.1.0",
+    "ejs": "^3.1.10",
+    "dotenv": "^16.4.5",
+    "socket.io": "^4.7.5",
+    "multer": "^1.4.5-lts.1",
+    "mathjs": "^13.0.0"
+  }
+}

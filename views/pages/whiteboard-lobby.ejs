@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <title>VOIDSECTOR | Whiteboard</title>
+  <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/css/whiteboard.css" />
+</head>
+<body>
+  <div class="background"></div>
+  <%- include('../partials/topbar') %>
+
+  <div class="container vs-page">
+    <div class="card vs-card">
+      <div class="wb-lobby">
+        <div class="wb-lobby__title">
+          <h1>WHITEBOARD</h1>
+          <p>กระดานวาดแบบ realtime • วาดได้ • พิมพ์ได้ • ชวนเพื่อนเข้าห้องได้</p>
+        </div>
+
+        <div class="wb-lobby__grid">
+          <a class="wb-card" href="/whiteboard/public">
+            <div class="wb-card__icon">🌐</div>
+            <div class="wb-card__hdr">ห้องรวม (Public)</div>
+            <div class="wb-card__desc">ใครเข้ามาก็วาด/พิมพ์/ลบได้</div>
+            <div class="wb-card__cta">เข้าเลย →</div>
+          </a>
+
+          <button class="wb-card wb-card--button" id="wbCreatePrivate" type="button">
+            <div class="wb-card__icon">🔒</div>
+            <div class="wb-card__hdr">สร้างห้องส่วนตัว</div>
+            <div class="wb-card__desc">สร้างลิงก์ห้อง • ชวนเพื่อน • ห้องจะลบเมื่อไม่มีใครอยู่</div>
+            <div class="wb-card__cta">สร้างห้อง →</div>
+          </button>
+        </div>
+
+        <div class="wb-lobby__note">
+          <div class="wb-chip">TIP</div>
+          <div>ถ้าเพื่อนเปิดลิงก์แล้วขึ้นว่าไม่พบห้อง แปลว่าห้องถูกลบแล้ว (ไม่มีใครอยู่ในห้อง)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="/js/whiteboard-lobby.js"></script>
+</body>
+</html>
