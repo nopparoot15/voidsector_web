@@ -259,13 +259,14 @@ io.on('connection', async (socket) => {
         return typeof cb === 'function' ? cb({ ok: false, reason: 'no_targets' }) : null;
       }
 
+      // friendships table uses friend_user_id (directed edges are created on accept)
       const fr = await pool.query(
-        `SELECT friend_id
+        `SELECT friend_user_id
          FROM friendships
-         WHERE user_id=$1 AND friend_id = ANY($2::int[])`,
+         WHERE user_id=$1 AND friend_user_id = ANY($2::int[])`,
         [actorId, ids]
       );
-      const friendOk = fr.rows.map(r => Number(r.friend_id)).filter(Boolean);
+      const friendOk = fr.rows.map(r => Number(r.friend_user_id)).filter(Boolean);
       if (friendOk.length === 0) {
         return typeof cb === 'function' ? cb({ ok: false, reason: 'not_friends' }) : null;
       }

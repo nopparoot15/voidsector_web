@@ -321,8 +321,22 @@
           Swal.fire({ icon: 'success', title: 'Invite สำเร็จ', text: `เพิ่ม ${j.added} คน`, timer: 1200, showConfirmButton: false, background: '#0b0f14', color: '#e6f7ff' });
         }
       } catch (e) {
+        const reason = (e && (e.reason || e.message)) ? String(e.reason || e.message) : 'invite_failed';
+        const msgMap = {
+          not_owner: 'ต้องเป็นเจ้าของห้องเท่านั้นถึงจะเชิญได้',
+          not_friends: 'คนที่เลือกยังไม่ได้เป็นเพื่อนของคุณ',
+          room_required: 'ไม่พบรหัสห้อง',
+          not_found: 'ไม่พบห้องนี้',
+          no_targets: 'กรุณาเลือกเพื่อนอย่างน้อย 1 คน',
+          not_identified: 'ยังระบุตัวตนไม่สำเร็จ (ลองรีเฟรชหน้า หรือออก-เข้าใหม่)',
+          timeout: 'เชื่อมต่อช้าเกินไป ลองใหม่อีกครั้ง',
+          server_error: 'เซิร์ฟเวอร์มีปัญหา ลองใหม่อีกครั้ง',
+        };
+        const text = msgMap[reason] || 'เชิญไม่สำเร็จ ลองใหม่อีกครั้ง';
         if (window.Swal) {
-          Swal.fire({ icon: 'error', title: 'Invite ไม่สำเร็จ', text: 'ตรวจสอบว่าเป็นเจ้าของห้อง และเพื่อนอยู่ใน list', background: '#0b0f14', color: '#e6f7ff' });
+          Swal.fire({ icon: 'error', title: 'Invite ไม่สำเร็จ', text, background: '#0b0f14', color: '#e6f7ff' });
+        } else {
+          alert(text);
         }
       } finally {
         inviteBtn.disabled = false;
