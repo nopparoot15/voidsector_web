@@ -22,6 +22,16 @@
     } catch {}
   };
 
+  // Try immediately (covers the case where `connect` fires before listeners are attached)
+  // and retry a few times until VS_ME is available.
+  hello();
+  let tries = 0;
+  const t = setInterval(() => {
+    tries++;
+    hello();
+    if ((window.VS_ME && window.VS_ME.username) || tries >= 10) clearInterval(t);
+  }, 250);
+
   socket.on('connect', hello);
   // also resend identity on reconnect
   socket.on('reconnect', hello);

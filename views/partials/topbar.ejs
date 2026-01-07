@@ -159,6 +159,15 @@
   // expose current user to client scripts (chat dock, etc.)
   window.VS_ME = <%- JSON.stringify(user ? { id: user.id, username: user.username, avatar_path: user.avatar_path } : null) %>;
 
+    // If socket singleton is already connected, push identity now.
+    // This avoids "Not identified" on pages where the socket connects before VS_ME is available.
+    try {
+      const me = window.VS_ME;
+      if (me && me.username && window.VS_SOCKET && window.VS_SOCKET.connected) {
+        window.VS_SOCKET.emit('chat:hello', { userId: me.id || null, username: me.username });
+      }
+    } catch (e) {}
+
   // ✅ unify dropdown behavior: open one -> close others, close button works the same everywhere
   (() => {
     const menus = [...document.querySelectorAll('.vs-menu[data-menu]')];
