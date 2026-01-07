@@ -190,6 +190,26 @@ io.on('connection', async (socket) => {
     };
   }
 
+  // Stream live stroke segments while drawing (not persisted to history; final stroke is sent on wb:stroke)
+  socket.on('wb:stroke_part', guardWB((rid, evt) => {
+    if (!evt || typeof evt !== 'object') return;
+    const clean = {
+      t: 'stroke',
+      id: String(evt.id || ''),
+      tool: String(evt.tool || 'pen').slice(0, 16),
+      color: String(evt.color || '#00ffff').slice(0, 32),
+      size: Math.max(1, Math.min(Number(evt.size) || 3, 48)),
+      points: Array.isArray(evt.points) ? evt.points.slice(0, 8) : [], // one segment (2 points)
+      userId: Number(socket.data.userId),
+      username: String(socket.data.username || '').slice(0, 32),
+      ts: Date.now(),
+    };
+    if (!clean.id) return;
+    if (!Array.isArray(clean.points) || clean.points.length !== 4) return;
+    // broadcast to others in room (not back to sender)
+    socket.to(`wb:${rid}`).emit('wb:stroke_part', clean);
+  }));
+
   socket.on('wb:stroke', guardWB((rid, evt) => {
     // evt: { tool, color, size, points:[...], t }
     if (!evt || typeof evt !== 'object') return;

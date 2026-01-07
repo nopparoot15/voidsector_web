@@ -140,7 +140,28 @@ function drawText
     resize();
   });
 
+  // Track strokes that are being rendered live (segments streamed while drawing)
+  const liveStrokeIds = new Set();
+
+  // Live stroke segments (not persisted; used so others see the line while you drag)
+  socket.on('wb:stroke_part', (evt) => {
+    if (!evt || typeof evt !== 'object') return;
+    if (!evt.id || !Array.isArray(evt.points) || evt.points.length < 4) return;
+    // don't render your own streamed segments (you already draw locally)
+    const meId = window.VS_ME && window.VS_ME.id ? Number(window.VS_ME.id) : 0;
+    const uid = Number(evt.userId || 0);
+    if (uid && meId && uid === meId) return;
+    liveStrokeIds.add(String(evt.id));
+    drawStroke(evt);
+  });
+
   socket.on('wb:stroke', (evt) => {
+    // If we already rendered this stroke live via wb:stroke_part, don't redraw (prevents double-bright lines)
+    if (evt && evt.id && liveStrokeIds.has(String(evt.id))) {
+      liveStrokeIds.delete(String(evt.id));
+      history.push(evt);
+      return;
+    }
     history.push(evt);
     applyEvent(evt);
   });
@@ -276,6 +297,7 @@ function drawText
   let prev = null;
   let strokePts = [];
   let strokeId = null;
+  let strokeStartedAt = 0;
 
 
   // Throttled cursor broadcast (to let others see who is drawing, without leaving tags on the final stroke)
@@ -289,6 +311,22 @@ function drawText
       x, y,
       drawing: !!drawingFlag,
       color: colorEl?.value || '#00ffff'
+    });
+  }
+
+  // Throttled live-stroke broadcast so others can see the line while you drag
+  let _lastPartSend = 0;
+  function emitStrokePart(from, to) {
+    const now = Date.now();
+    if ((now - _lastPartSend) < 35) return;
+    _lastPartSend = now;
+    socket.emit('wb:stroke_part', {
+      id: strokeId,
+      t: 'stroke',
+      tool,
+      color: colorEl?.value || '#00ffff',
+      size: Number(sizeEl?.value) || 3,
+      points: [from.x, from.y, to.x, to.y]
     });
   }
 
@@ -319,12 +357,14 @@ function drawText
     prev = normPos(e);
     strokePts = [prev.x, prev.y];
     strokeId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    strokeStartedAt = Date.now();
     canvas.setPointerCapture?.(e.pointerId);
     emitCursor(prev.x, prev.y, true);
   }
 
   function onMove(e) {
     if (!drawing || !prev) return;
+    const from = prev;
     const cur = normPos(e);
     // draw incremental segment locally for responsiveness
     const seg = {
@@ -332,9 +372,12 @@ function drawText
       tool,
       color: colorEl?.value || '#00ffff',
       size: Number(sizeEl?.value) || 3,
-      points: [prev.x, prev.y, cur.x, cur.y]
+      points: [from.x, from.y, cur.x, cur.y]
     };
     drawStroke(seg);
+
+    // stream this segment to others (they will render it live, but it won't be persisted until wb:stroke on pointerup)
+    emitStrokePart(from, cur);
     // accumulate polyline
     strokePts.push(cur.x, cur.y);
     prev = cur;
