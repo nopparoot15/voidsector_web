@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <title>VOIDSECTOR | Whiteboard</title>
+  <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/css/whiteboard.css" />
+</head>
+<body>
+  <div class="background"></div>
+  <%- include('../partials/topbar') %>
+
+  <div class="wb-shell">
+    <div class="wb-top">
+      <div class="wb-top__left">
+        <a class="wb-back" href="/whiteboard">← Lobby</a>
+        <div class="wb-roommeta">
+          <div class="wb-roommeta__title"><%= isPublic ? 'Public Room' : 'Private Room' %></div>
+          <div class="wb-roommeta__sub">
+            room: <span class="wb-mono"><%= roomId %></span> • online: <span id="wbOnline">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wb-top__tools">
+        <button class="wb-btn" data-tool="pen" id="toolPen">Pen</button>
+        <button class="wb-btn" data-tool="eraser" id="toolEraser">Eraser</button>
+        <button class="wb-btn" data-tool="text" id="toolText">Text</button>
+
+        <label class="wb-inline">
+          <span>Color</span>
+          <input type="color" id="wbColor" value="#00ffff" />
+        </label>
+        <label class="wb-inline">
+          <span>Size</span>
+          <input type="range" id="wbSize" min="1" max="24" value="3" />
+        </label>
+
+        <button class="wb-btn wb-btn--danger" id="wbClear">Clear</button>
+      </div>
+    </div>
+
+    <div class="wb-body">
+      <div class="wb-canvasWrap">
+        <canvas id="wbCanvas"></canvas>
+        <div id="wbCursors" class="wb-cursors" aria-hidden="true"></div>
+      </div>
+
+      <% if (!isPublic) { %>
+      <aside class="wb-side">
+        <div class="wb-side__card">
+          <div class="wb-side__hdr">Invite friends</div>
+          <div class="wb-side__desc">เลือกเพื่อนแล้วกด Invite • คนที่ถูกเชิญจะเข้าห้องนี้ได้</div>
+          <div id="wbFriends" class="wb-friends">Loading...</div>
+          <button class="wb-btn wb-btn--primary" id="wbInvite">Invite</button>
+        </div>
+
+        <div class="wb-side__card">
+          <div class="wb-side__hdr">Share link</div>
+          <div class="wb-side__desc">ส่งลิงก์นี้ให้เพื่อน (ต้องถูก invite ก่อน)</div>
+          <input class="wb-input" id="wbShare" readonly value="" />
+          <button class="wb-btn" id="wbCopy">Copy</button>
+        </div>
+      </aside>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    window.WB_ROOM_ID = <%- JSON.stringify(roomId) %>;
+    window.WB_IS_PUBLIC = <%- JSON.stringify(!!isPublic) %>;
+  </script>
+  <script defer src="/js/whiteboard.js"></script>
+</body>
+</html>
