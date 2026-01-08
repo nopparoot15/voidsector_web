@@ -226,7 +226,10 @@ function drawText
   if (!socket) return;
 
   function join() {
-    socket.emit('wb:join', { roomId });
+    const params = new URLSearchParams(window.location.search);
+    const urlKey = params.get('k') || params.get('key') || '';
+    const joinKey = urlKey || (window.WB_JOIN_KEY || '');
+    socket.emit('wb:join', { roomId, k: joinKey });
   }
 
   socket.on('connect', join);
@@ -623,7 +626,10 @@ function drawText
     const copyBtn = document.getElementById('wbCopy');
 
     if (shareEl) {
-      shareEl.value = `${window.location.origin}/whiteboard/r/${encodeURIComponent(roomId)}`;
+      const params = new URLSearchParams(window.location.search);
+      const k = params.get('k') || params.get('key') || (window.WB_JOIN_KEY || '');
+      const base = `${window.location.origin}/whiteboard/r/${encodeURIComponent(roomId)}`;
+      shareEl.value = k ? `${base}?k=${encodeURIComponent(k)}` : base;
     }
     copyBtn?.addEventListener('click', async () => {
       try {

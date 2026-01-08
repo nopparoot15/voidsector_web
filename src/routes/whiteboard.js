@@ -22,14 +22,22 @@ router.get('/whiteboard/public', requireLogin, (req, res) => {
 router.get('/whiteboard/r/:roomId', requireLogin, (req, res) => {
   const roomId = String(req.params.roomId || '');
   const me = Number(req.session.user?.id);
+  const k = String(req.query.k || req.query.key || '');
 
   const room = whiteboardStore.get(roomId);
   if (!room || room.isPublic) return res.status(404).render('pages/notfound');
-  if (!whiteboardStore.canAccess(roomId, me)) return res.status(403).render('pages/notfound');
+  // Allow entry via share-link key (no invite/friendship needed)
+  const allowed = whiteboardStore.canAccess(roomId, me) || whiteboardStore.canAccessWithKey(roomId, me, k);
+  if (!allowed) return res.status(403).render('pages/notfound');
+  if (whiteboardStore.canAccessWithKey(roomId, me, k)) {
+    // Persist access for this user (in-memory) once they joined via link.
+    whiteboardStore.grant(roomId, me);
+  }
 
   res.render('pages/whiteboard-room', {
     roomId,
     isPublic: false,
+    joinKey: (k || (Number(room.ownerId) === Number(me) ? room.roomJoinKey : '')),
   });
 });
 

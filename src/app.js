@@ -16,6 +16,8 @@ const quizRoutes = require('./routes/quiz');
 const feedApiRoutes = require('./routes/feedApi');
 const whiteboardApiRoutes = require('./routes/whiteboardApi');
 const whiteboardPageRoutes = require('./routes/whiteboard');
+const watchPartyApiRoutes = require('./routes/watchPartyApi');
+const watchPartyPageRoutes = require('./routes/watchParty');
 const viewLocals = require('./middleware/viewLocals');
 const { requireLogin } = require('./middleware/requireLogin');
 
@@ -122,6 +124,9 @@ function createApp() {
   // ✅ realtime whiteboard rooms
   app.use('/api', whiteboardApiRoutes);
 
+  // ✅ watch party rooms (sync video)
+  app.use('/api', watchPartyApiRoutes);
+
   app.use('/', authRoutes);
   app.use(terminalRoutes);
   app.use('/', profileRoutes);
@@ -131,6 +136,9 @@ function createApp() {
 
   // whiteboard pages
   app.use('/', whiteboardPageRoutes);
+
+  // watch party pages
+  app.use('/', watchPartyPageRoutes);
 
   // 404 fallback
   app.use((req, res) => res.status(404).render('pages/notfound'));

@@ -14,7 +14,8 @@
       const j = await r.json().catch(() => ({}));
       if (!j.ok || !j.roomId) throw new Error('create_failed');
 
-      window.location.href = `/whiteboard/r/${encodeURIComponent(j.roomId)}`;
+      // Redirect with share-key so you can copy/share immediately
+      window.location.href = j.shareUrl || `/whiteboard/r/${encodeURIComponent(j.roomId)}`;
     } catch (e) {
       if (window.Swal) {
         Swal.fire({

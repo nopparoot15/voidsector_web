@@ -56,7 +56,7 @@
 
         <div class="wb-side__card">
           <div class="wb-side__hdr">Share link</div>
-          <div class="wb-side__desc">ส่งลิงก์นี้ให้เพื่อน (ต้องถูก invite ก่อน)</div>
+          <div class="wb-side__desc">ส่งลิงก์นี้ให้ใครก็ได้ • กดเข้าได้เลย (ต้องล็อกอินก่อน)</div>
           <input class="wb-input" id="wbShare" readonly value="" />
           <button class="wb-btn" id="wbCopy">Copy</button>
         </div>
@@ -68,6 +68,7 @@
   <script>
     window.WB_ROOM_ID = <%- JSON.stringify(roomId) %>;
     window.WB_IS_PUBLIC = <%- JSON.stringify(!!isPublic) %>;
+    window.WB_JOIN_KEY = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
   </script>
   <script defer src="/js/whiteboard.js"></script>
 </body>

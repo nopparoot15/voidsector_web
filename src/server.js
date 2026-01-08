@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { createApp } = require('./app');
 const { pool, initDb } = require('./config/db');
 const { whiteboardStore } = require('./whiteboard/store');
+const { watchPartyStore } = require('./watchparty/store');
 
 const app = createApp();
 const server = http.createServer(app);
@@ -139,7 +140,7 @@ io.on('connection', async (socket) => {
   // ==================================================
   // WHITEBOARD: join room + broadcast draw events
   // ==================================================
-  socket.on('wb:join', ({ roomId } = {}) => {
+  socket.on('wb:join', ({ roomId, k } = {}) => {
     const rid = String(roomId || '');
     const userId = Number(socket.data.userId);
     if (!rid) return;
@@ -157,9 +158,16 @@ io.on('connection', async (socket) => {
       return;
     }
 
-    if (!whiteboardStore.canAccess(rid, userId)) {
+    const key = String(k || '');
+    const allowed = whiteboardStore.canAccess(rid, userId) || whiteboardStore.canAccessWithKey(rid, userId, key);
+    if (!allowed) {
       socket.emit('wb:error', { message: 'Forbidden' });
       return;
+    }
+
+    if (!room.isPublic && whiteboardStore.canAccessWithKey(rid, userId, key)) {
+      // Remember access for this user (in-memory) once they join via share-link.
+      whiteboardStore.grant(rid, userId);
     }
 
     // leave previous
@@ -362,6 +370,94 @@ io.on('connection', async (socket) => {
     }
   });
 
+  // ==================================================
+  // WATCH PARTY: join room + sync video events
+  // ==================================================
+  socket.on('wp:join', ({ roomId, k } = {}) => {
+    const rid = String(roomId || '');
+    const userId = Number(socket.data.userId);
+    if (!rid) return;
+    if (!Number.isFinite(userId) || userId <= 0) {
+      socket.emit('wp:error', { message: 'Not identified' });
+      return;
+    }
+
+    const room = watchPartyStore.get(rid);
+    if (!room) {
+      socket.emit('wp:error', { message: 'Room not found' });
+      return;
+    }
+
+    const key = String(k || '');
+    const allowed = watchPartyStore.canAccess(rid, userId) || watchPartyStore.canAccessWithKey(rid, userId, key);
+    if (!allowed) {
+      socket.emit('wp:error', { message: 'Forbidden' });
+      return;
+    }
+    if (!room.isPublic && watchPartyStore.canAccessWithKey(rid, userId, key)) {
+      watchPartyStore.grant(rid, userId);
+    }
+
+    if (socket.data.wpRoomId && socket.data.wpRoomId !== rid) {
+      socket.leave(`wp:${socket.data.wpRoomId}`);
+      watchPartyStore.removePresence(socket.data.wpRoomId, socket.id);
+    }
+
+    socket.data.wpRoomId = rid;
+    socket.join(`wp:${rid}`);
+    watchPartyStore.addPresence(rid, socket.id, userId);
+
+    socket.emit('wp:joined', {
+      roomId: rid,
+      isPublic: !!room.isPublic,
+      membersOnline: room.presence?.size || 0,
+      state: room.state,
+    });
+    io.to(`wp:${rid}`).emit('wp:presence', { membersOnline: room.presence?.size || 0 });
+  });
+
+  function guardWP(cb) {
+    return (...args) => {
+      const rid = socket.data.wpRoomId;
+      const userId = Number(socket.data.userId);
+      if (!rid || !Number.isFinite(userId) || userId <= 0) return;
+      if (!watchPartyStore.canAccess(rid, userId)) return;
+      cb(rid, ...args);
+    };
+  }
+
+  // Host (or anyone) sets the URL to watch
+  socket.on('wp:set_url', guardWP((rid, { url, provider } = {}) => {
+    const u = String(url || '').trim().slice(0, 2000);
+    const p = String(provider || 'generic').slice(0, 16);
+    const st = watchPartyStore.setState(rid, { url: u, provider: p, isPlaying: false, t: 0 });
+    io.to(`wp:${rid}`).emit('wp:state', st);
+  }));
+
+  socket.on('wp:play', guardWP((rid, { t } = {}) => {
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { isPlaying: true, t: time });
+    io.to(`wp:${rid}`).emit('wp:state', st);
+  }));
+
+  socket.on('wp:pause', guardWP((rid, { t } = {}) => {
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { isPlaying: false, t: time });
+    io.to(`wp:${rid}`).emit('wp:state', st);
+  }));
+
+  socket.on('wp:seek', guardWP((rid, { t } = {}) => {
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { t: time });
+    io.to(`wp:${rid}`).emit('wp:state', st);
+  }));
+
+  socket.on('wp:ping_state', guardWP((rid) => {
+    const room = watchPartyStore.get(rid);
+    if (!room) return;
+    socket.emit('wp:state', room.state);
+  }));
+
   // --------------------
   // Global chat send
   // --------------------
@@ -499,6 +595,17 @@ io.on('connection', async (socket) => {
           count: room?.presence?.size || 0,
           deleted: !!out.deleted,
           reset: !!out.reset,
+        });
+      }
+
+      const wpRid = socket.data.wpRoomId;
+      if (wpRid) {
+        const out = watchPartyStore.removePresence(wpRid, socket.id);
+        const room = watchPartyStore.get(wpRid);
+        io.to(`wp:${wpRid}`).emit('wp:presence', {
+          roomId: wpRid,
+          membersOnline: room?.presence?.size || 0,
+          deleted: !!out.deleted,
         });
       }
     } catch (e) {

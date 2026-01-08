@@ -47,12 +47,42 @@ class WhiteboardStore {
       id,
       isPublic: false,
       ownerId: Number(ownerId),
+      // Anyone with this key can join via share link (no invite/friendship needed).
+      // Still requires login (we keep requireLogin on pages/APIs).
+      roomJoinKey: crypto.randomBytes(16).toString('base64url'),
       allowed,
       history: [],
       presence: new Map(),
       createdAt: Date.now(),
     });
     return id;
+  }
+
+  // Validate share-link key for private rooms
+  canAccessWithKey(roomId, userId, key) {
+    const room = this.get(roomId);
+    if (!room || room.isPublic) return false;
+    const uid = Number(userId);
+    if (!Number.isFinite(uid) || uid <= 0) return false;
+    const k = String(key || '');
+    return !!(k && room.roomJoinKey && k === room.roomJoinKey);
+  }
+
+  // Grant access to a user (used after join via share-link)
+  grant(roomId, userId) {
+    const room = this.get(roomId);
+    if (!room || room.isPublic) return;
+    const uid = Number(userId);
+    if (!Number.isFinite(uid) || uid <= 0) return;
+    room.allowed?.add(uid);
+  }
+
+  rotateJoinKey(roomId, actorUserId) {
+    const room = this.get(roomId);
+    if (!room || room.isPublic) return { ok: false, reason: 'not_found' };
+    if (Number(room.ownerId) !== Number(actorUserId)) return { ok: false, reason: 'not_owner' };
+    room.roomJoinKey = crypto.randomBytes(16).toString('base64url');
+    return { ok: true, roomJoinKey: room.roomJoinKey };
   }
 
   canAccess(roomId, userId) {

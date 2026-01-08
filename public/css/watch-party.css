@@ -1,0 +1,52 @@
+:root{
+  --wp-bg:#070b10;
+  --wp-card:#0b0f14;
+  --wp-line:rgba(0,255,255,0.18);
+  --wp-text:#e6f7ff;
+  --wp-muted:#9aa7b3;
+}
+
+.wp-shell{max-width:1100px;margin:24px auto;padding:0 16px}
+.wp-card{background:rgba(11,15,20,0.88);border:1px solid var(--wp-line);border-radius:16px;padding:20px;box-shadow:0 0 0 1px rgba(180,0,255,0.12)}
+.wp-title{font-size:28px;font-weight:800;letter-spacing:0.5px}
+.wp-sub{margin-top:6px;color:var(--wp-muted);font-size:13px}
+.wp-row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.wp-radio{color:var(--wp-text);font-size:14px;display:flex;gap:8px;align-items:center}
+
+.wp-top{display:flex;justify-content:space-between;align-items:center;gap:14px;background:rgba(11,15,20,0.78);border:1px solid var(--wp-line);border-radius:16px;padding:14px 16px}
+.wp-top__left{display:flex;align-items:center;gap:12px}
+.wp-back{color:#7cf7ff;text-decoration:none;font-weight:700}
+.wp-meta__title{font-weight:800}
+.wp-meta__sub{color:var(--wp-muted);font-size:12px}
+.wp-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
+.wp-top__right{display:flex;gap:8px;align-items:center;min-width:340px;justify-content:flex-end}
+
+.wp-body{margin-top:14px}
+.wp-playerCard{background:rgba(11,15,20,0.78);border:1px solid var(--wp-line);border-radius:16px;padding:14px}
+.wp-player{margin-top:12px;border-radius:12px;overflow:hidden;border:1px solid rgba(124,247,255,0.15);min-height:320px;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:var(--wp-muted);font-size:13px}
+
+.wp-input{flex:1;min-width:220px;background:rgba(0,0,0,0.35);border:1px solid rgba(124,247,255,0.2);border-radius:12px;color:var(--wp-text);padding:10px 12px;outline:none}
+.wp-input:focus{border-color:rgba(124,247,255,0.55);box-shadow:0 0 0 3px rgba(0,255,255,0.08)}
+
+.wp-btn{background:rgba(124,247,255,0.08);border:1px solid rgba(124,247,255,0.25);color:var(--wp-text);padding:10px 12px;border-radius:12px;font-weight:800;cursor:pointer}
+.wp-btn:hover{border-color:rgba(124,247,255,0.55)}
+.wp-btn:disabled{opacity:0.6;cursor:not-allowed}
+.wp-btn--primary{background:linear-gradient(135deg, rgba(0,255,255,0.14), rgba(180,0,255,0.12));border-color:rgba(180,0,255,0.25)}
+
+.wp-controls{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.wp-hint{color:var(--wp-muted);font-size:12px}
+.wp-note{margin-top:14px;color:var(--wp-muted);font-size:12px;line-height:1.5}
+
+/* iframe/video sizing */
+.wp-player iframe{width:100%;height:560px;border:0}
+@media (max-width: 900px){
+  .wp-player iframe{height:360px}
+  .wp-top__right{min-width:0;flex:1}
+}
+
+.wp-player video{width:100%;height:auto;max-height:70vh;background:#000}
+
+.wp-generic{padding:14px;text-align:left;width:100%}
+.wp-open{display:inline-block;margin-top:10px;color:#7cf7ff;text-decoration:none;font-weight:800}
+.wp-iframe{width:100%;height:560px;border:0;margin-top:12px;border-radius:12px;background:#000}
