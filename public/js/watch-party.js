@@ -378,6 +378,11 @@
           }
 
           if (st.isPlaying) {
+            // Event-based sync: only snap if we're far off.
+            if (absDiff > 0.8) {
+              try { ytPlayer.seekTo(expectedT, true); } catch (e) {}
+            }
+            setRate(1.0);
             ytPlayer.playVideo();
             // Autoplay may be blocked until user gesture; detect and show unlock
             setTimeout(() => {
@@ -387,16 +392,10 @@
               } catch (e) {}
             }, 600);
           } else {
-            // IMPORTANT: seeking with allowSeekAhead=true can sometimes resume playback on YouTube.
-            // When paused, snap time *without* encouraging playback, then enforce pause again.
-            if (absDiff > 0.2) {
-              try { ytPlayer.seekTo(expectedT, false); } catch (e) {}
-            }
+            // Pause is sacred: do NOT seek while paused (YouTube can resume).
             ytPlayer.pauseVideo();
             setRate(1.0);
             showUnlock(false);
-            // Enforce pause after a short delay in case YouTube toggles back to playing after seek/buffer.
-            setTimeout(() => { try { ytPlayer.pauseVideo(); } catch (e) {} }, 180);
           }
         } catch (e) {}
       } else if (current.provider === 'html5' && html5Video) {
@@ -543,42 +542,7 @@
     loadFriends();
   }
 
-  
-  // Smooth drift correction while playing (avoids jittery seek spam)
-  setInterval(() => {
-    if (!lastState || !lastState.isPlaying) return;
-    if (suppressLocalEvents) return;
-    if (current.provider !== 'youtube' && current.provider !== 'html5') return;
-
-    const serverNow = nowServerMs();
-    const baseT = Number(lastState.t) || 0;
-    const drift = Math.max(0, (serverNow - (Number(lastState.updatedAt) || serverNow)) / 1000);
-    const expectedT = baseT + drift;
-    const curT = getLocalTime();
-    const diff = expectedT - curT;
-    const absDiff = Math.abs(diff);
-
-    function setRate(rate) {
-      rate = Math.max(0.75, Math.min(1.25, rate));
-      try {
-        if (current.provider === 'html5' && html5Video) html5Video.playbackRate = rate;
-        if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(rate);
-      } catch (e) {}
-    }
-
-    try {
-      if (absDiff > 1.6) {
-        // Rare hard snap if very far
-        if (current.provider === 'youtube' && ytPlayer) ytPlayer.seekTo(expectedT, true);
-        if (current.provider === 'html5' && html5Video) html5Video.currentTime = expectedT;
-        setRate(1.0);
-      } else if (absDiff > 0.25) {
-        setRate(diff > 0 ? 1.05 : 0.95);
-      } else {
-        setRate(1.0);
-      }
-    } catch (e) {}
-  }, 800);
+  // Drift correction disabled (event-based sync for stability)
 // Detect YouTube seeks made via the native player UI (best-effort)
   let ytLastT = 0;
   let ytLastAt = Date.now();
