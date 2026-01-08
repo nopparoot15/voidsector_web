@@ -48,6 +48,9 @@
   // Browsers can pause/deny playback without user intent; we only propagate play/pause when
   // the user likely initiated it (click/key) or when it's not immediately after a remote apply.
   let lastUserGestureAt = 0;
+  let lastCommandAt = 0;
+  let lastUrlSetAt = 0;
+  function markCommand(){ lastCommandAt = Date.now(); }
   function markGesture(){ lastUserGestureAt = Date.now(); }
   // Interaction with the controls/player area counts as a gesture
   ['pointerdown','mousedown','touchstart','keydown'].forEach(evt => {
@@ -241,14 +244,30 @@
             }
 
             // 1=PLAYING, 2=PAUSED
-            const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
-            const sinceGesture = Date.now() - (lastUserGestureAt || 0);
-            // Only broadcast if it's likely a user action, not an autoplay-policy pause or a remote reconcile.
-            const userLikely = (sinceGesture >= 0 && sinceGesture < 1400);
-            const notJustRemote = (sinceRemote > 1600);
-            if (!notJustRemote || !userLikely) return;
-            if (st === 1) socket.emit('wp:play', { t });
-            if (st === 2) socket.emit('wp:pause', { t });
+            const now = Date.now();
+            const sinceRemote = now - (lastRemoteAppliedAt || 0);
+            const sinceCmd = now - (lastCommandAt || 0);
+            const sinceUrl = now - (lastUrlSetAt || 0);
+
+            // Ignore reconcile events right after we applied remote state or issued a command.
+            if (sinceRemote < 900 || sinceCmd < 900) return;
+
+            // Heuristic: right after setting a new URL, YouTube may bounce states due to autoplay policy/buffering.
+            // Don't treat those as user-intent.
+            const inAutoplayWindow = sinceUrl >= 0 && sinceUrl < 4500;
+
+            if (st === 2) {
+              // PAUSED: if server wanted playing but YT paused during autoplay window, ignore.
+              if (desiredPlaying === true && inAutoplayWindow) return;
+              socket.emit('wp:pause', { t });
+              return;
+            }
+            if (st === 1) {
+              // PLAYING: if server wanted paused and this isn't a clear user play, let the guard above handle it.
+              if (desiredPlaying === false && inAutoplayWindow) return;
+              socket.emit('wp:play', { t });
+              return;
+            }
           } catch(e){}
         }
       }
@@ -367,35 +386,24 @@
     try {
       if (current.provider === 'youtube' && ytPlayer) {
         try {
-          // Only hard-seek if we're clearly off; otherwise gently correct using playbackRate
-          if (absDiff > 1.2) {
-            ytPlayer.seekTo(expectedT, true);
-          } else if (st.isPlaying && absDiff > 0.25) {
-            setRate(diff > 0 ? 1.05 : 0.95);
-            setTimeout(() => setRate(1.0), 1400);
+          // Pause is sacred: when paused, do NOT seek or change rate (YouTube can resume unexpectedly).
+          if (!st.isPlaying) {
+            try { markCommand(); ytPlayer.pauseVideo(); } catch (e) {}
+            try { ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0); } catch (e) {}
+            showUnlock(false);
           } else {
-            setRate(1.0);
-          }
-
-          if (st.isPlaying) {
-            // Event-based sync: only snap if we're far off.
-            if (absDiff > 0.8) {
-              try { ytPlayer.seekTo(expectedT, true); } catch (e) {}
+            // Playing: snap only if we're far off. Otherwise let it run (event-based sync).
+            if (absDiff > 0.9) {
+              try { markCommand(); ytPlayer.seekTo(expectedT, true); } catch (e) {}
             }
-            setRate(1.0);
-            ytPlayer.playVideo();
-            // Autoplay may be blocked until user gesture; detect and show unlock
+            try { markCommand(); markCommand(); ytPlayer.playVideo(); } catch (e) {}
+            // Autoplay may be blocked; show unlock prompt if it doesn't start.
             setTimeout(() => {
               try {
-                const ps = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
-                if (st.isPlaying && ps !== 1) showUnlock(true);
+                const stt = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
+                if (stt !== 1) showUnlock(true);
               } catch (e) {}
-            }, 600);
-          } else {
-            // Pause is sacred: do NOT seek while paused (YouTube can resume).
-            ytPlayer.pauseVideo();
-            setRate(1.0);
-            showUnlock(false);
+            }, 350);
           }
         } catch (e) {}
       } else if (current.provider === 'html5' && html5Video) {
@@ -441,6 +449,7 @@
   els.set?.addEventListener('click', () => {
     const url = String(els.url.value || '').trim();
     const det = detectProvider(url);
+    lastUrlSetAt = Date.now();
     socket.emit('wp:set_url', { url, provider: det.provider });
   });
 
@@ -449,7 +458,7 @@
     showUnlock(false);
     try {
       if (current.provider === 'youtube' && ytPlayer) {
-        ytPlayer.playVideo();
+        markCommand(); ytPlayer.playVideo();
       } else if (current.provider === 'html5' && html5Video) {
         const p = html5Video.play();
         if (p && p.catch) await p.catch(()=>{});
