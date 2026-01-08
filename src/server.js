@@ -430,7 +430,8 @@ io.on('connection', async (socket) => {
   socket.on('wp:set_url', guardWP((rid, { url, provider } = {}) => {
     const u = String(url || '').trim().slice(0, 2000);
     const p = String(provider || 'generic').slice(0, 16);
-    const st = watchPartyStore.setState(rid, { url: u, provider: p, isPlaying: false, t: 0 });
+    // When URL changes, start playing immediately (best-effort; browsers may require 1st user gesture)
+    const st = watchPartyStore.setState(rid, { url: u, provider: p, isPlaying: true, t: 0 });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 

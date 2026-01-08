@@ -2,6 +2,7 @@
 const express = require('express');
 const { requireLogin } = require('../middleware/requireLogin');
 const { watchPartyStore } = require('../watchparty/store');
+const { pool } = require('../config/db');
 
 const router = express.Router();
 
@@ -17,6 +18,38 @@ router.post('/watch/rooms', requireLogin, (req, res) => {
     ? `${origin}/watch/r/${encodeURIComponent(roomId)}`
     : `${origin}/watch/r/${encodeURIComponent(roomId)}?k=${encodeURIComponent(joinKey)}`;
   res.json({ ok: true, roomId, isPublic, joinKey, shareUrl });
+});
+
+// Invite friends to private room (owner only)
+router.post('/watch/rooms/:roomId/invite', requireLogin, async (req, res) => {
+  try {
+    const me = Number(req.session.user.id);
+    const roomId = String(req.params.roomId);
+    const friendIds = Array.isArray(req.body?.friendIds) ? req.body.friendIds : [];
+
+    const room = watchPartyStore.get(roomId);
+    if (!room || room.isPublic) return res.status(404).json({ ok: false, reason: 'not_found' });
+    if (Number(room.ownerId) !== me) return res.status(403).json({ ok: false, reason: 'not_owner' });
+
+    const ids = friendIds.map(n => Number(n)).filter(n => Number.isFinite(n) && n > 0);
+    if (ids.length === 0) return res.status(400).json({ ok: false, reason: 'no_targets' });
+
+    // Verify they are actually friends (friendships is directed: user_id -> friend_user_id)
+    const q = await pool.query(
+      `SELECT friend_user_id AS id
+       FROM friendships
+       WHERE user_id=$1 AND friend_user_id = ANY($2::int[])`,
+      [me, ids]
+    );
+    const okIds = q.rows.map(r => Number(r.id)).filter(Boolean);
+    if (okIds.length === 0) return res.status(400).json({ ok: false, reason: 'not_friends' });
+
+    const out = watchPartyStore.invite(roomId, me, okIds);
+    res.json({ ok: true, added: out.added, friendIds: okIds });
+  } catch (e) {
+    console.warn('watch invite failed:', e.code || e.message);
+    res.status(500).json({ ok: false, reason: 'server_error' });
+  }
 });
 
 // Rotate share-key (owner only)
@@ -51,6 +84,7 @@ router.get('/watch/rooms/:roomId', requireLogin, (req, res) => {
       id: room.id,
       isPublic: !!room.isPublic,
       ownerId: room.ownerId,
+      shareEnabled: !room.isPublic,
       membersOnline: room.presence?.size || 0,
       state: room.state,
     }

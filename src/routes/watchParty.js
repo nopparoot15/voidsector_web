@@ -7,7 +7,18 @@ const router = express.Router();
 
 // Lobby
 router.get('/watch', requireLogin, (req, res) => {
-  res.render('pages/watch-lobby');
+  // Always-on public room (no need to create)
+  watchPartyStore.ensurePublicRoom();
+  res.redirect('/watch/public');
+});
+
+// Public room
+router.get('/watch/public', requireLogin, (req, res) => {
+  watchPartyStore.ensurePublicRoom();
+  res.render('pages/watch-room', {
+    roomId: 'public',
+    isPublic: true,
+  });
 });
 
 // Room
@@ -16,6 +27,8 @@ router.get('/watch/r/:roomId', requireLogin, (req, res) => {
   const me = Number(req.session.user?.id);
   const k = String(req.query.k || req.query.key || '');
 
+  // ensure public room is always available
+  if (roomId === 'public') watchPartyStore.ensurePublicRoom();
   const room = watchPartyStore.get(roomId);
   if (!room) return res.status(404).render('pages/notfound');
 

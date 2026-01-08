@@ -11,6 +11,8 @@ function makeRoomId() {
 class WatchPartyStore {
   constructor() {
     this.rooms = new Map();
+    // Always-on public room (no create step needed)
+    this.ensurePublicRoom();
   }
 
   get(roomId) {
@@ -33,6 +35,28 @@ class WatchPartyStore {
         provider: 'generic', // youtube|vimeo|html5|generic
         isPlaying: false,
         t: 0,               // seconds
+        updatedAt: Date.now(),
+      },
+      createdAt: Date.now(),
+    });
+    return id;
+  }
+
+  ensurePublicRoom() {
+    const id = 'public';
+    if (this.rooms.has(id)) return id;
+    this.rooms.set(id, {
+      id,
+      isPublic: true,
+      ownerId: null,
+      roomJoinKey: null,
+      allowed: new Set(),
+      presence: new Map(),
+      state: {
+        url: '',
+        provider: 'generic',
+        isPlaying: false,
+        t: 0,
         updatedAt: Date.now(),
       },
       createdAt: Date.now(),
@@ -74,6 +98,17 @@ class WatchPartyStore {
     return { ok: true, roomJoinKey: room.roomJoinKey };
   }
 
+  invite(roomId, actorUserId, friendIds = []) {
+    const room = this.get(roomId);
+    if (!room || room.isPublic) return { ok: false, reason: 'not_found' };
+    if (Number(room.ownerId) !== Number(actorUserId)) return { ok: false, reason: 'not_owner' };
+    const ids = (Array.isArray(friendIds) ? friendIds : [])
+      .map(n => Number(n))
+      .filter(n => Number.isFinite(n) && n > 0);
+    for (const id of ids) room.allowed.add(id);
+    return { ok: true, added: ids.length };
+  }
+
   addPresence(roomId, socketId, userId) {
     const room = this.get(roomId);
     if (!room) return;
@@ -84,6 +119,8 @@ class WatchPartyStore {
     const room = this.get(roomId);
     if (!room) return { deleted: false };
     room.presence.delete(socketId);
+    // Public room persists forever
+    if (String(roomId) === 'public') return { deleted: false };
     if (room.presence.size === 0) {
       this.rooms.delete(String(roomId));
       return { deleted: true };
