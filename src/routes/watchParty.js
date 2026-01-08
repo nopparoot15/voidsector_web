@@ -7,9 +7,9 @@ const router = express.Router();
 
 // Lobby
 router.get('/watch', requireLogin, (req, res) => {
-  // Always-on public room (no need to create)
+  // Show lobby (like whiteboard) with options: join public or create private
   watchPartyStore.ensurePublicRoom();
-  res.redirect('/watch/public');
+  res.render('pages/watch-lobby');
 });
 
 // Public room
