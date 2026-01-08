@@ -44,11 +44,27 @@
   const socket = window.VS_SOCKET || window.io?.();
   if (!socket) return;
 
+  // Track recent user gestures so we don't broadcast "autoplay-block" pauses as real pauses.
+  // Browsers can pause/deny playback without user intent; we only propagate play/pause when
+  // the user likely initiated it (click/key) or when it's not immediately after a remote apply.
+  let lastUserGestureAt = 0;
+  function markGesture(){ lastUserGestureAt = Date.now(); }
+  // Interaction with the controls/player area counts as a gesture
+  ['pointerdown','mousedown','touchstart','keydown'].forEach(evt => {
+    document.addEventListener(evt, (e) => {
+      const t = e.target;
+      // only count gestures inside the watch UI
+      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer') || t.id === 'wpUnlockBtn')) markGesture();
+    }, { passive: true });
+  });
+
   // -------------------------
   // Time sync (server clock) to reduce jitter/drift
   // -------------------------
   let __wpTimeOffsetMs = 0; // serverNow ~= Date.now() + offset
   let __wpTimeSynced = false;
+  let __wpTimeSyncInit = false;
+  let __wpTimeSyncRunning = false;
 
   function nowServerMs() {
     return Date.now() + (__wpTimeOffsetMs || 0);
@@ -61,6 +77,11 @@
   }
 
   function startTimeSync(samples = 7){
+    if (__wpTimeSynced) return;
+    // Avoid registering duplicate listeners / running multiple concurrent sync loops.
+    if (__wpTimeSyncRunning) return;
+    __wpTimeSyncRunning = true;
+
     const offsets = [];
     let done = 0;
 
@@ -75,7 +96,9 @@
       }, 800);
     }
 
-    socket.on('wp:time_sync', (m) => {
+    if (!__wpTimeSyncInit) {
+      __wpTimeSyncInit = true;
+      socket.on('wp:time_sync', (m) => {
       try{
         const t1 = Date.now();
         const t0 = Number(m?.t0) || 0;
@@ -89,9 +112,11 @@
         else {
           __wpTimeOffsetMs = median(offsets);
           __wpTimeSynced = true;
+          __wpTimeSyncRunning = false;
         }
       } catch(e){}
-    });
+      });
+    }
 
     ping();
   }
@@ -101,9 +126,9 @@
     const k = params.get('k') || params.get('key') || joinKeyFallback;
     socket.emit('wp:join', { roomId, k });
   }
+  // Only join after we have a socket connection; avoid double-join / double-sync.
   socket.on('connect', () => { startTimeSync(); join(); });
-  startTimeSync();
-  join();
+  if (socket.connected) { startTimeSync(); join(); }
 
   socket.on('wp:presence', (p) => {
     if (els.online) els.online.textContent = String(p?.membersOnline || p?.count || 0);
@@ -206,6 +231,12 @@
             const st = evt?.data;
             const t = ytPlayer?.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
             // 1=PLAYING, 2=PAUSED
+            const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
+            const sinceGesture = Date.now() - (lastUserGestureAt || 0);
+            // Only broadcast if it's likely a user action, not an autoplay-policy pause or a remote reconcile.
+            const userLikely = (sinceGesture >= 0 && sinceGesture < 1400);
+            const notJustRemote = (sinceRemote > 1600);
+            if (!notJustRemote || !userLikely) return;
             if (st === 1) socket.emit('wp:play', { t });
             if (st === 2) socket.emit('wp:pause', { t });
           } catch(e){}
@@ -229,10 +260,16 @@
 
     const emitPlay = () => {
       if (suppressLocalEvents) return;
+      const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
+      const sinceGesture = Date.now() - (lastUserGestureAt || 0);
+      if (sinceRemote <= 1600 || sinceGesture >= 1400) return;
       socket.emit('wp:play', { t: v.currentTime || 0 });
     };
     const emitPause = () => {
       if (suppressLocalEvents) return;
+      const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
+      const sinceGesture = Date.now() - (lastUserGestureAt || 0);
+      if (sinceRemote <= 1600 || sinceGesture >= 1400) return;
       socket.emit('wp:pause', { t: v.currentTime || 0 });
     };
     const emitSeek = () => {
@@ -373,7 +410,7 @@
       }
       // generic: nothing to control
     } finally {
-      setTimeout(() => { suppressLocalEvents = false; }, 200);
+      setTimeout(() => { suppressLocalEvents = false; }, 600);
     }
   }
 
