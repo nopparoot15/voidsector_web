@@ -54,39 +54,136 @@
     ctx.restore();
   }
 
-function drawStroke(evt) {
-  const pts = Array.isArray(evt.points) ? evt.points : [];
-  if (pts.length < 4 || (pts.length % 2) !== 0) return;
-
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-
+// ---- Smooth stroke renderer ----
+function strokeStyleFrom(evt) {
   const size = Number(evt.size) || 3;
   const color = String(evt.color || '#00ffff');
   const isEraser = String(evt.tool || 'pen') === 'eraser';
+  return { size, color, isEraser };
+}
 
+function beginStrokeStyle(style) {
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = size;
-  if (isEraser) {
+  ctx.lineWidth = style.size;
+  if (style.isEraser) {
     ctx.globalCompositeOperation = 'destination-out';
     ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.shadowBlur = 0;
   } else {
     ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = color;
-    ctx.shadowColor = color;
+    ctx.strokeStyle = style.color;
+    ctx.shadowColor = style.color;
     ctx.shadowBlur = 6;
   }
+}
 
-  ctx.beginPath();
-  ctx.moveTo(pts[0] * w, pts[1] * h);
-  for (let i = 2; i < pts.length; i += 2) {
-    ctx.lineTo(pts[i] * w, pts[i + 1] * h);
-  }
-  ctx.stroke();
+function endStrokeStyle() {
   ctx.restore();
+}
 
+function mid(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function pxPoint(p) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  return { x: p.x * w, y: p.y * h };
+}
+
+// Render a full polyline (history redraw) with quadratic smoothing.
+function drawStroke(evt) {
+  const pts = Array.isArray(evt.points) ? evt.points : [];
+  if (pts.length < 4 || (pts.length % 2) !== 0) return;
+  const style = strokeStyleFrom(evt);
+  beginStrokeStyle(style);
+
+  // Convert to px once for determinism
+  const p0 = pxPoint({ x: pts[0], y: pts[1] });
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+
+  // With only 2 points, just lineTo.
+  if (pts.length === 4) {
+    const p1 = pxPoint({ x: pts[2], y: pts[3] });
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+    endStrokeStyle();
+    return;
+  }
+
+  // Smooth path: quadraticCurveTo(prev, mid(prev,next))
+  let prev = pxPoint({ x: pts[0], y: pts[1] });
+  let curr = pxPoint({ x: pts[2], y: pts[3] });
+  let lastMid = mid(prev, curr);
+  ctx.lineTo(lastMid.x, lastMid.y);
+
+  for (let i = 4; i < pts.length; i += 2) {
+    const next = pxPoint({ x: pts[i], y: pts[i + 1] });
+    const m = mid(curr, next);
+    ctx.quadraticCurveTo(curr.x, curr.y, m.x, m.y);
+    prev = curr;
+    curr = next;
+    lastMid = m;
+  }
+  // Finish to the last point
+  ctx.quadraticCurveTo(curr.x, curr.y, curr.x, curr.y);
+  ctx.stroke();
+  endStrokeStyle();
+}
+
+// Incremental smooth renderer for live strokes (local + remote)
+function makeLiveStrokeState(style) {
+  return { style, n: 0, last: null, prev: null, lastMid: null };
+}
+
+function liveStrokeAddPoint(state, pNorm) {
+  if (!state) return;
+  const p = pxPoint(pNorm);
+  const style = state.style;
+
+  beginStrokeStyle(style);
+  ctx.beginPath();
+
+  if (state.n === 0) {
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    state.n = 1;
+    state.last = p;
+    endStrokeStyle();
+    return;
+  }
+
+  if (state.n === 1) {
+    // First segment
+    const prev = state.last;
+    const m = mid(prev, p);
+    ctx.moveTo(prev.x, prev.y);
+    ctx.lineTo(m.x, m.y);
+    ctx.stroke();
+    state.n = 2;
+    state.prev = prev;
+    state.last = p;
+    state.lastMid = m;
+    endStrokeStyle();
+    return;
+  }
+
+  // Continue quadratic from lastMid using control = last, end = mid(last, new)
+  const last = state.last;
+  const lastMid = state.lastMid || last;
+  const m = mid(last, p);
+  ctx.moveTo(lastMid.x, lastMid.y);
+  ctx.quadraticCurveTo(last.x, last.y, m.x, m.y);
+  ctx.stroke();
+  state.prev = last;
+  state.last = p;
+  state.lastMid = m;
+  state.n += 1;
+  endStrokeStyle();
 }
 
 function drawText
@@ -140,25 +237,60 @@ function drawText
     resize();
   });
 
-  // Track strokes that are being rendered live (segments streamed while drawing)
+  // Track strokes that are being rendered live (points streamed while drawing)
   const liveStrokeIds = new Set();
+  const liveStates = new Map(); // strokeId -> incremental state
 
-  // Live stroke segments (not persisted; used so others see the line while you drag)
+  // Live stroke points (not persisted; used so others see the line while you drag)
   socket.on('wb:stroke_part', (evt) => {
     if (!evt || typeof evt !== 'object') return;
-    if (!evt.id || !Array.isArray(evt.points) || evt.points.length < 4) return;
-    // don't render your own streamed segments (you already draw locally)
+    if (!evt.id || !Array.isArray(evt.points) || evt.points.length < 2) return;
+    if ((evt.points.length % 2) !== 0) return;
+
+    // don't render your own streamed points (you already draw locally)
     const meId = window.VS_ME && window.VS_ME.id ? Number(window.VS_ME.id) : 0;
     const uid = Number(evt.userId || 0);
     if (uid && meId && uid === meId) return;
-    liveStrokeIds.add(String(evt.id));
-    drawStroke(evt);
+
+    const sid = String(evt.id);
+    liveStrokeIds.add(sid);
+    let st = liveStates.get(sid);
+    if (!st) {
+      st = makeLiveStrokeState(strokeStyleFrom(evt));
+      liveStates.set(sid, st);
+    }
+
+    // Points are streamed as a small batch: [x1,y1,x2,y2,...]
+    // Add streamed points; if there are occasional gaps, interpolate lightly so the stroke stays continuous.
+    for (let i = 0; i < evt.points.length; i += 2) {
+      const x = Number(evt.points[i]);
+      const y = Number(evt.points[i + 1]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+      const p = { x, y };
+      const last = st._lastNorm;
+      if (last) {
+        const dx = p.x - last.x;
+        const dy = p.y - last.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist > 0.003) {
+          const steps = Math.min(8, Math.ceil(dist / 0.002));
+          for (let s = 1; s < steps; s++) {
+            liveStrokeAddPoint(st, { x: last.x + dx*(s/steps), y: last.y + dy*(s/steps) });
+          }
+        }
+      }
+      liveStrokeAddPoint(st, p);
+      st._lastNorm = p;
+    }
   });
 
   socket.on('wb:stroke', (evt) => {
     // If we already rendered this stroke live via wb:stroke_part, don't redraw (prevents double-bright lines)
     if (evt && evt.id && liveStrokeIds.has(String(evt.id))) {
-      liveStrokeIds.delete(String(evt.id));
+      const sid = String(evt.id);
+      liveStrokeIds.delete(sid);
+      liveStates.delete(sid);
       history.push(evt);
       return;
     }
@@ -298,9 +430,15 @@ function drawText
   let strokePts = [];
   let strokeId = null;
   let strokeStartedAt = 0;
-  // When streaming live segments with throttling, keep a separate "last sent" point.
-  // Otherwise, we skip intermediate segments and other clients see dotted/fragmented lines.
-  let lastSentPt = null;
+  // Local incremental smooth renderer (use the same pipeline as remote so strokes match closely)
+  let localLiveState = null;
+
+  // Streaming: batch points at ~60fps for ultra-smooth remote rendering.
+  let pendingPts = []; // flat [x,y,x,y,...] (norm coords)
+  let _flushRaf = 0;
+  let _lastFlush = 0;
+  let _lastQueued = null;
+  let _lastQueuedAt = 0;
 
 
   // Throttled cursor broadcast (to let others see who is drawing, without leaving tags on the final stroke)
@@ -317,21 +455,39 @@ function drawText
     });
   }
 
-  // Throttled live-stroke broadcast so others can see the line while you drag
-  let _lastPartSend = 0;
-  function emitStrokePart(from, to) {
-    const now = Date.now();
-    if ((now - _lastPartSend) < 35) return false;
-    _lastPartSend = now;
+  // ---- Ultra-smooth realtime stroke streaming ----
+  // We stream *points* in small batches at ~60fps. Remote clients render incrementally
+  // using the same quadratic smoothing pipeline as the local drawer, so strokes match closely.
+  function q(v) {
+    // Quantize to reduce tiny float diffs between machines while keeping smoothness.
+    return Math.round(v * 10000) / 10000;
+  }
+
+  function queuePoint(p) {
+    pendingPts.push(q(p.x), q(p.y));
+  }
+
+  function flushPoints(force) {
+    if (!strokeId || pendingPts.length < 2) return;
+    const now = performance.now();
+    if (!force && (now - _lastFlush) < 16) return; // ~60fps
+    _lastFlush = now;
+    const payload = pendingPts.splice(0, Math.min(pendingPts.length, 120)); // up to 60 points
+    if (payload.length < 2) return;
     socket.emit('wb:stroke_part', {
       id: strokeId,
       t: 'stroke',
       tool,
       color: colorEl?.value || '#00ffff',
       size: Number(sizeEl?.value) || 3,
-      points: [from.x, from.y, to.x, to.y]
+      points: payload,
     });
-    return true;
+  }
+
+  function rafFlush() {
+    if (!drawing) return;
+    flushPoints(false);
+    _flushRaf = requestAnimationFrame(rafFlush);
   }
 
 
@@ -362,55 +518,56 @@ function drawText
     strokePts = [prev.x, prev.y];
     strokeId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     strokeStartedAt = Date.now();
-    lastSentPt = prev;
+    // local stroke renderer + streaming init
+    localLiveState = makeLiveStrokeState(strokeStyleFrom({ tool, color: colorEl?.value, size: Number(sizeEl?.value) || 3 }));
+    pendingPts = [];
+    _lastQueued = prev;
+    _lastQueuedAt = performance.now();
+    queuePoint(prev);
+    // draw the first point locally (same pipeline as remote)
+    liveStrokeAddPoint(localLiveState, prev);
+    // start streaming loop and force-flush first point immediately
+    cancelAnimationFrame(_flushRaf);
+    _flushRaf = requestAnimationFrame(rafFlush);
+    flushPoints(true);
     canvas.setPointerCapture?.(e.pointerId);
     emitCursor(prev.x, prev.y, true);
   }
 
   function onMove(e) {
     if (!drawing || !prev) return;
-    const from = prev;
     const cur = normPos(e);
-    // draw incremental segment locally for responsiveness
-    const seg = {
-      t: 'stroke',
-      tool,
-      color: colorEl?.value || '#00ffff',
-      size: Number(sizeEl?.value) || 3,
-      points: [from.x, from.y, cur.x, cur.y]
-    };
-    drawStroke(seg);
-
-    // stream segments to others (they will render it live, but it won't be persisted until wb:stroke on pointerup)
-    // IMPORTANT: use lastSentPt to avoid gaps when throttling
-    if (!lastSentPt) lastSentPt = from;
-    // Only send if we actually moved (avoid spam of zero-length segments)
-    if (Math.abs(cur.x - lastSentPt.x) + Math.abs(cur.y - lastSentPt.y) > 0.0006) {
-      const sent = emitStrokePart(lastSentPt, cur);
-      // emitStrokePart may be throttled; only advance lastSentPt when we actually sent
-      if (sent) lastSentPt = cur;
+    // Deterministic pipeline: render locally using the same sampled points we stream.
+    // This makes local vs remote strokes match much more closely.
+    const now = performance.now();
+    const moved = !_lastQueued ? 999 : (Math.abs(cur.x - _lastQueued.x) + Math.abs(cur.y - _lastQueued.y));
+    const timeOk = (now - _lastQueuedAt) > 16; // at least 60fps point cadence
+    const distOk = moved > 0.00008; // very small threshold for smoothness
+    if (timeOk || distOk) {
+      _lastQueuedAt = now;
+      _lastQueued = cur;
+      queuePoint(cur);
+      if (strokePts.length < 8190) strokePts.push(cur.x, cur.y);
+      liveStrokeAddPoint(localLiveState, cur);
     }
-    // accumulate polyline
-    strokePts.push(cur.x, cur.y);
+
     prev = cur;
     emitCursor(cur.x, cur.y, true);
   }
 
   function onUp() {
     if (drawing && strokePts && strokePts.length >= 4) {
-      // Ensure the very last segment is streamed before finishing, so others see the tail end.
-      if (prev && lastSentPt && (Math.abs(prev.x - lastSentPt.x) + Math.abs(prev.y - lastSentPt.y) > 0.0006)) {
-        // bypass throttle for final segment by resetting timer
-        _lastPartSend = 0;
-        emitStrokePart(lastSentPt, prev);
-      }
+      // flush any remaining streamed points (tail)
+      flushPoints(true);
+      cancelAnimationFrame(_flushRaf);
       const evt = {
         id: strokeId,
         tool,
         username: (window.VS_ME && window.VS_ME.username) ? String(window.VS_ME.username).slice(0,32) : '',
         color: colorEl?.value || '#00ffff',
         size: Number(sizeEl?.value) || 3,
-        points: strokePts.slice(0, 2048)
+        // quantize the stored polyline so remote redraw matches closely
+        points: strokePts.map((v) => q(Number(v) || 0)).slice(0, 4096)
       };
       const local = { t: 'stroke', ...evt };
       history.push(local);
@@ -424,7 +581,9 @@ function drawText
     prev = null;
     strokePts = [];
     strokeId = null;
-    lastSentPt = null;
+    localLiveState = null;
+    pendingPts = [];
+    _lastQueued = null;
   }
 
   canvas.addEventListener('pointerdown', onDown);

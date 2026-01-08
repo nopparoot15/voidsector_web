@@ -199,13 +199,15 @@ io.on('connection', async (socket) => {
       tool: String(evt.tool || 'pen').slice(0, 16),
       color: String(evt.color || '#00ffff').slice(0, 32),
       size: Math.max(1, Math.min(Number(evt.size) || 3, 48)),
-      points: Array.isArray(evt.points) ? evt.points.slice(0, 8) : [], // one segment (2 points)
+      // A small batch of points streamed while drawing (even-length array: [x1,y1,x2,y2,...])
+      // Keep it bounded to prevent abuse.
+      points: Array.isArray(evt.points) ? evt.points.slice(0, 160) : [],
       userId: Number(socket.data.userId),
       username: String(socket.data.username || '').slice(0, 32),
       ts: Date.now(),
     };
     if (!clean.id) return;
-    if (!Array.isArray(clean.points) || clean.points.length !== 4) return;
+    if (!Array.isArray(clean.points) || clean.points.length < 2 || (clean.points.length % 2) !== 0) return;
     // broadcast to others in room (not back to sender)
     socket.to(`wb:${rid}`).emit('wb:stroke_part', clean);
   }));
