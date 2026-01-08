@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <title>VOIDSECTOR | Watch Party</title>
+  <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/css/watch-party.css" />
+</head>
+<body>
+  <div class="background"></div>
+  <%- include('../partials/topbar') %>
+
+  <div class="wp-shell">
+    <div class="wp-card">
+      <div class="wp-title">Watch Party</div>
+      <div class="wp-sub">ดูคลิปพร้อมกันแบบ realtime • แชร์ลิงก์ให้คนอื่นเข้ามาได้ทันที (ต้องล็อกอินก่อน)</div>
+
+      <div class="wp-row" style="gap:12px; flex-wrap:wrap;">
+        <a class="wp-btn wp-btn--primary" href="/watch/public" style="text-decoration:none;">เข้าห้องรวม (Public)</a>
+        <button class="wp-btn" id="wpCreatePrivate">สร้างห้องส่วนตัว (Private)</button>
+      </div>
+
+      <div class="wp-note">
+        <b>หมายเหตุ:</b> ซิงก์แบบ “ควบคุมได้เต็ม” จะทำได้กับลิงก์ที่ embed/ควบคุมได้ (เช่น YouTube หรือไฟล์ mp4/webm)
+        ถ้าเว็บปลายทางกัน iframe (X-Frame-Options/CSP) ระบบจะให้เปิดลิงก์แยกแท็บและใช้การซิงก์เวลาแทน.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const btn = document.getElementById('wpCreatePrivate');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const r = await fetch('/api/watch/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPublic: false })
+          });
+          const j = await r.json();
+          if (!j.ok) throw new Error(j.reason || 'create_failed');
+          window.location.href = j.shareUrl;
+        } catch (e) {
+          alert('สร้างห้องไม่สำเร็จ ลองใหม่อีกครั้ง');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
