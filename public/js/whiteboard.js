@@ -298,6 +298,9 @@ function drawText
   let strokePts = [];
   let strokeId = null;
   let strokeStartedAt = 0;
+  // When streaming live segments with throttling, keep a separate "last sent" point.
+  // Otherwise, we skip intermediate segments and other clients see dotted/fragmented lines.
+  let lastSentPt = null;
 
 
   // Throttled cursor broadcast (to let others see who is drawing, without leaving tags on the final stroke)
@@ -318,7 +321,7 @@ function drawText
   let _lastPartSend = 0;
   function emitStrokePart(from, to) {
     const now = Date.now();
-    if ((now - _lastPartSend) < 35) return;
+    if ((now - _lastPartSend) < 35) return false;
     _lastPartSend = now;
     socket.emit('wb:stroke_part', {
       id: strokeId,
@@ -328,6 +331,7 @@ function drawText
       size: Number(sizeEl?.value) || 3,
       points: [from.x, from.y, to.x, to.y]
     });
+    return true;
   }
 
 
@@ -358,6 +362,7 @@ function drawText
     strokePts = [prev.x, prev.y];
     strokeId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     strokeStartedAt = Date.now();
+    lastSentPt = prev;
     canvas.setPointerCapture?.(e.pointerId);
     emitCursor(prev.x, prev.y, true);
   }
@@ -376,8 +381,15 @@ function drawText
     };
     drawStroke(seg);
 
-    // stream this segment to others (they will render it live, but it won't be persisted until wb:stroke on pointerup)
-    emitStrokePart(from, cur);
+    // stream segments to others (they will render it live, but it won't be persisted until wb:stroke on pointerup)
+    // IMPORTANT: use lastSentPt to avoid gaps when throttling
+    if (!lastSentPt) lastSentPt = from;
+    // Only send if we actually moved (avoid spam of zero-length segments)
+    if (Math.abs(cur.x - lastSentPt.x) + Math.abs(cur.y - lastSentPt.y) > 0.0006) {
+      const sent = emitStrokePart(lastSentPt, cur);
+      // emitStrokePart may be throttled; only advance lastSentPt when we actually sent
+      if (sent) lastSentPt = cur;
+    }
     // accumulate polyline
     strokePts.push(cur.x, cur.y);
     prev = cur;
@@ -386,6 +398,12 @@ function drawText
 
   function onUp() {
     if (drawing && strokePts && strokePts.length >= 4) {
+      // Ensure the very last segment is streamed before finishing, so others see the tail end.
+      if (prev && lastSentPt && (Math.abs(prev.x - lastSentPt.x) + Math.abs(prev.y - lastSentPt.y) > 0.0006)) {
+        // bypass throttle for final segment by resetting timer
+        _lastPartSend = 0;
+        emitStrokePart(lastSentPt, prev);
+      }
       const evt = {
         id: strokeId,
         tool,
@@ -406,6 +424,7 @@ function drawText
     prev = null;
     strokePts = [];
     strokeId = null;
+    lastSentPt = null;
   }
 
   canvas.addEventListener('pointerdown', onDown);
