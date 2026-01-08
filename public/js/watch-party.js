@@ -41,8 +41,34 @@
     });
   })();
 
-  const socket = window.VS_SOCKET || window.io?.();
+  // Use the app-wide VS_SOCKET if available. If this page loads before it exists, create
+  // our own socket AND identify it via chat:hello (otherwise server-side wp:* guards will ignore us).
+  const socket = (() => {
+    if (window.VS_SOCKET) return window.VS_SOCKET;
+    if (typeof io === 'function') return io({ withCredentials: true });
+    return null;
+  })();
   if (!socket) return;
+
+  let identified = false;
+  function sendHello() {
+    try {
+      const me = window.VS_ME || {};
+      const username = String(me.username || '').trim();
+      if (!username) return;
+      socket.emit('chat:hello', { userId: me.id || null, username });
+    } catch (e) {}
+  }
+  socket.on('chat:me', () => { identified = true; });
+
+  // If we created our own socket (not the singleton), we must identify on connect.
+  if (socket !== window.VS_SOCKET) {
+    sendHello();
+    socket.on('connect', sendHello);
+  } else {
+    // singleton usually identifies itself, but be safe on reconnect
+    socket.on('connect', sendHello);
+  }
 
   // Track recent user gestures so we don't broadcast "autoplay-block" pauses as real pauses.
   // Browsers can pause/deny playback without user intent; we only propagate play/pause when
@@ -124,14 +150,43 @@
     ping();
   }
 
+  let __wpJoined = false;
+
   function join(){
     const params = new URLSearchParams(window.location.search);
     const k = params.get('k') || params.get('key') || joinKeyFallback;
     socket.emit('wp:join', { roomId, k });
   }
-  // Only join after we have a socket connection; avoid double-join / double-sync.
-  socket.on('connect', () => { startTimeSync(); join(); });
-  if (socket.connected) { startTimeSync(); join(); }
+
+  // Show errors (and keep retrying join if we were not identified yet)
+  socket.on('wp:error', (e) => {
+    try {
+      const msg = String(e?.message || 'Watch party error');
+      console.warn('[watchparty]', msg);
+      // Small inline hint (avoid modal spam)
+      if (els.online && msg.toLowerCase().includes('not identified')) {
+        els.online.textContent = '—';
+      }
+    } catch (err) {}
+  });
+
+  // Robust join: on some pages the socket connects before VS_ME/identity is ready.
+  // We retry until we receive wp:joined.
+  function ensureJoined(){
+    if (__wpJoined) return;
+    if (!socket.connected) return;
+    if (!identified) {
+      sendHello();
+      setTimeout(ensureJoined, 250);
+      return;
+    }
+    startTimeSync();
+    join();
+    setTimeout(ensureJoined, 900);
+  }
+
+  socket.on('connect', () => { setTimeout(ensureJoined, 50); });
+  if (socket.connected) setTimeout(ensureJoined, 50);
 
   socket.on('wp:presence', (p) => {
     if (els.online) els.online.textContent = String(p?.membersOnline || p?.count || 0);
@@ -451,6 +506,7 @@
   }
 
   socket.on('wp:joined', (j) => {
+    __wpJoined = true;
     if (els.online) els.online.textContent = String(j?.membersOnline || 0);
     applyState(j?.state);
   });
@@ -463,6 +519,8 @@
     const url = String(els.url.value || '').trim();
     const det = detectProvider(url);
     lastUrlSetAt = Date.now();
+    // Optimistic mount so the user sees the player immediately; server state will follow.
+    try { mountForUrl(url); } catch(e){}
     // Server-side guardWP already knows the roomId from wp:join (socket.data.wpRoomId).
     // Passing roomId as a positional argument will shift parameters and break parsing.
     socket.emit('wp:set_url', { url, provider: det.provider });
