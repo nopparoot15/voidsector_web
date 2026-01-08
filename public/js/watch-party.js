@@ -167,6 +167,9 @@
   // -------------------------
   let current = { url:'', provider:'generic' };
   let suppressLocalEvents = false;
+  let localIntent = { type: null, at: 0 };
+  function setIntent(type){ localIntent = { type, at: Date.now() }; }
+
   let ytPlayer = null;
   let html5Video = null;
   let lastRemoteAppliedAt = 0;
@@ -235,13 +238,17 @@
             const st = evt?.data;
             const t = ytPlayer?.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
 
-            // If server says we should be paused, and YouTube flips to PLAYING without a fresh user gesture,
-            // force it back to pause (prevents "pause -> immediately resumes" glitches).
-            const sinceGestureForce = Date.now() - (lastUserGestureAt || 0);
-            if (st === 1 && desiredPlaying === false && !(sinceGestureForce >= 0 && sinceGestureForce < 1400)) {
-              try { ytPlayer.pauseVideo(); } catch (e) {}
-              return;
+            // If server says we should be paused, and YouTube flips to PLAYING, force it back to pause unless we explicitly intended to play.
+            const now = Date.now();
+            const intentAge = now - (localIntent?.at || 0);
+            const intentType = localIntent?.type || null;
+            if (st === 1 && desiredPlaying === false) {
+              if (!(intentType === 'play' && intentAge < 1400)) {
+                try { ytPlayer.pauseVideo(); } catch (e) {}
+                return;
+              }
             }
+
 
             // 1=PLAYING, 2=PAUSED
             const now = Date.now();
@@ -264,8 +271,14 @@
               return;
             }
             if (st === 1) {
-              // PLAYING: allow iframe control play to propagate; we already guard against unwanted plays above.
-              socket.emit('wp:play', { t });
+              // PLAYING: only propagate if this looks like intentional play (explicit play intent OR server previously paused).
+              const now2 = Date.now();
+              const intentAge2 = now2 - (localIntent?.at || 0);
+              const intentType2 = localIntent?.type || null;
+              const sinceRemote2 = now2 - (lastRemoteAppliedAt || 0);
+              if ((intentType2 === 'play' && intentAge2 < 1600) || (desiredPlaying === false && sinceRemote2 > 800)) {
+                socket.emit('wp:play', { t });
+              }
               return;
             }
           } catch(e){}
@@ -477,8 +490,8 @@
     return 0;
   }
 
-  els.play?.addEventListener('click', () => { markGesture(); socket.emit('wp:play', { t: getLocalTime() }); });
-  els.pause?.addEventListener('click', () => { markGesture(); socket.emit('wp:pause', { t: getLocalTime() }); });
+  els.play?.addEventListener('click', () => { markGesture(); setIntent('play'); suppressLocalEvents = true; setTimeout(()=>{suppressLocalEvents=false;}, 450); socket.emit('wp:play', { t: getLocalTime() }); });
+  els.pause?.addEventListener('click', () => { markGesture(); setIntent('pause'); suppressLocalEvents = true; setTimeout(()=>{suppressLocalEvents=false;}, 650); socket.emit('wp:pause', { t: getLocalTime() }); });
   els.sync?.addEventListener('click', () => socket.emit('wp:ping_state'));
 
   // -------- private room: invite UI --------
@@ -551,7 +564,63 @@
     loadFriends();
   }
 
-  // Drift correction disabled (event-based sync for stability)
+  // -------------------------
+  // Smooth drift correction (v7-style)
+  // - Small drift: gently correct using playbackRate (HTML5 + YouTube if supported)
+  // - Large drift: hard seek
+  // Runs only while PLAYING; when paused, we do not touch the player to avoid YouTube glitches.
+  function serverNowMs(){ return Date.now() + (__wpTimeOffsetMs || 0); }
+  function expectedFromState(st){
+    const baseT = Number(st?.t) || 0;
+    if (!st?.isPlaying) return baseT;
+    const updatedAt = Number(st?.updatedAt) || Date.now();
+    const delta = (serverNowMs() - updatedAt) / 1000;
+    return Math.max(0, baseT + delta);
+  }
+  function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+  function setRate(r){
+    r = clamp(r, 0.75, 1.25);
+    try{
+      if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r);
+      if (html5Video) html5Video.playbackRate = r;
+    } catch(e){}
+  }
+  let lastRateBumpAt = 0;
+  setInterval(() => {
+    try{
+      if (!lastState || !lastState.isPlaying) return;
+      // don't fight right after applying remote state
+      if (Date.now() - (lastRemoteAppliedAt || 0) < 700) return;
+
+      const expected = expectedFromState(lastState);
+      const cur = getLocalTime();
+      if (!Number.isFinite(expected) || !Number.isFinite(cur)) return;
+      const diff = expected - cur;
+      const ad = Math.abs(diff);
+
+      // Hard-seek only if far off
+      if (ad > 1.25) {
+        if (current.provider === 'youtube' && ytPlayer) {
+          try { markCommand(); ytPlayer.seekTo(expected, true); } catch(e){}
+        } else if (html5Video) {
+          try { html5Video.currentTime = expected; } catch(e){}
+        }
+        setRate(1.0);
+        return;
+      }
+
+      // Gentle correction
+      if (ad > 0.18) {
+        const bump = diff > 0 ? 1.05 : 0.95;
+        setRate(bump);
+        lastRateBumpAt = Date.now();
+      } else {
+        // return to normal after a short time
+        if (Date.now() - lastRateBumpAt > 900) setRate(1.0);
+      }
+    } catch(e){}
+  }, 800);
+
 // Detect YouTube seeks made via the native player UI (best-effort)
   let ytLastT = 0;
   let ytLastAt = Date.now();
