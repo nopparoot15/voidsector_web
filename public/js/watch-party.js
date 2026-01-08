@@ -267,7 +267,7 @@
               // PAUSED: right after setting URL YouTube may pause due to autoplay policy.
               // Ignore only very-early pauses near the start; otherwise treat as user intent (even inside iframe controls).
               if (desiredPlaying === true && inAutoplayWindow && (t <= 1.0)) return;
-              socket.emit('wp:pause', { t });
+              socket.emit('wp:pause', roomId, { t });
               return;
             }
             if (st === 1) {
@@ -277,7 +277,7 @@
               const intentType2 = localIntent?.type || null;
               const sinceRemote2 = now2 - (lastRemoteAppliedAt || 0);
               if ((intentType2 === 'play' && intentAge2 < 1600) || (desiredPlaying === false && sinceRemote2 > 800)) {
-                socket.emit('wp:play', { t });
+                socket.emit('wp:play', roomId, { t });
               }
               return;
             }
@@ -305,18 +305,18 @@
       const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
       const sinceGesture = Date.now() - (lastUserGestureAt || 0);
       if (sinceRemote <= 1600 || sinceGesture >= 1400) return;
-      socket.emit('wp:play', { t: v.currentTime || 0 });
+      socket.emit('wp:play', roomId, { t: v.currentTime || 0 });
     };
     const emitPause = () => {
       if (suppressLocalEvents) return;
       const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
       const sinceGesture = Date.now() - (lastUserGestureAt || 0);
       if (sinceRemote <= 1600 || sinceGesture >= 1400) return;
-      socket.emit('wp:pause', { t: v.currentTime || 0 });
+      socket.emit('wp:pause', roomId, { t: v.currentTime || 0 });
     };
     const emitSeek = () => {
       if (suppressLocalEvents) return;
-      socket.emit('wp:seek', { t: v.currentTime || 0 });
+      socket.emit('wp:seek', roomId, { t: v.currentTime || 0 });
     };
     v.addEventListener('play', emitPlay);
     v.addEventListener('pause', emitPause);
@@ -463,7 +463,7 @@
     const url = String(els.url.value || '').trim();
     const det = detectProvider(url);
     lastUrlSetAt = Date.now();
-    socket.emit('wp:set_url', { url, provider: det.provider });
+    socket.emit('wp:set_url', roomId, { url, provider: det.provider });
   });
 
   // Unlock autoplay once per client (best-effort)
@@ -479,7 +479,7 @@
     } catch(e){}
     // Re-sync after gesture
     if (lastState) applyState(lastState);
-    socket.emit('wp:ping_state');
+    socket.emit('wp:ping_state', roomId);
   });
 
   function getLocalTime(){
@@ -490,9 +490,9 @@
     return 0;
   }
 
-  els.play?.addEventListener('click', () => { markGesture(); setIntent('play'); suppressLocalEvents = true; setTimeout(()=>{suppressLocalEvents=false;}, 450); socket.emit('wp:play', { t: getLocalTime() }); });
-  els.pause?.addEventListener('click', () => { markGesture(); setIntent('pause'); suppressLocalEvents = true; setTimeout(()=>{suppressLocalEvents=false;}, 650); socket.emit('wp:pause', { t: getLocalTime() }); });
-  els.sync?.addEventListener('click', () => socket.emit('wp:ping_state'));
+  els.play?.addEventListener('click', () => { markGesture(); setIntent('play'); suppressLocalEvents = true; setTimeout(()=>{suppressLocalEvents=false;}, 450); socket.emit('wp:play', roomId, { t: getLocalTime() }); });
+  els.pause?.addEventListener('click', () => { markGesture(); setIntent('pause'); suppressLocalEvents = true; setTimeout(()=>{suppressLocalEvents=false;}, 650); socket.emit('wp:pause', roomId, { t: getLocalTime() }); });
+  els.sync?.addEventListener('click', () => socket.emit('wp:ping_state', roomId));
 
   // -------- private room: invite UI --------
   if (!isPublic) {
@@ -634,7 +634,7 @@
       const jump = Math.abs(cur - ytLastT);
       // If time jumps more than ~1.5s compared to expected flow, treat as seek
       if (dt > 0.4 && jump > 1.6) {
-        socket.emit('wp:seek', { t: cur });
+        socket.emit('wp:seek', roomId, { t: cur });
       }
       ytLastT = cur;
       ytLastAt = now;
