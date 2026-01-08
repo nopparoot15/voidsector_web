@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <title>Profile</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <div class="background"></div>
+  <%- include('../partials/topbar') %>
+
+  <div class="container vs-page">
+    <div class="card vs-card" style="max-width:760px;">
+    <h1>👤 โปรไฟล์</h1>
+
+    <img src="<%= profile.avatar_path || '/img/default-avatar.png' %>"
+         style="width:96px;height:96px;border-radius:16px;object-fit:cover;">
+
+    <div><%= profile.username %></div>
+
+    <form action="/profile/avatar" method="post" enctype="multipart/form-data">
+      <input type="file" name="avatar" required>
+      <button>Upload</button>
+    </form>
+    </div>
+  </div>
+</body>
+</html>
