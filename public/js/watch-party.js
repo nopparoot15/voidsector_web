@@ -44,12 +44,65 @@
   const socket = window.VS_SOCKET || window.io?.();
   if (!socket) return;
 
+  // -------------------------
+  // Time sync (server clock) to reduce jitter/drift
+  // -------------------------
+  let __wpTimeOffsetMs = 0; // serverNow ~= Date.now() + offset
+  let __wpTimeSynced = false;
+
+  function nowServerMs() {
+    return Date.now() + (__wpTimeOffsetMs || 0);
+  }
+
+  function median(arr){
+    const a = arr.slice().sort((x,y)=>x-y);
+    const m = Math.floor(a.length/2);
+    return a.length ? (a.length % 2 ? a[m] : (a[m-1]+a[m])/2) : 0;
+  }
+
+  function startTimeSync(samples = 7){
+    const offsets = [];
+    let done = 0;
+
+    function ping(){
+      const t0 = Date.now();
+      socket.emit('wp:time_sync', { t0 });
+      // safety timeout in case reply lost
+      setTimeout(() => {
+        if (done >= samples) return;
+        // try again
+        if (done < samples) ping();
+      }, 800);
+    }
+
+    socket.on('wp:time_sync', (m) => {
+      try{
+        const t1 = Date.now();
+        const t0 = Number(m?.t0) || 0;
+        const ts = Number(m?.ts) || 0; // server timestamp
+        if (!t0 || !ts) return;
+        // offset = server - midpoint(client)
+        const off = ts - ((t0 + t1) / 2);
+        if (Number.isFinite(off)) offsets.push(off);
+        done += 1;
+        if (done < samples) ping();
+        else {
+          __wpTimeOffsetMs = median(offsets);
+          __wpTimeSynced = true;
+        }
+      } catch(e){}
+    });
+
+    ping();
+  }
+
   function join(){
     const params = new URLSearchParams(window.location.search);
     const k = params.get('k') || params.get('key') || joinKeyFallback;
     socket.emit('wp:join', { roomId, k });
   }
-  socket.on('connect', join);
+  socket.on('connect', () => { startTimeSync(); join(); });
+  startTimeSync();
   join();
 
   socket.on('wp:presence', (p) => {
@@ -243,17 +296,39 @@
       return;
     }
 
-    // Compute "expected" time: t + (now-updatedAt) if playing
+    // Compute "expected" time using server clock: t + (serverNow-updatedAt) if playing
     const baseT = Number(st.t) || 0;
-    const drift = st.isPlaying ? Math.max(0, (Date.now() - (Number(st.updatedAt)||Date.now()))/1000) : 0;
+    const serverNow = nowServerMs();
+    const drift = st.isPlaying ? Math.max(0, (serverNow - (Number(st.updatedAt) || serverNow)) / 1000) : 0;
     const expectedT = baseT + drift;
+
+    const curT = getLocalTime();
+    const diff = expectedT - curT;
+    const absDiff = Math.abs(diff);
+
+    function setRate(rate) {
+      rate = Math.max(0.75, Math.min(1.25, rate));
+      try {
+        if (current.provider === 'html5' && html5Video) html5Video.playbackRate = rate;
+        if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(rate);
+      } catch (e) {}
+    }
 
     suppressLocalEvents = true;
     lastRemoteAppliedAt = Date.now();
     try {
       if (current.provider === 'youtube' && ytPlayer) {
         try {
-          ytPlayer.seekTo(expectedT, true);
+          // Only hard-seek if we're clearly off; otherwise gently correct using playbackRate
+          if (absDiff > 1.2) {
+            ytPlayer.seekTo(expectedT, true);
+          } else if (st.isPlaying && absDiff > 0.25) {
+            setRate(diff > 0 ? 1.05 : 0.95);
+            setTimeout(() => setRate(1.0), 1400);
+          } else {
+            setRate(1.0);
+          }
+
           if (st.isPlaying) {
             ytPlayer.playVideo();
             // Autoplay may be blocked until user gesture; detect and show unlock
@@ -261,25 +336,40 @@
               try {
                 const ps = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
                 if (st.isPlaying && ps !== 1) showUnlock(true);
-              } catch(e){}
+              } catch (e) {}
             }, 600);
           } else {
             ytPlayer.pauseVideo();
+            setRate(1.0);
             showUnlock(false);
+            // If paused and slightly off, snap once (no jitter while playing)
+            if (absDiff > 0.2) ytPlayer.seekTo(expectedT, true);
           }
-        } catch(e){}
+        } catch (e) {}
       } else if (current.provider === 'html5' && html5Video) {
         try {
-          html5Video.currentTime = expectedT;
-          if (st.isPlaying) {
-            const p = html5Video.play();
-            if (p && p.catch) p.catch(()=>{ showUnlock(true); });
-            else showUnlock(false);
-          } else {
+          if (!st.isPlaying) {
+            // Paused: keep exact frame, ok to snap
+            if (absDiff > 0.15) html5Video.currentTime = expectedT;
             html5Video.pause();
+            setRate(1.0);
             showUnlock(false);
+          } else {
+            // Playing: avoid frequent snaps -> smooth with playbackRate; snap only if far
+            if (absDiff > 1.0) {
+              html5Video.currentTime = expectedT;
+              setRate(1.0);
+            } else if (absDiff > 0.2) {
+              setRate(diff > 0 ? 1.05 : 0.95);
+              setTimeout(() => setRate(1.0), 1400);
+            } else {
+              setRate(1.0);
+            }
+            const p = html5Video.play();
+            if (p && p.catch) p.catch(() => { showUnlock(true); });
+            else showUnlock(false);
           }
-        } catch(e){}
+        } catch (e) {}
       }
       // generic: nothing to control
     } finally {
@@ -400,7 +490,43 @@
     loadFriends();
   }
 
-  // Detect YouTube seeks made via the native player UI (best-effort)
+  
+  // Smooth drift correction while playing (avoids jittery seek spam)
+  setInterval(() => {
+    if (!lastState || !lastState.isPlaying) return;
+    if (suppressLocalEvents) return;
+    if (current.provider !== 'youtube' && current.provider !== 'html5') return;
+
+    const serverNow = nowServerMs();
+    const baseT = Number(lastState.t) || 0;
+    const drift = Math.max(0, (serverNow - (Number(lastState.updatedAt) || serverNow)) / 1000);
+    const expectedT = baseT + drift;
+    const curT = getLocalTime();
+    const diff = expectedT - curT;
+    const absDiff = Math.abs(diff);
+
+    function setRate(rate) {
+      rate = Math.max(0.75, Math.min(1.25, rate));
+      try {
+        if (current.provider === 'html5' && html5Video) html5Video.playbackRate = rate;
+        if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(rate);
+      } catch (e) {}
+    }
+
+    try {
+      if (absDiff > 1.6) {
+        // Rare hard snap if very far
+        if (current.provider === 'youtube' && ytPlayer) ytPlayer.seekTo(expectedT, true);
+        if (current.provider === 'html5' && html5Video) html5Video.currentTime = expectedT;
+        setRate(1.0);
+      } else if (absDiff > 0.25) {
+        setRate(diff > 0 ? 1.05 : 0.95);
+      } else {
+        setRate(1.0);
+      }
+    } catch (e) {}
+  }, 800);
+// Detect YouTube seeks made via the native player UI (best-effort)
   let ytLastT = 0;
   let ytLastAt = Date.now();
   setInterval(() => {

@@ -373,6 +373,12 @@ io.on('connection', async (socket) => {
   // ==================================================
   // WATCH PARTY: join room + sync video events
   // ==================================================
+  // Client/server time sync to reduce jitter (clock skew)
+  socket.on('wp:time_sync', ({ t0 } = {}) => {
+    const t0n = Number(t0) || 0;
+    socket.emit('wp:time_sync', { t0: t0n, ts: Date.now() });
+  });
+
   socket.on('wp:join', ({ roomId, k } = {}) => {
     const rid = String(roomId || '');
     const userId = Number(socket.data.userId);
