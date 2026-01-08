@@ -168,6 +168,7 @@
   let html5Video = null;
   let lastRemoteAppliedAt = 0;
   let lastState = null;
+  let desiredPlaying = null; // mirrors lastState.isPlaying (server truth)
   let pendingState = null;
   let ytReady = false;
 
@@ -230,6 +231,15 @@
           try {
             const st = evt?.data;
             const t = ytPlayer?.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
+
+            // If server says we should be paused, and YouTube flips to PLAYING without a fresh user gesture,
+            // force it back to pause (prevents "pause -> immediately resumes" glitches).
+            const sinceGestureForce = Date.now() - (lastUserGestureAt || 0);
+            if (st === 1 && desiredPlaying === false && !(sinceGestureForce >= 0 && sinceGestureForce < 1400)) {
+              try { ytPlayer.pauseVideo(); } catch (e) {}
+              return;
+            }
+
             // 1=PLAYING, 2=PAUSED
             const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
             const sinceGesture = Date.now() - (lastUserGestureAt || 0);
@@ -322,6 +332,7 @@
   async function applyState(st){
     if (!st) return;
     lastState = st;
+    desiredPlaying = !!st.isPlaying;
     const urlChanged = (String(st.url||'') !== String(current.url||''));
     if (urlChanged) {
       await mountForUrl(String(st.url||''));
@@ -376,11 +387,16 @@
               } catch (e) {}
             }, 600);
           } else {
+            // IMPORTANT: seeking with allowSeekAhead=true can sometimes resume playback on YouTube.
+            // When paused, snap time *without* encouraging playback, then enforce pause again.
+            if (absDiff > 0.2) {
+              try { ytPlayer.seekTo(expectedT, false); } catch (e) {}
+            }
             ytPlayer.pauseVideo();
             setRate(1.0);
             showUnlock(false);
-            // If paused and slightly off, snap once (no jitter while playing)
-            if (absDiff > 0.2) ytPlayer.seekTo(expectedT, true);
+            // Enforce pause after a short delay in case YouTube toggles back to playing after seek/buffer.
+            setTimeout(() => { try { ytPlayer.pauseVideo(); } catch (e) {} }, 180);
           }
         } catch (e) {}
       } else if (current.provider === 'html5' && html5Video) {
