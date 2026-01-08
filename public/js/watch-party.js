@@ -294,8 +294,8 @@
             const t = ytPlayer?.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
 
             // If server says we should be paused, and YouTube flips to PLAYING, force it back to pause unless we explicitly intended to play.
-            const now = Date.now();
-            const intentAge = now - (localIntent?.at || 0);
+            const nowTs1 = Date.now();
+            const intentAge = nowTs1 - (localIntent?.at || 0);
             const intentType = localIntent?.type || null;
             if (st === 1 && desiredPlaying === false) {
               if (!(intentType === 'play' && intentAge < 1400)) {
@@ -306,7 +306,7 @@
 
 
             // 1=PLAYING, 2=PAUSED
-            const now = Date.now();
+            const nowTs2 = Date.now();
             const sinceRemote = now - (lastRemoteAppliedAt || 0);
             const sinceCmd = now - (lastCommandAt || 0);
             const sinceUrl = now - (lastUrlSetAt || 0);
@@ -700,16 +700,16 @@
     if (suppressLocalEvents) return;
     if (current.provider !== 'youtube' || !ytPlayer || !ytReady) return;
     try {
-      const now = Date.now();
+      const nowTs2 = Date.now();
       const cur = ytPlayer.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
-      const dt = (now - ytLastAt) / 1000;
+      const dt = (nowTs2 - ytLastAt) / 1000;
       const jump = Math.abs(cur - ytLastT);
       // If time jumps more than ~1.5s compared to expected flow, treat as seek
       if (dt > 0.4 && jump > 1.6) {
         socket.emit('wp:seek', { t: cur });
       }
       ytLastT = cur;
-      ytLastAt = now;
+      ytLastAt = nowTs2;
     } catch(e){}
   }, 900);
 })();
