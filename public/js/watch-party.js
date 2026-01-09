@@ -393,7 +393,7 @@
   function updateSubButtonUI() {
     if (!els.subTH) return;
     els.subTH.setAttribute('data-on', desiredTHSub ? '1' : '0');
-    els.subTH.textContent = desiredTHSub ? 'ซับไทย: เปิด' : 'ซับไทย';
+    els.subTH.textContent = desiredTHSub ? 'TH Sub: ON' : 'TH Sub';
   }
 
   function safeCall(fn) { try { fn(); } catch (_) {} }
@@ -402,8 +402,29 @@
     if (!ytReady || !yt) return false;
     try {
       yt.loadModule('captions');
-      // Try Thai standard
-      safeCall(() => yt.setOption('captions', 'track', { languageCode: 'th' }));
+
+      // Prefer an actual Thai track if tracklist is available.
+      let picked = null;
+      try {
+        const list = yt.getOption('captions', 'tracklist') || yt.getOption('captions', 'trackList') || [];
+        if (Array.isArray(list) && list.length) {
+          // track fields vary; try common keys: languageCode / language / langCode
+          const th = list.find(tr => String(tr.languageCode || tr.language || tr.langCode || '').toLowerCase() === 'th'
+                                  && String(tr.kind || '').toLowerCase() !== 'asr');
+          const thAsr = list.find(tr => String(tr.languageCode || tr.language || tr.langCode || '').toLowerCase() === 'th');
+          picked = th || thAsr || null;
+        }
+      } catch (_) {}
+
+      if (picked) {
+        safeCall(() => yt.setOption('captions', 'track', picked));
+      } else {
+        // Fallback: request Thai track (YT may still substitute if unavailable)
+        safeCall(() => yt.setOption('captions', 'track', { languageCode: 'th' }));
+        // Some videos only have Thai auto-generated
+        safeCall(() => yt.setOption('captions', 'track', { languageCode: 'th', kind: 'asr' }));
+      }
+
       safeCall(() => yt.setOption('captions', 'reload', true));
       return true;
     } catch (_) {
@@ -437,7 +458,7 @@
     if (!ytReady || !yt) return false;
     try {
       const cur = yt.getOption('captions', 'track') || {};
-      return !!(cur && cur.languageCode === 'th');
+      return !!(cur && String(cur.languageCode || '').toLowerCase() === 'th');
     } catch (_) {
       return false;
     }
@@ -585,6 +606,9 @@
     setTimeout(forceMaxQuality, 600);
   }
 
+  let __lastSeekAt = 0;
+  let __lastAppliedTarget = 0;
+
   function softCorrect(st) {
     if (!ytReady || !yt) return;
 
@@ -593,17 +617,29 @@
     const cur = getCurrentTime();
     const drift = Math.abs(cur - target);
 
-    const driftSeekPlay = 0.45;  // tolerate some while playing
-    const driftSeekPause = 0.18; // tighter when paused
+    // Avoid "rubber banding":
+    // - Bigger tolerance while playing
+    // - Seek cooldown to prevent rapid back-and-forth
+    // - Don't seek for tiny corrections; let playback naturally catch up
+    const driftSeekPlay = 1.15;   // seconds
+    const driftSeekPause = 0.22;  // seconds
+    const now = Date.now();
+    const seekCooldownMs = wantPlay ? 1400 : 500;
 
     const needSeek = wantPlay ? (drift > driftSeekPlay) : (drift > driftSeekPause);
-    if (needSeek) {
+
+    // If target barely moved since last time, don't seek again
+    const targetMoved = Math.abs(target - __lastAppliedTarget) > 0.35;
+
+    if (needSeek && targetMoved && (now - __lastSeekAt) > seekCooldownMs) {
+      __lastSeekAt = now;
+      __lastAppliedTarget = target;
       try { yt.seekTo(target, true); } catch (_) {}
     }
 
     const nowPlaying = isPlayerPlaying();
     if (wantPlay && !nowPlaying) {
-      setTimeout(() => { try { yt.playVideo(); } catch (_) {} }, needSeek ? 60 : 0);
+      setTimeout(() => { try { yt.playVideo(); } catch (_) {} }, 0);
     } else if (!wantPlay && nowPlaying) {
       try { yt.pauseVideo(); } catch (_) {}
     }
@@ -645,7 +681,7 @@
       if (!st || !st.isPlaying) return;
       // Re-use softCorrect with the latest known state
       softCorrect(st);
-    }, 1800);
+    }, 3000);
   }
 
   // Keep last state
