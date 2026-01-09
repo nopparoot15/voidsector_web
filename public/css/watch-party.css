@@ -111,16 +111,11 @@
 .wp-open{display:inline-block;margin-top:10px;color:#7cf7ff;text-decoration:none;font-weight:800}
 .wp-iframe{width:100%;height:560px;border:0;margin-top:12px;border-radius:12px;background:#000}
 
-/* --- Tap-to-toggle overlay + scrub bar --- */
-.wp-player-wrap{ position: relative; }
-.wp-tap-toggle{
-  position:absolute; inset:0;
-  background:transparent; border:0;
-  cursor:pointer;
-  z-index: 6;
-  /* fully block the underlying (YouTube) player UI; controls happen in our bar */
-  clip-path: inset(0);
-}
+/* --- Tap-to-toggle (click on wrapper) + scrub bar --- */
+.wp-player-wrap{ position: relative; cursor:pointer; }
+
+/* Block YouTube's native UI interactions while still showing the video. */
+.wp-player iframe{ pointer-events:none; }
 .wp-center-icon{
   position:absolute; inset:0;
   display:grid; place-items:center;

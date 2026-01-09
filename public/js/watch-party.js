@@ -24,7 +24,7 @@
     sync: document.getElementById('wpSync'),
         friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
-    tap: document.getElementById('wpTapToggle'),
+    tap: null,
     centerIcon: document.getElementById('wpCenterIcon'),
     scrubWrap: document.getElementById('wpScrubWrap'),
     scrub: document.getElementById('wpScrub'),
@@ -87,10 +87,13 @@
   // Browsers can pause/deny playback without user intent; we only propagate play/pause when
   // the user likely initiated it (click/key) or when it's not immediately after a remote apply.
   let lastUserGestureAt = 0;
+  // Once the user has interacted with the watch UI, we can safely play with audio.
+  // Before that, browsers may block autoplay with sound.
+  let playbackUnlocked = false;
   let lastCommandAt = 0;
   let lastUrlSetAt = 0;
   function markCommand(){ lastCommandAt = Date.now(); }
-  function markGesture(){ lastUserGestureAt = Date.now(); }
+  function markGesture(){ lastUserGestureAt = Date.now(); playbackUnlocked = true; }
   // Interaction with the controls/player area counts as a gesture
   ['pointerdown','mousedown','touchstart','keydown'].forEach(evt => {
     document.addEventListener(evt, (e) => {
@@ -607,12 +610,30 @@ function setYtQuality(value){
             if (absDiff > 0.9) {
               try { markCommand(); ytPlayer.seekTo(expectedT, true); } catch (e) {}
             }
-            // Remote-forced playback should be muted to avoid autoplay blocks.
+            // Apply local volume/mute state. Don't force-mute on every remote update;
+            // that would mute during scrubbing/seek events.
             try {
-              ytPlayer.setVolume && ytPlayer.setVolume(Math.max(0, Math.min(100, Math.round(localVolumePct||100))));
-              if (ytPlayer.mute) ytPlayer.mute();
+              const pct = Math.max(0, Math.min(100, Math.round(localVolumePct||100)));
+              ytPlayer.setVolume && ytPlayer.setVolume(pct);
+              if (localMuted || pct === 0) ytPlayer.mute && ytPlayer.mute();
+              else ytPlayer.unMute && ytPlayer.unMute();
             } catch (e) {}
+
+            // If the user has not interacted yet, browsers may block autoplay with sound.
+            // In that case, temporarily mute just for the play attempt, then restore.
+            const needAutoplayAssist = !playbackUnlocked && (Date.now() - lastUserGestureAt > 1200);
+            if (needAutoplayAssist) {
+              try { ytPlayer.mute && ytPlayer.mute(); } catch(e) {}
+            }
             try { markCommand(); ytPlayer.playVideo(); } catch (e) {}
+            if (needAutoplayAssist) {
+              setTimeout(() => {
+                try {
+                  const pct = Math.max(0, Math.min(100, Math.round(localVolumePct||100)));
+                  if (!(localMuted || pct === 0)) ytPlayer.unMute && ytPlayer.unMute();
+                } catch(e) {}
+              }, 450);
+            }
             // Apply desired quality after playback begins (levels become available then)
             setTimeout(() => { try { refreshYtQualityUI(); applyDesiredYtQuality(); } catch(e){} }, 350);
           }
@@ -719,8 +740,9 @@ function setYtQuality(value){
     setTimeout(()=>els.centerIcon && els.centerIcon.classList.remove('show'), 260);
   }
 
-  // Tap-to-toggle overlay (works around cross-origin iframe clicks)
-  els.tap?.addEventListener('click', (e) => {
+  // Tap/click-to-toggle on the player wrapper.
+  // We disable pointer-events on the YouTube iframe via CSS, so clicks land here.
+  (els.playerWrap || els.player)?.addEventListener('click', (e) => {
     e.preventDefault();
     markGesture();
     const playing = !!(lastState && lastState.isPlaying);
