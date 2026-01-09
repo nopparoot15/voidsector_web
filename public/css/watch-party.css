@@ -169,3 +169,15 @@
   .wp-side{position:relative;top:auto;}
   .wp-vol{width: 140px;}
 }
+
+
+/* --- Centered panel like whiteboard lobby --- */
+.wp-centerCard{ /* uses global .card/.vs-card frame */ }
+.wp-shell--inCard{
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}

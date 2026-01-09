@@ -9,7 +9,11 @@
   <div class="background"></div>
   <%- include('../partials/topbar') %>
 
-  <div class="wp-shell">
+  
+
+  <div class="container vs-page">
+    <div class="card vs-card wp-centerCard">
+      <div class="wp-shell wp-shell--inCard">
     <header class="wp-top">
       <div class="wp-top__left">
         <a class="wp-back" href="/watch">← Lobby</a>
@@ -95,6 +99,10 @@
     window.WP_JOIN_KEY = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
   </script>
   <script defer src="https://www.youtube.com/iframe_api"></script>
+      </div>
+    </div>
+  </div>
+
   <script defer src="/js/watch-party.js"></script>
 </body>
 </html>
