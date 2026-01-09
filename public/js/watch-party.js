@@ -259,6 +259,25 @@
   let localMuted = false;
   let preMuteVolumePct = 100;
 
+
+  const audioKey = `vs_wp_audio_${String(roomId)}`;
+  function loadLocalAudio(){
+    try{
+      const raw = localStorage.getItem(audioKey);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (typeof obj.v === 'number') localVolumePct = clampPct(obj.v);
+      if (typeof obj.m === 'boolean') localMuted = obj.m;
+      if (typeof obj.pm === 'number') preMuteVolumePct = clampPct(obj.pm);
+    }catch(e){}
+  }
+  function saveLocalAudio(){
+    try{
+      localStorage.setItem(audioKey, JSON.stringify({ v: clampPct(localVolumePct), m: !!localMuted, pm: clampPct(preMuteVolumePct||0) }));
+    }catch(e){}
+  }
+  loadLocalAudio();
+
   function clearPlayer(){
     if (ytPlayer) {
       try { ytPlayer.destroy(); } catch(e){}
@@ -731,39 +750,8 @@ function setYtQuality(value){
     const r = s%60;
     return m + ':' + String(r).padStart(2,'0');
   }
-  function flashCenter(isPlaying){
-    if (!els.centerIcon) return;
-    els.centerIcon.innerHTML = isPlaying
-      ? '<div class="wp-i">⏸</div>'
-      : '<div class="wp-i">▶</div>';
-    els.centerIcon.classList.add('show');
-    setTimeout(()=>els.centerIcon && els.centerIcon.classList.remove('show'), 260);
-  }
-
-  // Tap/click-to-toggle on the player wrapper.
-  // We disable pointer-events on the YouTube iframe via CSS, so clicks land here.
-  (els.playerWrap || els.player)?.addEventListener('click', (e) => {
-    e.preventDefault();
-    markGesture();
-    const playing = !!(lastState && lastState.isPlaying);
-    const t = getLocalTime();
-    if (playing) {
-      setIntent('pause');
-      // Pause locally inside the gesture to feel instant + avoid autoplay quirks
-      tryLocalPause();
-      suppressLocalEvents = true;
-      setTimeout(()=>{suppressLocalEvents=false;}, 650);
-      socket.emit('wp:pause', { t });
-      flashCenter(true);
-    } else {
-      setIntent('play');
-      // Start locally inside the gesture (this is the reliable "autoplay unlock")
-      tryLocalPlay();      suppressLocalEvents = true;
-      setTimeout(()=>{suppressLocalEvents=false;}, 450);
-      socket.emit('wp:play', { t });
-      flashCenter(false);
-    }
-  });
+  // NOTE: We intentionally do NOT toggle play/pause by clicking the video area.
+  // Users should use the explicit Play/Pause buttons in the control bar.
 
   // Scrub slider (realtime seek, throttled for stability)
   let scrubDragging = false;
@@ -857,6 +845,7 @@ function applyVolumeToPlayer(){
   if (els.volPct) els.volPct.textContent = pct + '%';
   if (els.volume) els.volume.value = String(pct);
   updateMuteIcon();
+  saveLocalAudio();
 }
 
 function updateMuteIcon(){
@@ -884,12 +873,14 @@ function readPlayerVolume(){
 }
 
 function refreshVolumeUI(){
-  // Prefer our local state; but if user changed via browser keys, reflect back.
+  // Keep volume/mute per-device. Never adopt transient player-mute state (e.g. autoplay restrictions).
   const st = readPlayerVolume();
-  // Don't overwrite while user is dragging slider
   if (!volumeDragging) {
-    localVolumePct = st.v;
-    localMuted = st.m || localVolumePct === 0;
+    // If user used hardware/media keys, reflect volume only (not mute)
+    if (typeof st.v === 'number' && Math.abs(clampPct(st.v) - clampPct(localVolumePct)) >= 2) {
+      localVolumePct = clampPct(st.v);
+    }
+    if (localVolumePct === 0) localMuted = true;
   }
   applyVolumeToPlayer();
 }
