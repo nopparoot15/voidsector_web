@@ -512,9 +512,21 @@
 
     const seq = Number(st.seq);
     if (!Number.isNaN(seq) && seq >= 0) {
-      if (seq <= lastSeq) return;
-      lastSeq = seq;
+      // Some server implementations may forget to increment seq on every update.
+      // If seq is not newer, still apply when the state meaningfully differs (play/pause or large seek).
+      if (seq <= lastSeq) {
+        const prev = (applyServerState.__last || null);
+        const changedPlay = prev ? (!!prev.isPlaying !== !!st.isPlaying) : true;
+        const changedUrl = prev ? (String(prev.url||'') !== String(st.url||'')) : true;
+        const prevT = prev ? (Number(prev.t)||0) : -999;
+        const curT = Math.max(0, Number(st.t) || 0);
+        const changedT = prev ? (Math.abs(prevT - curT) > 0.5) : true;
+        if (!(changedPlay || changedUrl || changedT)) return;
+      } else {
+        lastSeq = seq;
+      }
     }
+    applyServerState.__last = { url: st.url, isPlaying: st.isPlaying, t: st.t, seq: st.seq };
 
     if (isScrubbing) return;
 
@@ -589,6 +601,8 @@
       scrubWasPlaying = isPlayerPlaying();
 
       const t = getCurrentTime();
+      // Local pause immediately for the scrubber (reduces perceived latency)
+      try { yt.pauseVideo(); } catch (_){}
       socket.emit('wp:pause', { t });
     };
 
@@ -616,7 +630,10 @@
       if (scrubWasPlaying) socket.emit('wp:play', { t });
     };
 
-    els.scrub.addEventListener('pointerdown', scrubStart);
+    els.scrub.addEventListener('pointerdown', (e)=>{ 
+      try { els.scrub.setPointerCapture?.(e.pointerId); } catch(_){}
+      scrubStart();
+    });
     els.scrub.addEventListener('input', scrubPreview);
     els.scrub.addEventListener('pointerup', scrubCommit);
     els.scrub.addEventListener('change', scrubCommit);
