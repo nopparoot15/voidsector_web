@@ -22,6 +22,10 @@
     play: document.getElementById('wpPlay'),
     pause: document.getElementById('wpPause'),
     sync: document.getElementById('wpSync'),
+    mute: document.getElementById('wpMute'),
+    vol: document.getElementById('wpVol'),
+    volVal: document.getElementById('wpVolVal'),
+    fs: document.getElementById('wpFs'),
     unlock: document.getElementById('wpUnlock'),
     unlockBtn: document.getElementById('wpUnlockBtn'),
     friends: document.getElementById('wpFriends'),
@@ -33,6 +37,113 @@
     timeCur: document.getElementById('wpTimeCur'),
     timeDur: document.getElementById('wpTimeDur'),
   };
+
+  // ---- Local volume (not synced) ----
+  const VOL_KEY = 'vs_wp_volume';
+  const MUTE_KEY = 'vs_wp_muted';
+  let userVolume = Number(localStorage.getItem(VOL_KEY));
+  if (!Number.isFinite(userVolume)) userVolume = 80;
+  userVolume = Math.max(0, Math.min(100, Math.round(userVolume)));
+  let userMuted = localStorage.getItem(MUTE_KEY) === '1';
+
+  function updateVolumeUI(){
+    if (els.vol) els.vol.value = String(userVolume);
+    if (els.volVal) els.volVal.textContent = `${userVolume}%`;
+    if (els.mute) {
+      const icon = (userMuted || userVolume === 0) ? '🔇' : (userVolume < 40 ? '🔈' : '🔊');
+      els.mute.textContent = icon;
+    }
+  }
+
+  function applyVolumeToPlayer(){
+    // YouTube
+    if (ytPlayer && ytReady) {
+      try {
+        ytPlayer.setVolume(userVolume);
+        if (userMuted || userVolume === 0) ytPlayer.mute();
+        else ytPlayer.unMute();
+      } catch(e){}
+    }
+    // HTML5
+    if (html5Video) {
+      try {
+        html5Video.volume = userVolume / 100;
+        html5Video.muted = !!(userMuted || userVolume === 0);
+      } catch(e){}
+    }
+  }
+
+  updateVolumeUI();
+
+  els.vol?.addEventListener('input', () => {
+    userVolume = Math.max(0, Math.min(100, Math.round(Number(els.vol.value) || 0)));
+    localStorage.setItem(VOL_KEY, String(userVolume));
+    if (userVolume > 0) {
+      userMuted = false;
+      localStorage.setItem(MUTE_KEY, '0');
+    }
+    updateVolumeUI();
+    applyVolumeToPlayer();
+  });
+
+  els.mute?.addEventListener('click', () => {
+    userMuted = !userMuted;
+    localStorage.setItem(MUTE_KEY, userMuted ? '1' : '0');
+    updateVolumeUI();
+    applyVolumeToPlayer();
+  });
+
+
+  // Fullscreen toggle (player wrapper)
+  (function(){
+    const btn = els.fs;
+    if (!btn) return;
+
+    const wrap = document.getElementById('wpPlayerWrap') || els.player;
+    function fsElement(){
+      return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+    }
+    function setBtn(){
+      const on = !!fsElement();
+      btn.textContent = on ? '🗗' : '⛶';
+      btn.title = on ? 'Exit Fullscreen' : 'Fullscreen';
+    }
+    async function enter(){
+      // iOS Safari: only <video> can go fullscreen
+      if (html5Video && typeof html5Video.webkitEnterFullscreen === 'function') {
+        try { html5Video.webkitEnterFullscreen(); return; } catch(e){}
+      }
+      const el = wrap || els.player || document.documentElement;
+      try {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+      } catch(e){}
+      setBtn();
+    }
+    async function exit(){
+      try {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+      } catch(e){}
+      setBtn();
+    }
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (fsElement()) exit(); else enter();
+    });
+
+    document.addEventListener('fullscreenchange', setBtn);
+    document.addEventListener('webkitfullscreenchange', setBtn);
+    setBtn();
+  })();
+
+
+
 
   // Build share link
   (function(){
@@ -287,6 +398,7 @@
           ytReady = true;
           els.controls.style.display = '';
           // Apply latest state that arrived before player was ready
+          applyVolumeToPlayer();
           if (pendingState) {
             const s = pendingState;
             pendingState = null;

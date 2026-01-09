@@ -45,6 +45,12 @@
           <button class="wp-btn" id="wpPlay">Play</button>
           <button class="wp-btn" id="wpPause">Pause</button>
           <button class="wp-btn" id="wpSync">Sync</button>
+          <div class="wp-vol">
+            <button class="wp-btn wp-btn--ghost" id="wpMute" type="button" title="Mute/Unmute">🔊</button>
+            <input id="wpVol" class="wp-vol__range" type="range" min="0" max="100" value="80" />
+            <span class="wp-vol__val" id="wpVolVal">80%</span>
+          </div>
+          <button class="wp-btn wp-btn--ghost" id="wpFs" type="button" title="Fullscreen">⛶</button>
           <span class="wp-hint">(ซิงก์จะปรับเวลาตามเจ้าห้อง/สถานะล่าสุด)</span>
           <div class="wp-scrub" id="wpScrubWrap" style="display:none">
             <span class="wp-time" id="wpTimeCur">0:00</span>

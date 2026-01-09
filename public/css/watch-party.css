@@ -123,3 +123,12 @@
   width:100%;
   accent-color: #4cf; /* harmless; browsers may ignore */
 }
+
+
+/* Volume controls */
+.wp-vol{display:inline-flex;align-items:center;gap:10px;margin-left:12px;padding-left:12px;border-left:1px solid rgba(80,220,255,.18)}
+.wp-vol__range{width:160px;max-width:28vw}
+.wp-vol__val{min-width:44px;text-align:right;color:rgba(220,245,255,.85);font-size:12px;letter-spacing:.3px}
+.wp-btn--ghost{background:rgba(0,0,0,.18);border:1px solid rgba(80,220,255,.22)}
+#wpFs{margin-left:6px;min-width:44px}
+@media (max-width: 720px){.wp-vol__range{width:120px}.wp-vol__val{display:none}}
