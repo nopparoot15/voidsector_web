@@ -59,6 +59,25 @@
 
 .wp-controls{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .wp-hint{color:var(--wp-muted);font-size:12px}
+
+.wp-yt-only{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.wp-mini{color:var(--wp-muted);font-size:11px;font-weight:800;letter-spacing:.2px}
+.wp-qual{display:flex;align-items:center;gap:8px;padding:0 4px}
+.wp-select{
+  background:rgba(0,0,0,0.35);
+  border:1px solid rgba(124,247,255,0.22);
+  color:var(--wp-text);
+  border-radius:12px;
+  padding:8px 10px;
+  font-weight:800;
+  outline:none;
+}
+.wp-select:focus{border-color:rgba(124,247,255,0.55);box-shadow:0 0 0 3px rgba(0,255,255,0.08)}
+.wp-btn.is-on{background:rgba(180,0,255,0.16);border-color:rgba(180,0,255,0.45)}
+
+.wp-vol{display:flex;align-items:center;gap:8px;margin-left:6px}
+.wp-vol__pct{color:var(--wp-muted);font-size:12px;min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+
 .wp-note{margin-top:14px;color:var(--wp-muted);font-size:12px;line-height:1.5}
 
 /* iframe/video sizing */
@@ -73,6 +92,18 @@
 
 .wp-player video{width:100%;height:auto;max-height:70vh;background:#000}
 
+/* Fullscreen mode for our custom player wrap */
+#wpPlayerWrap:fullscreen .wp-player iframe,
+#wpPlayerWrap:fullscreen .wp-player video,
+#wpPlayerWrap:fullscreen .wp-iframe{
+  width:100%;
+  height:100vh;
+  max-height:100vh;
+  border-radius:0;
+}
+
+#wpPlayerWrap:fullscreen .wp-player{min-height:100vh;border-radius:0}
+
 .wp-generic{padding:14px;text-align:left;width:100%}
 .wp-open{display:inline-block;margin-top:10px;color:#7cf7ff;text-decoration:none;font-weight:800}
 .wp-iframe{width:100%;height:560px;border:0;margin-top:12px;border-radius:12px;background:#000}
@@ -84,8 +115,8 @@
   background:transparent; border:0;
   cursor:pointer;
   z-index: 6;
-  /* don't steal clicks from bottom control area of embedded players */
-  clip-path: inset(0 0 56px 0);
+  /* fully block the underlying (YouTube) player UI; controls happen in our bar */
+  clip-path: inset(0);
 }
 .wp-center-icon{
   position:absolute; inset:0;

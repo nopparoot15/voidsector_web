@@ -29,6 +29,7 @@ class WatchPartyStore {
       roomJoinKey,
       allowed: new Set([Number(ownerId)]),
       presence: new Map(), // socketId -> userId
+      hostUserId: Number(ownerId) || null,
       // Shared state (server is source of truth)
       state: {
         url: '',
@@ -36,6 +37,7 @@ class WatchPartyStore {
         isPlaying: false,
         t: 0,               // seconds
         updatedAt: Date.now(),
+        seq: 0,             // monotonically increasing state version
       },
       createdAt: Date.now(),
     });
@@ -52,12 +54,14 @@ class WatchPartyStore {
       roomJoinKey: null,
       allowed: new Set(),
       presence: new Map(),
+      hostUserId: null,
       state: {
         url: '',
         provider: 'generic',
         isPlaying: false,
         t: 0,
         updatedAt: Date.now(),
+        seq: 0,
       },
       createdAt: Date.now(),
     });
@@ -119,6 +123,10 @@ class WatchPartyStore {
     const room = this.get(roomId);
     if (!room) return { deleted: false };
     room.presence.delete(socketId);
+    // Re-elect host if the host left (public rooms may have host).
+    if (room.hostUserId && !Array.from(room.presence.values()).includes(Number(room.hostUserId))) {
+      room.hostUserId = Array.from(room.presence.values())[0] || null;
+    }
     // Public room persists forever
     if (String(roomId) === 'public') return { deleted: false };
     if (room.presence.size === 0) {
@@ -128,13 +136,22 @@ class WatchPartyStore {
     return { deleted: false };
   }
 
-  setState(roomId, patch) {
+  setState(roomId, patch, actorUserId = null) {
     const room = this.get(roomId);
     if (!room) return null;
+
+    // If this is a public room and no host is set yet, the first actor becomes host.
+    const actor = Number(actorUserId);
+    if (room.isPublic && !room.hostUserId && Number.isFinite(actor) && actor > 0) {
+      room.hostUserId = actor;
+    }
+
+    const nextSeq = (Number(room.state?.seq) || 0) + 1;
     room.state = {
       ...room.state,
       ...patch,
       updatedAt: Date.now(),
+      seq: nextSeq,
     };
     return room.state;
   }

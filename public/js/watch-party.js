@@ -23,7 +23,6 @@
     pause: document.getElementById('wpPause'),
     sync: document.getElementById('wpSync'),
     unlock: document.getElementById('wpUnlock'),
-    unlockBtn: document.getElementById('wpUnlockBtn'),
     friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
     tap: document.getElementById('wpTapToggle'),
@@ -32,6 +31,14 @@
     scrub: document.getElementById('wpScrub'),
     timeCur: document.getElementById('wpTimeCur'),
     timeDur: document.getElementById('wpTimeDur'),
+    volDown: document.getElementById('wpVolDown'),
+    volUp: document.getElementById('wpVolUp'),
+    volPct: document.getElementById('wpVolPct'),
+    ytOnly: document.getElementById('wpYtOnly'),
+    quality: document.getElementById('wpQuality'),
+    subTh: document.getElementById('wpSubTh'),
+    fs: document.getElementById('wpFs'),
+    playerWrap: document.getElementById('wpPlayerWrap'),
   };
 
   // Build share link
@@ -89,7 +96,7 @@
     document.addEventListener(evt, (e) => {
       const t = e.target;
       // only count gestures inside the watch UI
-      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer') || t.id === 'wpUnlockBtn')) markGesture();
+      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer'))) markGesture();
     }, { passive: true });
   });
 
@@ -239,6 +246,10 @@
   let pendingState = null;
   let ytReady = false;
 
+  // YouTube-only UI state
+  let ytCaptionsOn = false;
+  let ytQualityLevels = [];
+
   function showUnlock(show) {
     if (!els.unlock) return;
     els.unlock.style.display = show ? '' : 'none';
@@ -256,6 +267,10 @@
     }
     if (els.player) els.player.innerHTML = '';
     els.controls.style.display = 'none';
+    if (els.ytOnly) els.ytOnly.style.display = 'none';
+    if (els.quality) { els.quality.innerHTML = ''; els.quality.disabled = true; }
+    ytCaptionsOn = false;
+    try { refreshYtCaptionUI(); } catch (e) {}
   }
 
   function ensureYouTubeAPI(){
@@ -281,11 +296,23 @@
     ytReady = false;
     ytPlayer = new window.YT.Player('wpYt', {
       videoId,
-      playerVars: { rel: 0, modestbranding: 1 },
+      // Hide YouTube's native player UI and drive everything from our own control bar.
+      playerVars: {
+        rel: 0,
+        modestbranding: 1,
+        controls: 0,
+        disablekb: 1,
+        fs: 1,
+        iv_load_policy: 3,
+        cc_load_policy: 0,
+      },
       events: {
         onReady: () => {
           ytReady = true;
           els.controls.style.display = '';
+          if (els.ytOnly) els.ytOnly.style.display = '';
+          refreshYtQualityUI();
+          refreshYtCaptionUI();
           // Apply latest state that arrived before player was ready
           if (pendingState) {
             const s = pendingState;
@@ -346,6 +373,82 @@
         }
       }
     });
+  }
+
+  // ---- YouTube-only controls (Quality, Thai subtitles) ----
+  const QUALITY_LABEL = {
+    auto: 'Auto',
+    default: 'Auto',
+    highres: '8K/4K',
+    hd2160: '2160p',
+    hd1440: '1440p',
+    hd1080: '1080p',
+    hd720: '720p',
+    large: '480p',
+    medium: '360p',
+    small: '240p',
+    tiny: '144p',
+  };
+
+  function refreshYtQualityUI(){
+    if (!els.quality) return;
+    if (!(current.provider === 'youtube' && ytPlayer && ytReady && ytPlayer.getAvailableQualityLevels)) {
+      els.quality.innerHTML = '';
+      els.quality.disabled = true;
+      return;
+    }
+    try {
+      const levels = ytPlayer.getAvailableQualityLevels() || [];
+      ytQualityLevels = Array.isArray(levels) ? levels.slice() : [];
+      // Always include Auto option at top
+      const opts = ['auto'].concat(ytQualityLevels);
+      const cur = (ytPlayer.getPlaybackQuality ? (ytPlayer.getPlaybackQuality() || 'auto') : 'auto');
+      els.quality.innerHTML = opts.map(v => {
+        const label = QUALITY_LABEL[v] || v;
+        const sel = (v === cur || (v === 'auto' && (cur === 'default' || cur === 'auto'))) ? 'selected' : '';
+        return `<option value="${String(v)}" ${sel}>${label}</option>`;
+      }).join('');
+      els.quality.disabled = opts.length <= 1;
+    } catch (e) {
+      els.quality.disabled = true;
+    }
+  }
+
+  function setYtQuality(value){
+    if (!(ytPlayer && ytReady && ytPlayer.setPlaybackQuality)) return;
+    try {
+      const v = String(value || 'auto');
+      // YouTube expects "default" for auto
+      ytPlayer.setPlaybackQuality(v === 'auto' ? 'default' : v);
+    } catch (e) {}
+  }
+
+  function refreshYtCaptionUI(){
+    if (!els.subTh) return;
+    // Best-effort: we can't reliably query caption availability via IFrame API.
+    // We'll just reflect our toggle state.
+    els.subTh.classList.toggle('is-on', !!ytCaptionsOn);
+  }
+
+  function setYtThaiCaptions(on){
+    if (!(ytPlayer && ytReady)) return;
+    try {
+      // captions module is required for setOption to work
+      if (ytPlayer.loadModule) ytPlayer.loadModule('captions');
+      if (on) {
+        // Try to pick Thai track if available
+        if (ytPlayer.setOption) ytPlayer.setOption('captions', 'track', { languageCode: 'th' });
+      } else {
+        // Disable captions by clearing track
+        if (ytPlayer.setOption) ytPlayer.setOption('captions', 'track', {});
+      }
+      ytCaptionsOn = !!on;
+      refreshYtCaptionUI();
+    } catch (e) {
+      // If YouTube disallows/captions not available, revert toggle.
+      ytCaptionsOn = false;
+      refreshYtCaptionUI();
+    }
   }
 
   function mountHtml5(url){
@@ -532,21 +635,25 @@
     socket.emit('wp:set_url', { url, provider: det.provider });
   });
 
-  // Unlock autoplay once per client (best-effort)
-  els.unlockBtn?.addEventListener('click', async () => {
-    showUnlock(false);
-    try {
-      if (current.provider === 'youtube' && ytPlayer) {
-        markCommand(); ytPlayer.playVideo();
-      } else if (current.provider === 'html5' && html5Video) {
+
+  function tryLocalPlay(){
+    try{
+      if (current.provider === 'youtube' && ytPlayer) { markCommand(); ytPlayer.playVideo(); return true; }
+      if (current.provider === 'html5' && html5Video) {
         const p = html5Video.play();
-        if (p && p.catch) await p.catch(()=>{});
+        if (p && p.catch) p.catch(()=>{});
+        return true;
       }
-    } catch(e){}
-    // Re-sync after gesture
-    if (lastState) applyState(lastState);
-    socket.emit('wp:ping_state');
-  });
+    }catch(e){}
+    return false;
+  }
+  function tryLocalPause(){
+    try{
+      if (current.provider === 'youtube' && ytPlayer) { markCommand(); ytPlayer.pauseVideo(); return true; }
+      if (current.provider === 'html5' && html5Video) { html5Video.pause(); return true; }
+    }catch(e){}
+    return false;
+  }
 
   function getLocalTime(){
     if (current.provider === 'youtube' && ytPlayer) {
@@ -588,12 +695,17 @@
     const t = getLocalTime();
     if (playing) {
       setIntent('pause');
+      // Pause locally inside the gesture to feel instant + avoid autoplay quirks
+      tryLocalPause();
       suppressLocalEvents = true;
       setTimeout(()=>{suppressLocalEvents=false;}, 650);
       socket.emit('wp:pause', { t });
       flashCenter(true);
     } else {
       setIntent('play');
+      // Start locally inside the gesture (this is the reliable "autoplay unlock")
+      tryLocalPlay();
+      showUnlock(false);
       suppressLocalEvents = true;
       setTimeout(()=>{suppressLocalEvents=false;}, 450);
       socket.emit('wp:play', { t });
@@ -657,6 +769,7 @@
   });
 
   setInterval(updateScrubUI, 250);
+  setInterval(refreshVolumeUI, 800);
 
   els.play?.addEventListener('click', () => {
     markGesture();
@@ -673,6 +786,56 @@
     socket.emit('wp:pause', { t: getLocalTime() });
   });
   els.sync?.addEventListener('click', () => socket.emit('wp:ping_state'));
+
+  // Volume controls (local only)
+  function getVolumePct(){
+    try{
+      if (current.provider === 'youtube' && ytPlayer && ytPlayer.getVolume) return Number(ytPlayer.getVolume() || 0);
+      if (current.provider === 'html5' && html5Video) return Math.round((Number(html5Video.volume || 0)) * 100);
+    }catch(e){}
+    return 100;
+  }
+  function setVolumePct(pct){
+    pct = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+    try{
+      if (current.provider === 'youtube' && ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(pct);
+      if (current.provider === 'html5' && html5Video) html5Video.volume = pct / 100;
+    }catch(e){}
+    if (els.volPct) els.volPct.textContent = pct + '%';
+  }
+  function bumpVolume(delta){
+    const cur = getVolumePct();
+    setVolumePct(cur + delta);
+  }
+  function refreshVolumeUI(){
+    if (!els.volPct) return;
+    els.volPct.textContent = getVolumePct() + '%';
+  }
+
+  els.volDown?.addEventListener('click', () => { markGesture(); bumpVolume(-5); });
+  els.volUp?.addEventListener('click', () => { markGesture(); bumpVolume(+5); });
+
+  // YouTube-only UI events
+  els.quality?.addEventListener('change', () => {
+    markGesture();
+    setYtQuality(els.quality.value);
+  });
+  els.subTh?.addEventListener('click', () => {
+    markGesture();
+    // Toggle Thai subtitles (best-effort; only works if the video has a Thai track)
+    setYtThaiCaptions(!ytCaptionsOn);
+  });
+  els.fs?.addEventListener('click', () => {
+    markGesture();
+    const box = els.playerWrap || document.getElementById('wpPlayerWrap');
+    if (!box) return;
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else box.requestFullscreen?.();
+    } catch (e) {}
+  });
+
+
 
   // -------- private room: invite UI --------
   if (!isPublic) {
