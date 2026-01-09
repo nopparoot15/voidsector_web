@@ -352,6 +352,9 @@ let desiredTHSub = false;
     if (!vid) return;
     currentVideoId = vid;
     document.body.classList.add('wp-hasVideo');
+    // Ensure player has correct size now that UI is visible
+    try{ requestAnimationFrame(()=>{ try{ fitPlayer(); }catch(_){ } }); }catch(_){ }
+
 
     try{
       await ensurePlayer();
@@ -372,6 +375,9 @@ let desiredTHSub = false;
       try{ yt.cueVideoById({ videoId: vid, startSeconds: 0, suggestedQuality: 'highres' }); }catch(__){}
     }
 
+    // Fit again after video is (re)loaded (fixes first-load black frame on some browsers)
+    setTimeout(()=>{ try{ fitPlayer(); }catch(_){ } }, 80);
+    setTimeout(()=>{ try{ fitPlayer(); }catch(_){ } }, 400);
     // Re-apply user prefs after load
     setTimeout(()=> forceMaxQuality(), 650);
     setTimeout(()=> setTHSub(desiredTHSub), 750);

@@ -236,8 +236,5 @@
 
 /* Hide controls until a video is loaded */
 body:not(.wp-hasVideo) #wpControls,
-body:not(.wp-hasVideo) #wpScrubWrap,
-body:not(.wp-hasVideo) #wpPlayerWrap{
-  display:none;
-}
-body.wp-hasVideo #wpPlayerWrap{ display:block; }
+body:not(.wp-hasVideo) #wpScrubWrap{ display:none; }
+/* Player frame stays visible; we show empty state overlay instead */
