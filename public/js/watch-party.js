@@ -1,23 +1,15 @@
 /* public/js/watch-party.js
- * WATCH PARTY (YouTube) - ULTRA SYNC
+ * WATCH PARTY (YouTube) - ULTRA SYNC (v2)
  *
- * Key idea:
- * - Server is authoritative. Every state update must include:
- *    { url, isPlaying, t, seq, ts }
- *   where:
- *     t  = base playback time (seconds) at moment ts was captured
- *     ts = server Date.now() when state was written
- *     seq increments EVERY update
+ * Fixes:
+ * - Set แล้วไม่เล่น: autoplay policy workaround (mute-then-play if needed)
+ * - เด้งย้อน/กระตุก: no seek while buffering + cooldown + require consecutive big drift
  *
- * Client:
- * - Time-sync (clock offset) -> compute "expected now" time from {t,ts,isPlaying}
- * - Smooth lock: use playbackRate nudging to correct small drift (no rubber-banding)
- * - Seek only if drift is large
- *
- * Subtitles (best-effort):
- * - Force playerVars: hl=th, cc_lang_pref=th
- * - When TH Sub ON: cc_load_policy=1 and attempt to select Thai captions track
- * - NOTE: Some videos don't have Thai captions; API cannot magically create them.
+ * Requires server state:
+ * { url, isPlaying, t, ts, seq }
+ *   t  = base time at server ts
+ *   ts = server Date.now()
+ *   seq increments every update
  */
 
 (function () {
@@ -62,6 +54,9 @@
     invite: document.getElementById('wpInvite'),
   };
 
+  // -------------------------
+  // Share link
+  // -------------------------
   function buildShareUrl() {
     const origin = window.location.origin;
     if (roomId === 'public' || isPublic) return `${origin}/watch/public`;
@@ -80,6 +75,9 @@
     });
   }
 
+  // -------------------------
+  // Helpers
+  // -------------------------
   function fmtTime(sec) {
     sec = Math.max(0, Math.floor(sec || 0));
     const m = Math.floor(sec / 60);
@@ -105,6 +103,9 @@
     els.urlError.textContent = msg;
   }
 
+  // -------------------------
+  // YouTube URL parsing
+  // -------------------------
   function parseYouTubeId(input) {
     const s = String(input || '').trim();
     if (!s) return null;
@@ -124,9 +125,16 @@
         if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
 
         const parts = u.pathname.split('/').filter(Boolean);
+        const idx = parts.findIndex((p) => children's.includes(p));
+        // (fix) don't rely on external var; do it explicitly:
+      }
+      // fallback explicit patterns
+      if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+        const parts = u.pathname.split('/').filter(Boolean);
         const idx = parts.findIndex((p) => ['shorts', 'embed', 'live'].includes(p));
         if (idx >= 0 && parts[idx + 1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[idx + 1])) return parts[idx + 1];
       }
+
       return null;
     } catch (_) {
       return null;
@@ -137,7 +145,9 @@
     return `https://www.youtube.com/watch?v=${id}`;
   }
 
-  // ---------- Time sync ----------
+  // -------------------------
+  // Time sync (client<->server)
+  // -------------------------
   let clockOffsetMs = 0;
   let bestRtt = Infinity;
 
@@ -152,7 +162,7 @@
     const onResp = (payload) => {
       const t3 = Date.now();
       const t0 = Number(payload?.t0) || 0;
-      const ts = Number(payload?.ts) || 0;
+      const ts = Number(payload?.ts) || 0; // server Date.now()
       if (!t0 || !ts) return;
 
       const rtt = t3 - t0;
@@ -172,26 +182,32 @@
     }
   }
 
-  // ---------- Player ----------
+  // -------------------------
+  // YouTube Player
+  // -------------------------
   let yt = null;
   let ytReady = false;
   let currentVideoId = null;
 
   let lastSeq = -1;
-
   let isScrubbing = false;
   let scrubWasPlaying = false;
   let suppressScrub = false;
 
+  // Local-only audio
   const LS_VOL = `vs_wp_vol_${roomId}`;
   const LS_MUTED = `vs_wp_muted_${roomId}`;
   let lastVolume = 80;
 
+  // Local-only quality
   const QUALITY_ORDER = ['highres', 'hd2160', 'hd1440', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
 
+  // Subtitles
   let desiredTHSub = false;
 
   let ytApiPromise = null;
+
+  function safeCall(fn) { try { fn(); } catch (_) {} }
 
   function loadYTApi() {
     if (window.YT && window.YT.Player) return Promise.resolve();
@@ -235,8 +251,6 @@
     els.subTH.setAttribute('data-on', desiredTHSub ? '1' : '0');
     els.subTH.textContent = desiredTHSub ? 'TH Sub: ON' : 'TH Sub';
   }
-
-  function safeCall(fn) { try { fn(); } catch (_) {} }
 
   function tryEnableThaiCaptions() {
     if (!ytReady || !yt) return false;
@@ -307,7 +321,6 @@
         },
         onStateChange: (ev) => {
           const st = ev && typeof ev.data === 'number' ? ev.data : null;
-
           if (st === window.YT.PlayerState.PLAYING || st === window.YT.PlayerState.BUFFERING) {
             forceMaxQuality();
             setTimeout(forceMaxQuality, 250);
@@ -325,6 +338,33 @@
     if (!yt) createPlayer();
   }
 
+  async function ensurePlayingWithAutoplayWorkaround() {
+    if (!ytReady || !yt) return;
+
+    // First attempt: normal play
+    safeCall(() => yt.playVideo());
+    await new Promise(r => setTimeout(r, 350));
+    if (isPlayerPlaying()) return;
+
+    // If autoplay blocked, muted autoplay usually works.
+    const wasMuted = isMutedUI();
+    const prevVol = lastVolume;
+
+    setMutedUI(true);
+    safeCall(() => yt.mute());
+    safeCall(() => yt.playVideo());
+
+    await new Promise(r => setTimeout(r, 450));
+    if (isPlayerPlaying()) {
+      if (!wasMuted) {
+        setMutedUI(false);
+        safeCall(() => { yt.unMute(); yt.setVolume(prevVol); });
+      }
+      return;
+    }
+    // Still blocked -> user must interact (browser gesture requirement)
+  }
+
   async function waitUntilReady(maxMs = 7000) {
     const start = Date.now();
     while (!(ytReady && yt)) {
@@ -333,7 +373,9 @@
     }
   }
 
-  // ---------- Audio ----------
+  // -------------------------
+  // Audio (local-only)
+  // -------------------------
   function isMutedUI() { return els.mute?.getAttribute('data-muted') === '1'; }
 
   function setMutedUI(muted) {
@@ -348,8 +390,9 @@
     const m = localStorage.getItem(LS_MUTED);
     if (Number.isFinite(v)) lastVolume = Math.max(0, Math.min(100, v));
     if (els.vol) els.vol.value = String(lastVolume);
-    if (els.volText) els.volText.textContent = `${lastVolume}%`;
+    if (els.volText) els.volTextContent = `${lastVolume}%`;
     setMutedUI(m === '1');
+    if (els.volText) els.volText.textContent = `${lastVolume}%`;
   }
 
   function saveAudioPrefs() {
@@ -372,7 +415,7 @@
     lastVolume = Math.max(0, Math.min(100, Number(v) || 0));
     if (els.volText) els.volText.textContent = `${lastVolume}%`;
     if (ytReady && yt && !isMutedUI()) {
-      try { yt.setVolume(lastVolume); } catch (_) {}
+      safeCall(() => yt.setVolume(lastVolume));
     }
     saveAudioPrefs();
   }
@@ -381,15 +424,15 @@
     const nowMuted = !isMutedUI();
     setMutedUI(nowMuted);
     if (ytReady && yt) {
-      try {
-        if (nowMuted) yt.mute();
-        else { yt.unMute(); yt.setVolume(lastVolume); }
-      } catch (_) {}
+      if (nowMuted) safeCall(() => yt.mute());
+      else safeCall(() => { yt.unMute(); yt.setVolume(lastVolume); });
     }
     saveAudioPrefs();
   }
 
-  // ---------- Quality ----------
+  // -------------------------
+  // Quality (local-only)
+  // -------------------------
   function pickBestQuality() {
     if (!ytReady || !yt) return 'highres';
     try {
@@ -406,7 +449,9 @@
     safeCall(() => yt.setPlaybackQuality(q));
   }
 
-  // ---------- Getters ----------
+  // -------------------------
+  // Player getters
+  // -------------------------
   function getCurrentTime() {
     if (!ytReady || !yt) return 0;
     try { return Number(yt.getCurrentTime()) || 0; } catch (_) { return 0; }
@@ -425,17 +470,25 @@
     } catch (_) { return false; }
   }
 
+  function getPlayerStateSafe() {
+    if (!ytReady || !yt) return -999;
+    try { return yt.getPlayerState(); } catch (_) { return -999; }
+  }
+
+  function isBuffering() {
+    const s = getPlayerStateSafe();
+    return s === window.YT.PlayerState.BUFFERING;
+  }
+
   function setPlaybackRateSafe(r) {
     if (!ytReady || !yt) return;
     const rate = Math.max(0.9, Math.min(1.1, r));
-    try {
-      const cur = yt.getPlaybackRate?.();
-      if (cur && Math.abs(cur - rate) < 0.01) return;
-    } catch (_) {}
     safeCall(() => yt.setPlaybackRate(rate));
   }
 
-  // ---------- Load video ----------
+  // -------------------------
+  // Load video
+  // -------------------------
   async function loadVideo(id) {
     const vid = String(id || '').trim();
     if (!vid) return;
@@ -456,7 +509,9 @@
     if (desiredTHSub) setTimeout(tryEnableThaiCaptions, 350);
   }
 
-  // ---------- Ultra sync ----------
+  // -------------------------
+  // Ultra sync: expected time from server state
+  // -------------------------
   function expectedTimeFromState(st) {
     const base = Math.max(0, Number(st.t) || 0);
     const serverTs = Number(st.ts) || 0;
@@ -471,9 +526,11 @@
     const wantPlay = !!st.isPlaying;
     const target = expectedTimeFromState(st);
 
-    safeCall(() => yt.seekTo(target, true));
+    if (!isBuffering()) {
+      safeCall(() => yt.seekTo(target, true));
+    }
 
-    if (wantPlay) setTimeout(() => safeCall(() => yt.playVideo()), 40);
+    if (wantPlay) setTimeout(() => { ensurePlayingWithAutoplayWorkaround(); }, 40);
     else setTimeout(() => safeCall(() => yt.pauseVideo()), 40);
 
     setPlaybackRateSafe(1.0);
@@ -486,6 +543,11 @@
   let lockTimer = null;
   function startLockLoop() {
     if (lockTimer) return;
+
+    startLockLoop.__lastSeekAt = 0;
+    startLockLoop.__lastSnapAt = 0;
+    startLockLoop.__bigCount = 0;
+
     lockTimer = setInterval(() => {
       const st = applyServerState.__last;
       if (!st || !ytReady || !yt) return;
@@ -495,22 +557,54 @@
       const target = expectedTimeFromState(st);
       const cur = getCurrentTime();
       const drift = target - cur;
+      const abs = Math.abs(drift);
 
+      // ✅ don't fight buffering (rubber-banding fix)
+      if (isBuffering()) {
+        setPlaybackRateSafe(1.0);
+        return;
+      }
+
+      // Paused: keep aligned (but with cooldown)
       if (!wantPlay) {
         setPlaybackRateSafe(1.0);
-        if (Math.abs(drift) > 0.16) safeCall(() => yt.seekTo(target, true));
+        if (abs > 0.25) {
+          const now = Date.now();
+          if (!startLockLoop.__lastSeekAt || (now - startLockLoop.__lastSeekAt) > 650) {
+            startLockLoop.__lastSeekAt = now;
+            safeCall(() => yt.seekTo(target, true));
+          }
+        }
         return;
       }
 
-      const abs = Math.abs(drift);
-      if (abs > 1.8) {
+      // Playing: smooth correction first
+      const now = Date.now();
+      const big = abs > 2.4;
+      const mid = abs > 0.9;
+      const cooldown = 1700;
+
+      if (big) startLockLoop.__bigCount += 1;
+      else startLockLoop.__bigCount = 0;
+
+      const canSnap = (!startLockLoop.__lastSnapAt) || (now - startLockLoop.__lastSnapAt) > cooldown;
+
+      // ✅ require 2 consecutive big drifts + cooldown
+      if (startLockLoop.__bigCount >= 2 && canSnap) {
+        startLockLoop.__lastSnapAt = now;
+        startLockLoop.__bigCount = 0;
         setPlaybackRateSafe(1.0);
         safeCall(() => yt.seekTo(target, true));
+        ensurePlayingWithAutoplayWorkaround();
         return;
       }
 
-      const rate = 1.0 + drift * 0.08;
-      setPlaybackRateSafe(rate);
+      if (mid) {
+        const rate = 1.0 + drift * 0.05;
+        setPlaybackRateSafe(rate);
+      } else {
+        setPlaybackRateSafe(1.0);
+      }
     }, 250);
   }
 
@@ -545,14 +639,16 @@
 
     const nowPlaying = isPlayerPlaying();
     const wantPlay = !!st.isPlaying;
-    if (wantPlay && !nowPlaying) safeCall(() => yt.playVideo());
+    if (wantPlay && !nowPlaying) ensurePlayingWithAutoplayWorkaround();
     if (!wantPlay && nowPlaying) safeCall(() => yt.pauseVideo());
   }
 
   applyServerState.__last = null;
   applyServerState.__didInitialSnap = false;
 
-  // ---------- Set -> play immediately ----------
+  // -------------------------
+  // Set -> play immediately
+  // -------------------------
   let __pendingSetPlay = null;
   function setUrlFromInput() {
     const id = parseYouTubeId(els.url?.value || '');
@@ -573,7 +669,9 @@
     else doc.exitFullscreen?.();
   }
 
-  // ---------- Scrub ----------
+  // -------------------------
+  // Scrub
+  // -------------------------
   function bindScrub() {
     if (!els.scrub) return;
 
@@ -628,7 +726,9 @@
     els.scrub.addEventListener('lostpointercapture', scrubCommit);
   }
 
-  // ---------- Friends invite (private) ----------
+  // -------------------------
+  // Friends invite (private)
+  // -------------------------
   async function loadFriends() {
     if (!els.friends) return;
     try {
@@ -680,7 +780,9 @@
     }
   }
 
-  // ---------- Tick UI ----------
+  // -------------------------
+  // Tick UI
+  // -------------------------
   let ticking = false;
   function startTick() {
     if (ticking) return;
@@ -709,7 +811,9 @@
     requestAnimationFrame(loop);
   }
 
-  // ---------- Socket wiring ----------
+  // -------------------------
+  // Socket wiring
+  // -------------------------
   function setOnlineCount(n) {
     if (!els.online) return;
     const v = Number(n);
@@ -744,6 +848,8 @@
       if (age < 5000 && vid && vid === __pendingSetPlay.vid) {
         socket.emit('wp:play', { t: Math.max(0, Number(st.t) || 0) });
         __pendingSetPlay = null;
+        // local attempt too (autoplay workaround)
+        ensurePlayingWithAutoplayWorkaround();
       } else if (age >= 5000) {
         __pendingSetPlay = null;
       }
@@ -752,7 +858,9 @@
 
   socket.on('wp:error', (e) => showUrlError(e?.message || 'Error'));
 
-  // ---------- UI events ----------
+  // -------------------------
+  // UI events
+  // -------------------------
   if (els.set) els.set.addEventListener('click', setUrlFromInput);
   if (els.url) els.url.addEventListener('keydown', (e) => { if (e.key === 'Enter') setUrlFromInput(); });
 
@@ -782,8 +890,10 @@
     if (els.invite) els.invite.addEventListener('click', inviteSelected);
   }
 
+  // keep fresh
   doTimeSync(8);
   setInterval(() => socket.emit('wp:ping_state'), 3500);
 
+  // preload
   ensurePlayer().catch(() => {});
 })();
