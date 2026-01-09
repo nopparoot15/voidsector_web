@@ -38,6 +38,54 @@ function vsBumpDmToTop(container, friendId, ts){
   const menusByName = new Map(menus.map(m => [m.getAttribute('data-menu') || '', m]));
   const isLoggedIn = !!window.VS_ME;
 
+  // --------------------
+  // Lightweight cyber toast (for realtime invites etc.)
+  // --------------------
+  function showToast(message, opts = {}) {
+    const text = String(message || '').trim();
+    if (!text) return;
+
+    const wrapId = 'vsToastWrap';
+    let wrap = document.getElementById(wrapId);
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = wrapId;
+      wrap.className = 'vs-toast-wrap';
+      document.body.appendChild(wrap);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'vs-toast';
+
+    const msg = document.createElement('div');
+    msg.className = 'vs-toast__msg';
+    msg.textContent = text;
+    toast.appendChild(msg);
+
+    if (opts.actionText && typeof opts.onAction === 'function') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vs-toast__btn';
+      btn.textContent = String(opts.actionText);
+      btn.addEventListener('click', () => {
+        try { opts.onAction(); } catch (_) {}
+        toast.remove();
+      });
+      toast.appendChild(btn);
+    }
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'vs-toast__close';
+    close.textContent = '✕';
+    close.addEventListener('click', () => toast.remove());
+    toast.appendChild(close);
+
+    wrap.appendChild(toast);
+    const ttl = Math.max(1500, Math.min(15000, Number(opts.ttlMs) || 6000));
+    setTimeout(() => { try { toast.remove(); } catch (_) {} }, ttl);
+  }
+
   const nameOf = (el) => el.getAttribute('data-menu') || '';
 
   function closeAll(exceptName = null) {
@@ -368,6 +416,20 @@ div.innerHTML = `
     s.on('dm:notify', () => fetchSummary());
     // whiteboard invite notifications
     s.on('wb:invite_notify', () => fetchSummary());
+
+    // watch party invite notifications (realtime)
+    s.on('wp:invite_notify', (p = {}) => {
+      const from = String(p.from_username || 'Someone');
+      const roomId = String(p.roomId || '');
+      // show toast immediately (summary endpoint may not include watch invites)
+      showToast(`📺 ${from} invited you to a Watch Party`, {
+        actionText: roomId ? 'Join' : null,
+        onAction: roomId ? (() => { window.location.href = `/watch/r/${encodeURIComponent(roomId)}`; }) : null,
+        ttlMs: 9000,
+      });
+      // keep existing badges fresh if your summary changes later
+      fetchSummary();
+    });
   };
 
   // --------------------
