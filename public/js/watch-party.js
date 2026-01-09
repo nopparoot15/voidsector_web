@@ -231,11 +231,16 @@ let desiredTHSub = false;
           // ask current room state
           socket.emit('wp:ping_state');
         },
-        onStateChange: () => {
-          // refresh quality list after playback begins
-          forceMaxQuality();
-          if (desiredTHSub) setTimeout(()=>setTHSub(true), 120);
-        },
+	        onStateChange: (ev) => {
+	          // YouTube may ignore forced quality until playback/buffering starts.
+	          const st = (ev && typeof ev.data === 'number') ? ev.data : null;
+	          if (st === YT.PlayerState.PLAYING || st === YT.PlayerState.BUFFERING){
+	            forceMaxQuality();
+	            setTimeout(forceMaxQuality, 250);
+	            setTimeout(forceMaxQuality, 900);
+	          }
+	          if (desiredTHSub) setTimeout(()=>setTHSub(true), 120);
+	        },
         onError: (e) => {
           console.warn('YT error', e?.data);
         }
@@ -272,14 +277,30 @@ let desiredTHSub = false;
   }
 
   // -------------------------
-  // Quality + Captions (best-effort)
-  // -------------------------
-    function forceMaxQuality(){
-    if (!ytReady || !yt) return;
-    const q = 'highres';
-    try{ yt.setPlaybackQualityRange(q); }catch(_){}
-    try{ yt.setPlaybackQuality(q); }catch(_){}
-  }
+// Quality (best-effort)
+// - YouTube may ignore forced quality (adaptive), so we pick the best available level each time.
+// - LOCAL-ONLY (not synced)
+// -------------------------
+const QUALITY_ORDER = ["highres","hd2160","hd1440","hd1080","hd720","large","medium","small","tiny"];
+
+function pickBestQuality(){
+  if (!ytReady || !yt) return "highres";
+  try{
+    const levels = (typeof yt.getAvailableQualityLevels === "function") ? (yt.getAvailableQualityLevels() || []) : [];
+    for (const q of QUALITY_ORDER){
+      if (levels.includes(q)) return q;
+    }
+  }catch(_){}
+  return "highres";
+}
+
+function forceMaxQuality(){
+  if (!ytReady || !yt) return;
+  const q = pickBestQuality();
+  try{ yt.setPlaybackQualityRange(q); }catch(_){}
+  try{ yt.setPlaybackQuality(q); }catch(_){}
+}
+
 
 
 
@@ -411,8 +432,15 @@ let desiredTHSub = false;
       const t = Number(st?.t) || 0;
       const cur = getCurrentTime();
       const drift = Math.abs(cur - t);
+      let didSeek = false;
       if (drift > 0.45){
-        try{ yt.seekTo(t, true); }catch(_){}
+        try{ yt.seekTo(t, true); didSeek = true; }catch(_){}
+      }
+
+      // Some browsers/players pause after seek; if the room should be playing, resume.
+      if (wantPlay && didSeek){
+        setTimeout(()=>{ try{ yt.playVideo(); }catch(_){ } }, 120);
+        setTimeout(forceMaxQuality, 220);
       }
     }
   }
@@ -596,6 +624,27 @@ let desiredTHSub = false;
     });
     els.scrub.addEventListener('change', ()=>{
       suppressScrub = false;
+
+      // Seek locally first (smooth UX) then emit to the room.
+      const dur = getDuration();
+      const v = Number(els.scrub.value) || 0;
+      const t = dur ? (v/1000)*dur : 0;
+
+      let wasPlaying = false;
+      try{
+        const s = ytReady && yt ? yt.getPlayerState() : -1;
+        wasPlaying = (s === YT.PlayerState.PLAYING || s === YT.PlayerState.BUFFERING);
+      }catch(_){}
+
+      if (ytReady && yt && dur){
+        try{ yt.seekTo(t, true); }catch(_){}
+        // Prevent the "first scrub pauses" behavior on some setups.
+        if (wasPlaying){
+          setTimeout(()=>{ try{ yt.playVideo(); }catch(_){ } }, 90);
+        }
+        setTimeout(forceMaxQuality, 160);
+      }
+
       emitSeekFromScrub();
     });
   }
