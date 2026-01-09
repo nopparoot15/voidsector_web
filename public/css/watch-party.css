@@ -57,8 +57,16 @@
 .wp-btn:disabled{opacity:0.6;cursor:not-allowed}
 .wp-btn--primary{background:linear-gradient(135deg, rgba(0,255,255,0.14), rgba(180,0,255,0.12));border-color:rgba(180,0,255,0.25)}
 
-.wp-controls{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.wp-hint{color:var(--wp-muted);font-size:12px}
+.wp-controls{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.wp-controls__row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.wp-controls__group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.wp-controls__group--right{margin-left:auto}
+.wp-btn{min-height:38px}
+.wp-vol{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.18);backdrop-filter:blur(8px)}
+.wp-vol__range{width:140px}
+@media (max-width:520px){.wp-vol__range{width:110px}}
+.wp-center-icon.is-hint{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.wp-center-icon{pointer-events:none}
 .wp-note{margin-top:14px;color:var(--wp-muted);font-size:12px;line-height:1.5}
 
 /* iframe/video sizing */

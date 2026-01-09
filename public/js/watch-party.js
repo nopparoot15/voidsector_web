@@ -25,9 +25,6 @@
     mute: document.getElementById('wpMute'),
     vol: document.getElementById('wpVol'),
     volVal: document.getElementById('wpVolVal'),
-    fs: document.getElementById('wpFs'),
-    unlock: document.getElementById('wpUnlock'),
-    unlockBtn: document.getElementById('wpUnlockBtn'),
     friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
     tap: document.getElementById('wpTapToggle'),
@@ -93,50 +90,6 @@
     applyVolumeToPlayer();
   });
 
-
-  // Fullscreen toggle (player wrapper)
-  (function(){
-    const btn = els.fs;
-    if (!btn) return;
-
-    const wrap = document.getElementById('wpPlayerWrap') || els.player;
-    function fsElement(){
-      return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-    }
-    function setBtn(){
-      const on = !!fsElement();
-      btn.textContent = on ? '🗗' : '⛶';
-      btn.title = on ? 'Exit Fullscreen' : 'Fullscreen';
-    }
-    async function enter(){
-      // iOS Safari: only <video> can go fullscreen
-      if (html5Video && typeof html5Video.webkitEnterFullscreen === 'function') {
-        try { html5Video.webkitEnterFullscreen(); return; } catch(e){}
-      }
-      const el = wrap || els.player || document.documentElement;
-      try {
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-        else if (el.msRequestFullscreen) el.msRequestFullscreen();
-      } catch(e){}
-      setBtn();
-    }
-    async function exit(){
-      try {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-        else if (document.msExitFullscreen) document.msExitFullscreen();
-      } catch(e){}
-      setBtn();
-    }
-
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (fsElement()) exit(); else enter();
-    });
-
     document.addEventListener('fullscreenchange', setBtn);
     document.addEventListener('webkitfullscreenchange', setBtn);
     setBtn();
@@ -200,7 +153,7 @@
     document.addEventListener(evt, (e) => {
       const t = e.target;
       // only count gestures inside the watch UI
-      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer') || t.id === 'wpUnlockBtn')) markGesture();
+      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer'))) markGesture();
     }, { passive: true });
   });
 
@@ -349,11 +302,20 @@
   let desiredPlaying = null; // mirrors lastState.isPlaying (server truth)
   let pendingState = null;
   let ytReady = false;
+  let needsGesture = false;
+  let stallTimer = null;
+  let lastProgress = { t: 0, at: 0 };
 
-  function showUnlock(show) {
-    if (!els.unlock) return;
-    els.unlock.style.display = show ? '' : 'none';
+  function setNeedsGesture(on){
+    needsGesture = !!on;
+    // No dedicated unlock UI; just show a subtle center hint icon.
+    if (els.centerIcon) {
+      els.centerIcon.classList.toggle('is-hint', needsGesture);
+      els.centerIcon.textContent = needsGesture ? 'TAP' : '';
+    }
   }
+
+
 
   function clearPlayer(){
     if (ytPlayer) {
@@ -576,7 +538,7 @@
           if (!st.isPlaying) {
             try { markCommand(); ytPlayer.pauseVideo(); } catch (e) {}
             try { ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0); } catch (e) {}
-            showUnlock(false);
+            setNeedsGesture(false);
           } else {
             // Playing: snap only if we're far off. Otherwise let it run (event-based sync).
             if (absDiff > 0.9) {
@@ -587,7 +549,7 @@
             setTimeout(() => {
               try {
                 const stt = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
-                if (stt !== 1) showUnlock(true);
+                if (stt !== 1) setNeedsGesture(true);
               } catch (e) {}
             }, 350);
           }
@@ -599,7 +561,7 @@
             if (absDiff > 0.15) html5Video.currentTime = expectedT;
             html5Video.pause();
             setRate(1.0);
-            showUnlock(false);
+            setNeedsGesture(false);
           } else {
             // Playing: avoid frequent snaps -> smooth with playbackRate; snap only if far
             if (absDiff > 1.0) {
@@ -612,8 +574,8 @@
               setRate(1.0);
             }
             const p = html5Video.play();
-            if (p && p.catch) p.catch(() => { showUnlock(true); });
-            else showUnlock(false);
+            if (p && p.catch) p.catch(() => { setNeedsGesture(true); });
+            else setNeedsGesture(false);
           }
         } catch (e) {}
       }
@@ -631,6 +593,124 @@
   socket.on('wp:state', applyState);
 
   // -------------------------
+  // Tab/background recovery
+  // - Browsers throttle timers/iframes when tab is hidden -> YouTube can pause/buffer.
+  // - When user returns, request latest state and force a quick re-sync + resume if needed.
+  function requestFreshState(){
+    if (!__wpJoined) return;
+    try { socket.emit('wp:ping_state'); } catch(e){}
+  }
+
+  function startStallWatchdog(){
+    stopStallWatchdog();
+    lastProgress.at = Date.now();
+    try {
+      if (current.provider === 'youtube' && ytPlayer && ytReady) lastProgress.t = ytPlayer.getCurrentTime?.() || 0;
+      else if (current.provider === 'html5' && html5Video) lastProgress.t = html5Video.currentTime || 0;
+    } catch(e){}
+    stallTimer = setInterval(() => {
+      if (document.hidden) return;
+      if (!lastState) return;
+      const shouldPlay = !!lastState.isPlaying;
+      if (!shouldPlay) return;
+
+      // expected time from server truth
+      const expected = expectedFromState(lastState);
+
+      let cur = 0;
+      let playing = false;
+      try {
+        if (current.provider === 'youtube' && ytPlayer && ytReady) {
+          cur = ytPlayer.getCurrentTime?.() || 0;
+          const st = ytPlayer.getPlayerState?.() || 0; // 1=playing,2=paused,3=buffering
+          playing = (st === 1 || st === 3);
+        } else if (current.provider === 'html5' && html5Video) {
+          cur = html5Video.currentTime || 0;
+          playing = !html5Video.paused;
+        } else return;
+      } catch(e){ return; }
+
+      const now = Date.now();
+      const dt = (now - lastProgress.at) / 1000;
+      const progressed = Math.abs(cur - lastProgress.t) > Math.max(0.08, dt * 0.5);
+
+      // If not progressing for a bit, nudge resume + hard sync once.
+      if (!progressed && dt > 1.6) {
+        try {
+          if (current.provider === 'youtube' && ytPlayer && ytReady) {
+            // Try resume then hard-seek close to expected
+            markCommand(); ytPlayer.playVideo?.();
+            if (Math.abs(expected - cur) > 0.25) { markCommand(); ytPlayer.seekTo?.(expected, true); }
+          } else if (current.provider === 'html5' && html5Video) {
+            if (Math.abs(expected - cur) > 0.25) html5Video.currentTime = expected;
+            const p = html5Video.play();
+            if (p && p.catch) p.catch(() => setNeedsGesture(true));
+          }
+        } catch(e){}
+        lastProgress.at = now;
+        lastProgress.t = cur;
+        return;
+      }
+
+      // If playing flag is false while server expects play, nudge play.
+      if (!playing) {
+        try {
+          if (current.provider === 'youtube' && ytPlayer && ytReady) { markCommand(); ytPlayer.playVideo?.(); }
+          if (current.provider === 'html5' && html5Video) {
+            const p = html5Video.play();
+            if (p && p.catch) p.catch(() => setNeedsGesture(true));
+          }
+        } catch(e){}
+      }
+
+      lastProgress.at = now;
+      lastProgress.t = cur;
+    }, 800);
+  }
+
+  function stopStallWatchdog(){
+    if (stallTimer) { clearInterval(stallTimer); stallTimer = null; }
+  }
+
+  function onReturnToTab(){
+    setNeedsGesture(false);
+    requestFreshState();
+    // allow the state handler to apply, then run a quick local sync
+    setTimeout(() => {
+      try {
+        if (lastState) applyState(lastState);
+      } catch(e){}
+      startStallWatchdog();
+    }, 220);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopStallWatchdog();
+    } else {
+      onReturnToTab();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    if (!document.hidden) onReturnToTab();
+  });
+
+  // Any user gesture should clear "needsGesture" and try resume if server wants play.
+  window.addEventListener('pointerdown', () => {
+    if (!needsGesture) return;
+    setNeedsGesture(false);
+    try {
+      if (lastState?.isPlaying) {
+        if (current.provider === 'youtube' && ytPlayer && ytReady) { markCommand(); ytPlayer.playVideo?.(); }
+        else if (current.provider === 'html5' && html5Video) { const p = html5Video.play(); if (p && p.catch) p.catch(() => setNeedsGesture(true)); }
+      }
+    } catch(e){}
+  }, { passive: true });
+
+
+
+  // -------------------------
   // UI actions
   // -------------------------
   els.set?.addEventListener('click', () => {
@@ -645,20 +725,6 @@
   });
 
   // Unlock autoplay once per client (best-effort)
-  els.unlockBtn?.addEventListener('click', async () => {
-    showUnlock(false);
-    try {
-      if (current.provider === 'youtube' && ytPlayer) {
-        markCommand(); ytPlayer.playVideo();
-      } else if (current.provider === 'html5' && html5Video) {
-        const p = html5Video.play();
-        if (p && p.catch) await p.catch(()=>{});
-      }
-    } catch(e){}
-    // Re-sync after gesture
-    if (lastState) applyState(lastState);
-    socket.emit('wp:ping_state');
-  });
 
   function getLocalTime(){
     if (current.provider === 'youtube' && ytPlayer) {
