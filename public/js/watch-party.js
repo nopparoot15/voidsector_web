@@ -395,14 +395,28 @@
   }
 
   function loadAudioPrefs() {
-    const v = Number(localStorage.getItem(LS_VOL));
-    const m = localStorage.getItem(LS_MUTED);
-    if (Number.isFinite(v)) lastVolume = Math.max(0, Math.min(100, v));
+    // ✅ ครั้งแรกให้ 50% (ถ้าไม่เคยมีค่า)
+    const rawVol = localStorage.getItem(LS_VOL);
+    const rawMuted = localStorage.getItem(LS_MUTED);
+  
+    if (rawVol === null) {
+      lastVolume = 50; // ✅ default ครั้งแรก
+      try { localStorage.setItem(LS_VOL, String(lastVolume)); } catch (_) {}
+    } else {
+      const v = Number(rawVol);
+      if (Number.isFinite(v)) lastVolume = Math.max(0, Math.min(100, v));
+    }
+  
     if (els.vol) els.vol.value = String(lastVolume);
-    if (els.volText) els.volTextContent = `${lastVolume}%`;
-    setMutedUI(m === '1');
     if (els.volText) els.volText.textContent = `${lastVolume}%`;
+  
+    const muted = (rawMuted === '1');
+    setMutedUI(muted);
+  
+    // ✅ apply เข้า player ทันทีถ้าพร้อม
+    applyAudioToPlayer();
   }
+
 
   function saveAudioPrefs() {
     try {
