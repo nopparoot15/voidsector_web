@@ -171,6 +171,9 @@
   // YouTube IFrame API integration
   // -------------------------
   let yt = null;
+  let lastSeq = -1; // server state ordering
+  let scrubWasPlaying = false;
+  let isScrubbing = false;
 
   let ytApiPromise = null;
   function loadYTApi(){
@@ -408,43 +411,58 @@ function forceMaxQuality(){
 
 
   function applyServerState(st){
+    if (!st) return;
+    // Ordering: ignore out-of-order state
+    const seq = Number(st.seq);
+    if (!Number.isNaN(seq) && seq >= 0){
+      if (seq <= lastSeq) return;
+      lastSeq = seq;
+    }
+
     lastStateFromServer = st;
-    const url = String(st?.url || '');
+
+    // If user is actively scrubbing, don't fight their UI; state will apply on release.
+    if (isScrubbing) return;
+
+    const url = String(st.url || '');
     const vid = parseYouTubeId(url) || null;
 
     if (vid && vid !== currentVideoId){
       loadVideo(vid);
     }
 
-    // play/pause
     if (ytReady && yt){
-      const wantPlay = !!st?.isPlaying;
-      const nowState = (()=>{ try{ return yt.getPlayerState(); }catch(_){ return -1; }})();
-      const nowPlay = (nowState === YT.PlayerState.PLAYING);
-      if (wantPlay && !nowPlay){
-        try{ yt.playVideo(); }catch(_){}
-      }
-      if (!wantPlay && nowPlay){
-        try{ yt.pauseVideo(); }catch(_){}
-      }
+      const wantPlay = !!st.isPlaying;
 
-      // drift correction
-      const t = Number(st?.t) || 0;
+      // Apply seek (server is truth)
+      const t = Math.max(0, Number(st.t) || 0);
       const cur = getCurrentTime();
       const drift = Math.abs(cur - t);
+
       let didSeek = false;
-      if (drift > 0.45){
+      if (drift > 0.25){
         try{ yt.seekTo(t, true); didSeek = true; }catch(_){}
       }
 
-      // Some browsers/players pause after seek; if the room should be playing, resume.
-      if (wantPlay && didSeek){
-        setTimeout(()=>{ try{ yt.playVideo(); }catch(_){ } }, 120);
-        setTimeout(forceMaxQuality, 220);
+      // Apply play/pause AFTER seek for tighter sync feel
+      const nowState = (()=>{ try{ return yt.getPlayerState(); }catch(_){ return -1; }})();
+      const nowPlaying = (nowState === YT.PlayerState.PLAYING || nowState === YT.PlayerState.BUFFERING);
+
+      if (wantPlay && !nowPlaying){
+        // Some players will pause after seek; force play on next tick
+        setTimeout(()=>{ try{ yt.playVideo(); }catch(_){ } }, didSeek ? 60 : 0);
+      }else if (!wantPlay && nowPlaying){
+        try{ yt.pauseVideo(); }catch(_){}
+      }
+
+      // Keep quality as high as possible (best-effort)
+      if (wantPlay || didSeek){
+        setTimeout(forceMaxQuality, 80);
+        setTimeout(forceMaxQuality, 350);
+        setTimeout(forceMaxQuality, 900);
       }
     }
   }
-
   // -------------------------
   // UI actions -> emit events
   // -------------------------
@@ -615,38 +633,62 @@ function forceMaxQuality(){
   });
 
   if (els.scrub){
-    els.scrub.addEventListener('input', ()=>{
-      // show time preview locally without emitting constantly
+    // Stable sync: PAUSE (on scrub start) -> SEEK (on release) -> PLAY (if it was playing)
+    const scrubStart = ()=>{
+      if (!ytReady || !yt) return;
+      isScrubbing = true;
       suppressScrub = true;
-      const dur = getDuration();
-      const t = dur ? ((Number(els.scrub.value)||0)/1000)*dur : 0;
-      if (els.timeCur) els.timeCur.textContent = fmtTime(t);
-    });
-    els.scrub.addEventListener('change', ()=>{
+
+      // remember whether we should resume after seek
+      try{
+        const s = yt.getPlayerState();
+        scrubWasPlaying = (s === YT.PlayerState.PLAYING || s === YT.PlayerState.BUFFERING);
+      }catch(_){
+        scrubWasPlaying = false;
+      }
+
+      // Pause the room immediately for a "together" feeling
+      const t = getCurrentTime();
+      socket.emit('wp:pause', { t });
+    };
+
+    let lastCommitAt = 0;
+    const scrubCommit = ()=>{
+      const now = Date.now();
+      if (now - lastCommitAt < 120) return;
+      lastCommitAt = now;
+      isScrubbing = false;
       suppressScrub = false;
 
-      // Seek locally first (smooth UX) then emit to the room.
       const dur = getDuration();
       const v = Number(els.scrub.value) || 0;
       const t = dur ? (v/1000)*dur : 0;
 
-      let wasPlaying = false;
-      try{
-        const s = ytReady && yt ? yt.getPlayerState() : -1;
-        wasPlaying = (s === YT.PlayerState.PLAYING || s === YT.PlayerState.BUFFERING);
-      }catch(_){}
+      // Seek the room; server will broadcast authoritative state
+      socket.emit('wp:seek', { t });
 
-      if (ytReady && yt && dur){
-        try{ yt.seekTo(t, true); }catch(_){}
-        // Prevent the "first scrub pauses" behavior on some setups.
-        if (wasPlaying){
-          setTimeout(()=>{ try{ yt.playVideo(); }catch(_){ } }, 90);
-        }
-        setTimeout(forceMaxQuality, 160);
+      // Resume if it was playing before the scrub started
+      if (scrubWasPlaying){
+        socket.emit('wp:play', { t });
       }
+    };
 
-      emitSeekFromScrub();
+    // Start scrubbing
+    els.scrub.addEventListener('pointerdown', scrubStart);
+    els.scrub.addEventListener('touchstart', scrubStart, { passive: true });
+    els.scrub.addEventListener('mousedown', scrubStart);
+
+    // While scrubbing, update preview time only
+    els.scrub.addEventListener('input', ()=>{
+      const dur = getDuration();
+      const t = dur ? ((Number(els.scrub.value)||0)/1000)*dur : 0;
+      if (els.timeCur) els.timeCur.textContent = fmtTime(t);
     });
+
+    // Commit seek on release/change
+    els.scrub.addEventListener('change', scrubCommit);
+    els.scrub.addEventListener('pointerup', scrubCommit);
+    els.scrub.addEventListener('touchend', scrubCommit);
   }
   if (els.subTH){
     els.subTH.addEventListener('click', ()=>{

@@ -36,6 +36,7 @@ class WatchPartyStore {
         isPlaying: false,
         t: 0,               // seconds
         updatedAt: Date.now(),
+        seq: 0,
       },
       createdAt: Date.now(),
     });
@@ -58,6 +59,7 @@ class WatchPartyStore {
         isPlaying: false,
         t: 0,
         updatedAt: Date.now(),
+        seq: 0,
       },
       createdAt: Date.now(),
     });
@@ -135,6 +137,7 @@ class WatchPartyStore {
       ...room.state,
       ...patch,
       updatedAt: Date.now(),
+      seq: (Number(room.state.seq)||0) + 1,
     };
     return room.state;
   }
