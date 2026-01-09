@@ -27,7 +27,6 @@
     volVal: document.getElementById('wpVolVal'),
     fs: document.getElementById('wpFs'),
     unlock: document.getElementById('wpUnlock'),
-    unlockBtn: document.getElementById('wpUnlockBtn'),
     friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
     tap: document.getElementById('wpTapToggle'),
@@ -200,7 +199,7 @@
     document.addEventListener(evt, (e) => {
       const t = e.target;
       // only count gestures inside the watch UI
-      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer') || t.id === 'wpUnlockBtn')) markGesture();
+      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer'))) markGesture();
     }, { passive: true });
   });
 
@@ -334,7 +333,10 @@
     return { provider:'generic', id:null };
   }
 
-  // -------------------------
+    // Unlock UI removed (no autoplay gate)
+  function showUnlock(){/* removed */}
+
+// -------------------------
   // Player implementations
   // -------------------------
   let current = { url:'', provider:'generic' };
@@ -350,7 +352,7 @@
   let pendingState = null;
   let ytReady = false;
 
-  function showUnlock(show) {
+  function {
     if (!els.unlock) return;
     els.unlock.style.display = show ? '' : 'none';
   }
@@ -425,9 +427,9 @@
 
             // 1=PLAYING, 2=PAUSED
             const nowTs2 = Date.now();
-            const sinceRemote = now - (lastRemoteAppliedAt || 0);
-            const sinceCmd = now - (lastCommandAt || 0);
-            const sinceUrl = now - (lastUrlSetAt || 0);
+            const sinceRemote = nowTs2 - (lastRemoteAppliedAt || 0);
+            const sinceCmd = nowTs2 - (lastCommandAt || 0);
+            const sinceUrl = nowTs2 - (lastUrlSetAt || 0);
 
             // Ignore reconcile events right after we applied remote state or issued a command.
             if (sinceRemote < 900 || sinceCmd < 900) return;
@@ -576,7 +578,7 @@
           if (!st.isPlaying) {
             try { markCommand(); ytPlayer.pauseVideo(); } catch (e) {}
             try { ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0); } catch (e) {}
-            showUnlock(false);
+            
           } else {
             // Playing: snap only if we're far off. Otherwise let it run (event-based sync).
             if (absDiff > 0.9) {
@@ -587,7 +589,7 @@
             setTimeout(() => {
               try {
                 const stt = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
-                if (stt !== 1) showUnlock(true);
+                if (stt !== 1) 
               } catch (e) {}
             }, 350);
           }
@@ -599,7 +601,7 @@
             if (absDiff > 0.15) html5Video.currentTime = expectedT;
             html5Video.pause();
             setRate(1.0);
-            showUnlock(false);
+            
           } else {
             // Playing: avoid frequent snaps -> smooth with playbackRate; snap only if far
             if (absDiff > 1.0) {
@@ -612,8 +614,8 @@
               setRate(1.0);
             }
             const p = html5Video.play();
-            if (p && p.catch) p.catch(() => { showUnlock(true); });
-            else showUnlock(false);
+            if (p && p.catch) p.catch(() => {  });
+            else 
           }
         } catch (e) {}
       }
@@ -645,8 +647,8 @@
   });
 
   // Unlock autoplay once per client (best-effort)
-  els.unlockBtn?.addEventListener('click', async () => {
-    showUnlock(false);
+  null?.addEventListener('click', async () => {
+    
     try {
       if (current.provider === 'youtube' && ytPlayer) {
         markCommand(); ytPlayer.playVideo();
