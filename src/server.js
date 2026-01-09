@@ -437,33 +437,25 @@ io.on('connection', async (socket) => {
     const u = String(url || '').trim().slice(0, 2000);
     const p = String(provider || 'generic').slice(0, 16);
     // When URL changes, start playing immediately (best-effort; browsers may require 1st user gesture)
-    const actorId = Number(socket.data.userId) || null;
-    const st = watchPartyStore.setState(rid, { url: u, provider: p, isPlaying: true, t: 0 }, actorId);
+    const st = watchPartyStore.setState(rid, { url: u, provider: p, isPlaying: true, t: 0 });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
   socket.on('wp:play', guardWP((rid, { t } = {}) => {
-    const actorId = Number(socket.data.userId) || null;
-    const tn = Number(t);
-    const hasT = Number.isFinite(tn);
-    const time = hasT ? Math.max(0, Math.min(tn, 10 ** 7)) : undefined;
-    const st = watchPartyStore.setState(rid, hasT ? { isPlaying: true, t: time } : { isPlaying: true }, actorId);
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { isPlaying: true, t: time });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
   socket.on('wp:pause', guardWP((rid, { t } = {}) => {
-    const actorId = Number(socket.data.userId) || null;
-    const tn = Number(t);
-    const hasT = Number.isFinite(tn);
-    const time = hasT ? Math.max(0, Math.min(tn, 10 ** 7)) : undefined;
-    const st = watchPartyStore.setState(rid, hasT ? { isPlaying: false, t: time } : { isPlaying: false }, actorId);
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { isPlaying: false, t: time });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
   socket.on('wp:seek', guardWP((rid, { t } = {}) => {
-    const actorId = Number(socket.data.userId) || null;
     const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
-    const st = watchPartyStore.setState(rid, { t: time }, actorId);
+    const st = watchPartyStore.setState(rid, { t: time });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
@@ -472,30 +464,6 @@ io.on('connection', async (socket) => {
     if (!room) return;
     socket.emit('wp:state', room.state);
   }));
-
-  // Periodic server-authoritative ticks while playing.
-  // Helps clients stay realtime even if a state packet is missed or tab was throttled.
-  // (Lightweight: only emits when there are members online.)
-  // NOTE: The store is in-memory; this tick loop is safe to run per-process.
-  if (!global.__VS_WP_TICK_LOOP__) {
-    global.__VS_WP_TICK_LOOP__ = true;
-    setInterval(() => {
-      try {
-        for (const [rid, room] of (watchPartyStore.rooms || new Map()).entries()) {
-          if (!room?.presence || room.presence.size === 0) continue;
-          const st = room.state;
-          if (!st?.isPlaying) continue;
-          // Re-base t/updatedAt to "now" so clients can smooth-correct with minimal drift.
-          const actorId = room.leaderId || room.ownerId || null;
-          const rebased = watchPartyStore.setState(rid, { isPlaying: true }, actorId);
-          // Emit as tick (clients treat like state but lower priority).
-          io.to(`wp:${rid}`).emit('wp:tick', rebased);
-        }
-      } catch (e) {
-        // ignore tick errors
-      }
-    }, 1200);
-  }
 
   // --------------------
   // Global chat send
