@@ -6,7 +6,7 @@
  * For other sites, we embed if allowed, otherwise users can open in new tab and use Sync for timestamps.
  */
 
-(function(){
+(function () {
   const roomId = window.WP_ROOM_ID;
   const isPublic = !!window.WP_IS_PUBLIC;
   const joinKeyFallback = window.WP_JOIN_KEY || '';
@@ -35,6 +35,13 @@
     timeDur: document.getElementById('wpTimeDur'),
   };
 
+  // -------------------------
+  // Player refs (declared early because volume uses them)
+  // -------------------------
+  let ytPlayer = null;
+  let html5Video = null;
+  let ytReady = false;
+
   // ---- Local volume (not synced) ----
   const VOL_KEY = 'vs_wp_volume';
   const MUTE_KEY = 'vs_wp_muted';
@@ -43,30 +50,31 @@
   userVolume = Math.max(0, Math.min(100, Math.round(userVolume)));
   let userMuted = localStorage.getItem(MUTE_KEY) === '1';
 
-  function updateVolumeUI(){
+  function updateVolumeUI() {
     if (els.vol) els.vol.value = String(userVolume);
     if (els.volVal) els.volVal.textContent = `${userVolume}%`;
     if (els.mute) {
-      const icon = (userMuted || userVolume === 0) ? '🔇' : (userVolume < 40 ? '🔈' : '🔊');
+      const icon =
+        userMuted || userVolume === 0 ? '🔇' : userVolume < 40 ? '🔈' : '🔊';
       els.mute.textContent = icon;
     }
   }
 
-  function applyVolumeToPlayer(){
+  function applyVolumeToPlayer() {
     // YouTube
     if (ytPlayer && ytReady) {
       try {
         ytPlayer.setVolume(userVolume);
         if (userMuted || userVolume === 0) ytPlayer.mute();
         else ytPlayer.unMute();
-      } catch(e){}
+      } catch (e) {}
     }
     // HTML5
     if (html5Video) {
       try {
         html5Video.volume = userVolume / 100;
         html5Video.muted = !!(userMuted || userVolume === 0);
-      } catch(e){}
+      } catch (e) {}
     }
   }
 
@@ -90,29 +98,28 @@
     applyVolumeToPlayer();
   });
 
-    document.addEventListener('fullscreenchange', setBtn);
-    document.addEventListener('webkitfullscreenchange', setBtn);
-    setBtn();
-  })();
-
-
-
-
+  // -------------------------
   // Build share link
-  (function(){
+  // -------------------------
+  (function () {
+    if (!els.share) return;
     const params = new URLSearchParams(window.location.search);
     const k = params.get('k') || params.get('key') || joinKeyFallback;
-    const base = (String(roomId) === 'public')
-      ? `${window.location.origin}/watch/public`
-      : `${window.location.origin}/watch/r/${encodeURIComponent(roomId)}`;
-    els.share.value = (!isPublic && k) ? `${base}?k=${encodeURIComponent(k)}` : base;
+    const base =
+      String(roomId) === 'public'
+        ? `${window.location.origin}/watch/public`
+        : `${window.location.origin}/watch/r/${encodeURIComponent(roomId)}`;
+    els.share.value = !isPublic && k ? `${base}?k=${encodeURIComponent(k)}` : base;
     els.copy?.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(els.share.value); } catch(e){}
+      try {
+        await navigator.clipboard.writeText(els.share.value);
+      } catch (e) {}
     });
   })();
 
-  // Use the app-wide VS_SOCKET if available. If this page loads before it exists, create
-  // our own socket AND identify it via chat:hello (otherwise server-side wp:* guards will ignore us).
+  // -------------------------
+  // Socket
+  // -------------------------
   const socket = (() => {
     if (window.VS_SOCKET) return window.VS_SOCKET;
     if (typeof io === 'function') return io({ withCredentials: true });
@@ -129,38 +136,42 @@
       socket.emit('chat:hello', { userId: me.id || null, username });
     } catch (e) {}
   }
-  socket.on('chat:me', () => { identified = true; });
+  socket.on('chat:me', () => {
+    identified = true;
+  });
 
-  // If we created our own socket (not the singleton), we must identify on connect.
   if (socket !== window.VS_SOCKET) {
     sendHello();
     socket.on('connect', sendHello);
   } else {
-    // singleton usually identifies itself, but be safe on reconnect
     socket.on('connect', sendHello);
   }
 
-  // Track recent user gestures so we don't broadcast "autoplay-block" pauses as real pauses.
-  // Browsers can pause/deny playback without user intent; we only propagate play/pause when
-  // the user likely initiated it (click/key) or when it's not immediately after a remote apply.
+  // Track recent user gestures so we don't broadcast autoplay-block pauses as real pauses.
   let lastUserGestureAt = 0;
   let lastCommandAt = 0;
   let lastUrlSetAt = 0;
-  function markCommand(){ lastCommandAt = Date.now(); }
-  function markGesture(){ lastUserGestureAt = Date.now(); }
-  // Interaction with the controls/player area counts as a gesture
-  ['pointerdown','mousedown','touchstart','keydown'].forEach(evt => {
-    document.addEventListener(evt, (e) => {
-      const t = e.target;
-      // only count gestures inside the watch UI
-      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer'))) markGesture();
-    }, { passive: true });
+  function markCommand() {
+    lastCommandAt = Date.now();
+  }
+  function markGesture() {
+    lastUserGestureAt = Date.now();
+  }
+  ['pointerdown', 'mousedown', 'touchstart', 'keydown'].forEach((evt) => {
+    document.addEventListener(
+      evt,
+      (e) => {
+        const t = e.target;
+        if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer'))) markGesture();
+      },
+      { passive: true }
+    );
   });
 
   // -------------------------
   // Time sync (server clock) to reduce jitter/drift
   // -------------------------
-  let __wpTimeOffsetMs = 0; // serverNow ~= Date.now() + offset
+  let __wpTimeOffsetMs = 0;
   let __wpTimeSynced = false;
   let __wpTimeSyncInit = false;
   let __wpTimeSyncRunning = false;
@@ -169,28 +180,25 @@
     return Date.now() + (__wpTimeOffsetMs || 0);
   }
 
-  function median(arr){
-    const a = arr.slice().sort((x,y)=>x-y);
-    const m = Math.floor(a.length/2);
-    return a.length ? (a.length % 2 ? a[m] : (a[m-1]+a[m])/2) : 0;
+  function median(arr) {
+    const a = arr.slice().sort((x, y) => x - y);
+    const m = Math.floor(a.length / 2);
+    return a.length ? (a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2) : 0;
   }
 
-  function startTimeSync(samples = 7){
+  function startTimeSync(samples = 7) {
     if (__wpTimeSynced) return;
-    // Avoid registering duplicate listeners / running multiple concurrent sync loops.
     if (__wpTimeSyncRunning) return;
     __wpTimeSyncRunning = true;
 
     const offsets = [];
     let done = 0;
 
-    function ping(){
+    function ping() {
       const t0 = Date.now();
       socket.emit('wp:time_sync', { t0 });
-      // safety timeout in case reply lost
       setTimeout(() => {
         if (done >= samples) return;
-        // try again
         if (done < samples) ping();
       }, 800);
     }
@@ -198,22 +206,21 @@
     if (!__wpTimeSyncInit) {
       __wpTimeSyncInit = true;
       socket.on('wp:time_sync', (m) => {
-      try{
-        const t1 = Date.now();
-        const t0 = Number(m?.t0) || 0;
-        const ts = Number(m?.ts) || 0; // server timestamp
-        if (!t0 || !ts) return;
-        // offset = server - midpoint(client)
-        const off = ts - ((t0 + t1) / 2);
-        if (Number.isFinite(off)) offsets.push(off);
-        done += 1;
-        if (done < samples) ping();
-        else {
-          __wpTimeOffsetMs = median(offsets);
-          __wpTimeSynced = true;
-          __wpTimeSyncRunning = false;
-        }
-      } catch(e){}
+        try {
+          const t1 = Date.now();
+          const t0 = Number(m?.t0) || 0;
+          const ts = Number(m?.ts) || 0;
+          if (!t0 || !ts) return;
+          const off = ts - (t0 + t1) / 2;
+          if (Number.isFinite(off)) offsets.push(off);
+          done += 1;
+          if (done < samples) ping();
+          else {
+            __wpTimeOffsetMs = median(offsets);
+            __wpTimeSynced = true;
+            __wpTimeSyncRunning = false;
+          }
+        } catch (e) {}
       });
     }
 
@@ -222,27 +229,23 @@
 
   let __wpJoined = false;
 
-  function join(){
+  function join() {
     const params = new URLSearchParams(window.location.search);
     const k = params.get('k') || params.get('key') || joinKeyFallback;
     socket.emit('wp:join', { roomId, k });
   }
 
-  // Show errors (and keep retrying join if we were not identified yet)
   socket.on('wp:error', (e) => {
     try {
       const msg = String(e?.message || 'Watch party error');
       console.warn('[watchparty]', msg);
-      // Small inline hint (avoid modal spam)
       if (els.online && msg.toLowerCase().includes('not identified')) {
         els.online.textContent = '—';
       }
     } catch (err) {}
   });
 
-  // Robust join: on some pages the socket connects before VS_ME/identity is ready.
-  // We retry until we receive wp:joined.
-  function ensureJoined(){
+  function ensureJoined() {
     if (__wpJoined) return;
     if (!socket.connected) return;
     if (!identified) {
@@ -255,7 +258,9 @@
     setTimeout(ensureJoined, 900);
   }
 
-  socket.on('connect', () => { setTimeout(ensureJoined, 50); });
+  socket.on('connect', () => {
+    setTimeout(ensureJoined, 50);
+  });
   if (socket.connected) setTimeout(ensureJoined, 50);
 
   socket.on('wp:presence', (p) => {
@@ -265,73 +270,73 @@
   // -------------------------
   // Provider detection
   // -------------------------
-  function detectProvider(url){
+  function detectProvider(url) {
     const u = String(url || '').trim();
-    if (!u) return { provider:'generic', id:null };
+    if (!u) return { provider: 'generic', id: null };
     const lower = u.toLowerCase();
-    if (lower.match(/\.(mp4|webm|ogg)(\?|#|$)/)) return { provider:'html5', id:null };
-    // YouTube
+    if (lower.match(/\.(mp4|webm|ogg)(\?|#|$)/)) return { provider: 'html5', id: null };
     try {
       const uu = new URL(u);
       if (uu.hostname.includes('youtu.be')) {
-        const id = uu.pathname.replace(/^\//,'').split('/')[0];
-        if (id) return { provider:'youtube', id };
+        const id = uu.pathname.replace(/^\//, '').split('/')[0];
+        if (id) return { provider: 'youtube', id };
       }
       if (uu.hostname.includes('youtube.com')) {
         const id = uu.searchParams.get('v');
-        if (id) return { provider:'youtube', id };
+        if (id) return { provider: 'youtube', id };
       }
-    } catch(e){}
-    // Vimeo (we embed but no full control here without extra lib)
-    if (lower.includes('vimeo.com')) return { provider:'vimeo', id:null };
-    return { provider:'generic', id:null };
+    } catch (e) {}
+    if (lower.includes('vimeo.com')) return { provider: 'vimeo', id: null };
+    return { provider: 'generic', id: null };
   }
 
   // -------------------------
   // Player implementations
   // -------------------------
-  let current = { url:'', provider:'generic' };
+  let current = { url: '', provider: 'generic' };
   let suppressLocalEvents = false;
   let localIntent = { type: null, at: 0 };
-  function setIntent(type){ localIntent = { type, at: Date.now() }; }
+  function setIntent(type) {
+    localIntent = { type, at: Date.now() };
+  }
 
-  let ytPlayer = null;
-  let html5Video = null;
   let lastRemoteAppliedAt = 0;
   let lastState = null;
-  let desiredPlaying = null; // mirrors lastState.isPlaying (server truth)
+  let desiredPlaying = null;
   let pendingState = null;
-  let ytReady = false;
   let needsGesture = false;
   let stallTimer = null;
   let lastProgress = { t: 0, at: 0 };
 
-  function setNeedsGesture(on){
+  function setNeedsGesture(on) {
     needsGesture = !!on;
-    // No dedicated unlock UI; just show a subtle center hint icon.
     if (els.centerIcon) {
       els.centerIcon.classList.toggle('is-hint', needsGesture);
       els.centerIcon.textContent = needsGesture ? 'TAP' : '';
     }
   }
 
-
-
-  function clearPlayer(){
+  function clearPlayer() {
     if (ytPlayer) {
-      try { ytPlayer.destroy(); } catch(e){}
+      try {
+        ytPlayer.destroy();
+      } catch (e) {}
       ytPlayer = null;
     }
     if (html5Video) {
-      try { html5Video.pause(); } catch(e){}
-      html5Video.remove();
+      try {
+        html5Video.pause();
+      } catch (e) {}
+      try {
+        html5Video.remove();
+      } catch (e) {}
       html5Video = null;
     }
     if (els.player) els.player.innerHTML = '';
-    els.controls.style.display = 'none';
+    if (els.controls) els.controls.style.display = 'none';
   }
 
-  function ensureYouTubeAPI(){
+  function ensureYouTubeAPI() {
     if (window.YT && window.YT.Player) return Promise.resolve();
     if (window.__WP_YT_LOADING) return window.__WP_YT_LOADING;
     window.__WP_YT_LOADING = new Promise((resolve) => {
@@ -339,27 +344,26 @@
       tag.src = 'https://www.youtube.com/iframe_api';
       document.head.appendChild(tag);
       window.onYouTubeIframeAPIReady = () => resolve();
-      // fallback timeout
       setTimeout(resolve, 5000);
     });
     return window.__WP_YT_LOADING;
   }
 
-  async function mountYouTube(videoId){
+  async function mountYouTube(videoId) {
     await ensureYouTubeAPI();
     clearPlayer();
     const div = document.createElement('div');
     div.id = 'wpYt';
-    els.player.appendChild(div);
+    els.player?.appendChild(div);
     ytReady = false;
+
     ytPlayer = new window.YT.Player('wpYt', {
       videoId,
       playerVars: { rel: 0, modestbranding: 1 },
       events: {
         onReady: () => {
           ytReady = true;
-          els.controls.style.display = '';
-          // Apply latest state that arrived before player was ready
+          if (els.controls) els.controls.style.display = '';
           applyVolumeToPlayer();
           if (pendingState) {
             const s = pendingState;
@@ -371,58 +375,53 @@
           if (suppressLocalEvents) return;
           try {
             const st = evt?.data;
-            const t = ytPlayer?.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
+            const t = ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() || 0 : 0;
 
-            // If server says we should be paused, and YouTube flips to PLAYING, force it back to pause unless we explicitly intended to play.
+            // If server says paused but YT flips to playing, force it back unless we intended play
             const nowTs1 = Date.now();
             const intentAge = nowTs1 - (localIntent?.at || 0);
             const intentType = localIntent?.type || null;
             if (st === 1 && desiredPlaying === false) {
               if (!(intentType === 'play' && intentAge < 1400)) {
-                try { ytPlayer.pauseVideo(); } catch (e) {}
+                try {
+                  ytPlayer.pauseVideo();
+                } catch (e) {}
                 return;
               }
             }
 
-
             // 1=PLAYING, 2=PAUSED
             const nowTs2 = Date.now();
-            const sinceRemote = now - (lastRemoteAppliedAt || 0);
-            const sinceCmd = now - (lastCommandAt || 0);
-            const sinceUrl = now - (lastUrlSetAt || 0);
+            const sinceRemote = nowTs2 - (lastRemoteAppliedAt || 0);
+            const sinceCmd = nowTs2 - (lastCommandAt || 0);
+            const sinceUrl = nowTs2 - (lastUrlSetAt || 0);
 
-            // Ignore reconcile events right after we applied remote state or issued a command.
             if (sinceRemote < 900 || sinceCmd < 900) return;
 
-            // Heuristic: right after setting a new URL, YouTube may bounce states due to autoplay policy/buffering.
-            // Don't treat those as user-intent.
             const inAutoplayWindow = sinceUrl >= 0 && sinceUrl < 1800;
 
             if (st === 2) {
-              // PAUSED: right after setting URL YouTube may pause due to autoplay policy.
-              // Ignore only very-early pauses near the start; otherwise treat as user intent (even inside iframe controls).
-              if (desiredPlaying === true && inAutoplayWindow && (t <= 1.0)) return;
+              // ignore very-early autoplay policy pause near start
+              if (desiredPlaying === true && inAutoplayWindow && t <= 1.0) return;
               socket.emit('wp:pause', { t });
               return;
             }
             if (st === 1) {
-              // PLAYING: only propagate if this looks like intentional play (explicit play intent OR server previously paused).
-              const now2 = Date.now();
-              const intentAge2 = now2 - (localIntent?.at || 0);
+              const intentAge2 = nowTs2 - (localIntent?.at || 0);
               const intentType2 = localIntent?.type || null;
-              const sinceRemote2 = now2 - (lastRemoteAppliedAt || 0);
+              const sinceRemote2 = nowTs2 - (lastRemoteAppliedAt || 0);
               if ((intentType2 === 'play' && intentAge2 < 1600) || (desiredPlaying === false && sinceRemote2 > 800)) {
                 socket.emit('wp:play', { t });
               }
               return;
             }
-          } catch(e){}
-        }
-      }
+          } catch (e) {}
+        },
+      },
     });
   }
 
-  function mountHtml5(url){
+  function mountHtml5(url) {
     clearPlayer();
     const v = document.createElement('video');
     v.src = url;
@@ -431,9 +430,9 @@
     v.style.width = '100%';
     v.style.maxHeight = '70vh';
     v.style.borderRadius = '12px';
-    els.player.appendChild(v);
+    els.player?.appendChild(v);
     html5Video = v;
-    els.controls.style.display = '';
+    if (els.controls) els.controls.style.display = '';
 
     const emitPlay = () => {
       if (suppressLocalEvents) return;
@@ -456,9 +455,15 @@
     v.addEventListener('play', emitPlay);
     v.addEventListener('pause', emitPause);
     v.addEventListener('seeked', emitSeek);
+
+    applyVolumeToPlayer();
   }
 
-  function mountGeneric(url){
+  function escapeAttr(s) {
+    return String(s).replace(/["<>&]/g, (m) => ({ '"': '&quot;', '<': '&lt;', '>': '&gt;', '&': '&amp;' }[m]));
+  }
+
+  function mountGeneric(url) {
     clearPlayer();
     const box = document.createElement('div');
     box.className = 'wp-generic';
@@ -475,19 +480,18 @@
     frame.referrerPolicy = 'no-referrer';
     frame.sandbox = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-forms';
     frame.className = 'wp-iframe';
-    els.player.appendChild(box);
-    els.player.appendChild(frame);
-    els.controls.style.display = '';
+    els.player?.appendChild(box);
+    els.player?.appendChild(frame);
+    if (els.controls) els.controls.style.display = '';
   }
 
-  function escapeAttr(s){
-    return String(s).replace(/["<>&]/g, m => ({'"':'&quot;','<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
-  }
-
-  async function mountForUrl(url){
+  async function mountForUrl(url) {
     const det = detectProvider(url);
     current = { url, provider: det.provider, id: det.id };
-    if (!url) { clearPlayer(); return; }
+    if (!url) {
+      clearPlayer();
+      return;
+    }
     if (det.provider === 'youtube' && det.id) return mountYouTube(det.id);
     if (det.provider === 'html5') return mountHtml5(url);
     return mountGeneric(url);
@@ -496,22 +500,42 @@
   // -------------------------
   // Apply state from server
   // -------------------------
-  async function applyState(st){
+  function serverNowMs() {
+    return Date.now() + (__wpTimeOffsetMs || 0);
+  }
+  function expectedFromState(st) {
+    const baseT = Number(st?.t) || 0;
+    if (!st?.isPlaying) return baseT;
+    const updatedAt = Number(st?.updatedAt) || Date.now();
+    const delta = (serverNowMs() - updatedAt) / 1000;
+    return Math.max(0, baseT + delta);
+  }
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+  function setRate(r) {
+    r = clamp(r, 0.75, 1.25);
+    try {
+      if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r);
+      if (html5Video) html5Video.playbackRate = r;
+    } catch (e) {}
+  }
+
+  async function applyState(st) {
     if (!st) return;
     lastState = st;
     desiredPlaying = !!st.isPlaying;
-    const urlChanged = (String(st.url||'') !== String(current.url||''));
+
+    const urlChanged = String(st.url || '') !== String(current.url || '');
     if (urlChanged) {
-      await mountForUrl(String(st.url||''));
+      await mountForUrl(String(st.url || ''));
     }
 
-    // If YouTube not ready yet, postpone
     if (current.provider === 'youtube' && ytPlayer && !ytReady) {
       pendingState = st;
       return;
     }
 
-    // Compute "expected" time using server clock: t + (serverNow-updatedAt) if playing
     const baseT = Number(st.t) || 0;
     const serverNow = nowServerMs();
     const drift = st.isPlaying ? Math.max(0, (serverNow - (Number(st.updatedAt) || serverNow)) / 1000) : 0;
@@ -521,67 +545,63 @@
     const diff = expectedT - curT;
     const absDiff = Math.abs(diff);
 
-    function setRate(rate) {
-      rate = Math.max(0.75, Math.min(1.25, rate));
-      try {
-        if (current.provider === 'html5' && html5Video) html5Video.playbackRate = rate;
-        if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(rate);
-      } catch (e) {}
-    }
-
     suppressLocalEvents = true;
     lastRemoteAppliedAt = Date.now();
+
     try {
       if (current.provider === 'youtube' && ytPlayer) {
-        try {
-          // Pause is sacred: when paused, do NOT seek or change rate (YouTube can resume unexpectedly).
-          if (!st.isPlaying) {
-            try { markCommand(); ytPlayer.pauseVideo(); } catch (e) {}
-            try { ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0); } catch (e) {}
-            setNeedsGesture(false);
-          } else {
-            // Playing: snap only if we're far off. Otherwise let it run (event-based sync).
-            if (absDiff > 0.9) {
-              try { markCommand(); ytPlayer.seekTo(expectedT, true); } catch (e) {}
-            }
-            try { markCommand(); markCommand(); ytPlayer.playVideo(); } catch (e) {}
-            // Autoplay may be blocked; show unlock prompt if it doesn't start.
-            setTimeout(() => {
-              try {
-                const stt = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
-                if (stt !== 1) setNeedsGesture(true);
-              } catch (e) {}
-            }, 350);
+        if (!st.isPlaying) {
+          try {
+            markCommand();
+            ytPlayer.pauseVideo();
+          } catch (e) {}
+          try {
+            ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0);
+          } catch (e) {}
+          setNeedsGesture(false);
+        } else {
+          if (absDiff > 0.9) {
+            try {
+              markCommand();
+              ytPlayer.seekTo(expectedT, true);
+            } catch (e) {}
           }
-        } catch (e) {}
+          try {
+            markCommand();
+            ytPlayer.playVideo();
+          } catch (e) {}
+          setTimeout(() => {
+            try {
+              const stt = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
+              if (stt !== 1) setNeedsGesture(true);
+            } catch (e) {}
+          }, 350);
+        }
       } else if (current.provider === 'html5' && html5Video) {
-        try {
-          if (!st.isPlaying) {
-            // Paused: keep exact frame, ok to snap
-            if (absDiff > 0.15) html5Video.currentTime = expectedT;
-            html5Video.pause();
+        if (!st.isPlaying) {
+          if (absDiff > 0.15) html5Video.currentTime = expectedT;
+          html5Video.pause();
+          setRate(1.0);
+          setNeedsGesture(false);
+        } else {
+          if (absDiff > 1.0) {
+            html5Video.currentTime = expectedT;
             setRate(1.0);
-            setNeedsGesture(false);
+          } else if (absDiff > 0.2) {
+            setRate(diff > 0 ? 1.05 : 0.95);
+            setTimeout(() => setRate(1.0), 1400);
           } else {
-            // Playing: avoid frequent snaps -> smooth with playbackRate; snap only if far
-            if (absDiff > 1.0) {
-              html5Video.currentTime = expectedT;
-              setRate(1.0);
-            } else if (absDiff > 0.2) {
-              setRate(diff > 0 ? 1.05 : 0.95);
-              setTimeout(() => setRate(1.0), 1400);
-            } else {
-              setRate(1.0);
-            }
-            const p = html5Video.play();
-            if (p && p.catch) p.catch(() => { setNeedsGesture(true); });
-            else setNeedsGesture(false);
+            setRate(1.0);
           }
-        } catch (e) {}
+          const p = html5Video.play();
+          if (p && p.catch) p.catch(() => setNeedsGesture(true));
+          else setNeedsGesture(false);
+        }
       }
-      // generic: nothing to control
     } finally {
-      setTimeout(() => { suppressLocalEvents = false; }, 600);
+      setTimeout(() => {
+        suppressLocalEvents = false;
+      }, 600);
     }
   }
 
@@ -594,27 +614,27 @@
 
   // -------------------------
   // Tab/background recovery
-  // - Browsers throttle timers/iframes when tab is hidden -> YouTube can pause/buffer.
-  // - When user returns, request latest state and force a quick re-sync + resume if needed.
-  function requestFreshState(){
+  // -------------------------
+  function requestFreshState() {
     if (!__wpJoined) return;
-    try { socket.emit('wp:ping_state'); } catch(e){}
+    try {
+      socket.emit('wp:ping_state');
+    } catch (e) {}
   }
 
-  function startStallWatchdog(){
+  function startStallWatchdog() {
     stopStallWatchdog();
     lastProgress.at = Date.now();
     try {
       if (current.provider === 'youtube' && ytPlayer && ytReady) lastProgress.t = ytPlayer.getCurrentTime?.() || 0;
       else if (current.provider === 'html5' && html5Video) lastProgress.t = html5Video.currentTime || 0;
-    } catch(e){}
+    } catch (e) {}
+
     stallTimer = setInterval(() => {
       if (document.hidden) return;
       if (!lastState) return;
-      const shouldPlay = !!lastState.isPlaying;
-      if (!shouldPlay) return;
+      if (!lastState.isPlaying) return;
 
-      // expected time from server truth
       const expected = expectedFromState(lastState);
 
       let cur = 0;
@@ -623,44 +643,50 @@
         if (current.provider === 'youtube' && ytPlayer && ytReady) {
           cur = ytPlayer.getCurrentTime?.() || 0;
           const st = ytPlayer.getPlayerState?.() || 0; // 1=playing,2=paused,3=buffering
-          playing = (st === 1 || st === 3);
+          playing = st === 1 || st === 3;
         } else if (current.provider === 'html5' && html5Video) {
           cur = html5Video.currentTime || 0;
           playing = !html5Video.paused;
         } else return;
-      } catch(e){ return; }
+      } catch (e) {
+        return;
+      }
 
       const now = Date.now();
       const dt = (now - lastProgress.at) / 1000;
       const progressed = Math.abs(cur - lastProgress.t) > Math.max(0.08, dt * 0.5);
 
-      // If not progressing for a bit, nudge resume + hard sync once.
       if (!progressed && dt > 1.6) {
         try {
           if (current.provider === 'youtube' && ytPlayer && ytReady) {
-            // Try resume then hard-seek close to expected
-            markCommand(); ytPlayer.playVideo?.();
-            if (Math.abs(expected - cur) > 0.25) { markCommand(); ytPlayer.seekTo?.(expected, true); }
+            markCommand();
+            ytPlayer.playVideo?.();
+            if (Math.abs(expected - cur) > 0.25) {
+              markCommand();
+              ytPlayer.seekTo?.(expected, true);
+            }
           } else if (current.provider === 'html5' && html5Video) {
             if (Math.abs(expected - cur) > 0.25) html5Video.currentTime = expected;
             const p = html5Video.play();
             if (p && p.catch) p.catch(() => setNeedsGesture(true));
           }
-        } catch(e){}
+        } catch (e) {}
         lastProgress.at = now;
         lastProgress.t = cur;
         return;
       }
 
-      // If playing flag is false while server expects play, nudge play.
       if (!playing) {
         try {
-          if (current.provider === 'youtube' && ytPlayer && ytReady) { markCommand(); ytPlayer.playVideo?.(); }
+          if (current.provider === 'youtube' && ytPlayer && ytReady) {
+            markCommand();
+            ytPlayer.playVideo?.();
+          }
           if (current.provider === 'html5' && html5Video) {
             const p = html5Video.play();
             if (p && p.catch) p.catch(() => setNeedsGesture(true));
           }
-        } catch(e){}
+        } catch (e) {}
       }
 
       lastProgress.at = now;
@@ -668,97 +694,102 @@
     }, 800);
   }
 
-  function stopStallWatchdog(){
-    if (stallTimer) { clearInterval(stallTimer); stallTimer = null; }
+  function stopStallWatchdog() {
+    if (stallTimer) {
+      clearInterval(stallTimer);
+      stallTimer = null;
+    }
   }
 
-  function onReturnToTab(){
+  function onReturnToTab() {
     setNeedsGesture(false);
     requestFreshState();
-    // allow the state handler to apply, then run a quick local sync
     setTimeout(() => {
       try {
         if (lastState) applyState(lastState);
-      } catch(e){}
+      } catch (e) {}
       startStallWatchdog();
     }, 220);
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopStallWatchdog();
-    } else {
-      onReturnToTab();
-    }
+    if (document.hidden) stopStallWatchdog();
+    else onReturnToTab();
   });
 
   window.addEventListener('focus', () => {
     if (!document.hidden) onReturnToTab();
   });
 
-  // Any user gesture should clear "needsGesture" and try resume if server wants play.
-  window.addEventListener('pointerdown', () => {
-    if (!needsGesture) return;
-    setNeedsGesture(false);
-    try {
-      if (lastState?.isPlaying) {
-        if (current.provider === 'youtube' && ytPlayer && ytReady) { markCommand(); ytPlayer.playVideo?.(); }
-        else if (current.provider === 'html5' && html5Video) { const p = html5Video.play(); if (p && p.catch) p.catch(() => setNeedsGesture(true)); }
-      }
-    } catch(e){}
-  }, { passive: true });
-
-
+  window.addEventListener(
+    'pointerdown',
+    () => {
+      if (!needsGesture) return;
+      setNeedsGesture(false);
+      try {
+        if (lastState?.isPlaying) {
+          if (current.provider === 'youtube' && ytPlayer && ytReady) {
+            markCommand();
+            ytPlayer.playVideo?.();
+          } else if (current.provider === 'html5' && html5Video) {
+            const p = html5Video.play();
+            if (p && p.catch) p.catch(() => setNeedsGesture(true));
+          }
+        }
+      } catch (e) {}
+    },
+    { passive: true }
+  );
 
   // -------------------------
   // UI actions
   // -------------------------
   els.set?.addEventListener('click', () => {
-    const url = String(els.url.value || '').trim();
+    const url = String(els.url?.value || '').trim();
     const det = detectProvider(url);
     lastUrlSetAt = Date.now();
-    // Optimistic mount so the user sees the player immediately; server state will follow.
-    try { mountForUrl(url); } catch(e){}
-    // Server-side guardWP already knows the roomId from wp:join (socket.data.wpRoomId).
-    // Passing roomId as a positional argument will shift parameters and break parsing.
+    try {
+      mountForUrl(url);
+    } catch (e) {}
     socket.emit('wp:set_url', { url, provider: det.provider });
   });
 
-  // Unlock autoplay once per client (best-effort)
-
-  function getLocalTime(){
+  function getLocalTime() {
     if (current.provider === 'youtube' && ytPlayer) {
-      try { return ytPlayer.getCurrentTime() || 0; } catch(e) { return 0; }
+      try {
+        return ytPlayer.getCurrentTime() || 0;
+      } catch (e) {
+        return 0;
+      }
     }
     if (current.provider === 'html5' && html5Video) return html5Video.currentTime || 0;
     return 0;
   }
 
-  function getDuration(){
-    try{
+  function getDuration() {
+    try {
       if (current.provider === 'youtube' && ytPlayer && ytReady && typeof ytPlayer.getDuration === 'function') {
         return Number(ytPlayer.getDuration() || 0);
       }
       if (current.provider === 'html5' && html5Video) return Number(html5Video.duration || 0);
-    } catch(e){}
+    } catch (e) {}
     return 0;
   }
-  function formatTime(sec){
-    const s = Math.max(0, Math.floor(Number(sec||0)));
-    const m = Math.floor(s/60);
-    const r = s%60;
-    return m + ':' + String(r).padStart(2,'0');
-  }
-  function flashCenter(isPlaying){
-    if (!els.centerIcon) return;
-    els.centerIcon.innerHTML = isPlaying
-      ? '<div class="wp-i">⏸</div>'
-      : '<div class="wp-i">▶</div>';
-    els.centerIcon.classList.add('show');
-    setTimeout(()=>els.centerIcon && els.centerIcon.classList.remove('show'), 260);
+
+  function formatTime(sec) {
+    const s = Math.max(0, Math.floor(Number(sec || 0)));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return m + ':' + String(r).padStart(2, '0');
   }
 
-  // Tap-to-toggle overlay (works around cross-origin iframe clicks)
+  function flashCenter(isPlaying) {
+    if (!els.centerIcon) return;
+    els.centerIcon.innerHTML = isPlaying ? '<div class="wp-i">⏸</div>' : '<div class="wp-i">▶</div>';
+    els.centerIcon.classList.add('show');
+    setTimeout(() => els.centerIcon && els.centerIcon.classList.remove('show'), 260);
+  }
+
   els.tap?.addEventListener('click', (e) => {
     e.preventDefault();
     markGesture();
@@ -767,27 +798,32 @@
     if (playing) {
       setIntent('pause');
       suppressLocalEvents = true;
-      setTimeout(()=>{suppressLocalEvents=false;}, 650);
+      setTimeout(() => {
+        suppressLocalEvents = false;
+      }, 650);
       socket.emit('wp:pause', { t });
       flashCenter(true);
     } else {
       setIntent('play');
       suppressLocalEvents = true;
-      setTimeout(()=>{suppressLocalEvents=false;}, 450);
+      setTimeout(() => {
+        suppressLocalEvents = false;
+      }, 450);
       socket.emit('wp:play', { t });
       flashCenter(false);
     }
   });
 
-  // Scrub slider (realtime seek, throttled for stability)
+  // Scrub slider
   let scrubDragging = false;
   let scrubLastEmitAt = 0;
   let scrubWasPlaying = false;
 
-  function setScrubVisible(on){
+  function setScrubVisible(on) {
     if (els.scrubWrap) els.scrubWrap.style.display = on ? '' : 'none';
   }
-  function updateScrubUI(){
+
+  function updateScrubUI() {
     const dur = getDuration();
     if (dur > 0.1) {
       setScrubVisible(true);
@@ -795,7 +831,7 @@
       const cur = getLocalTime();
       if (els.timeCur) els.timeCur.textContent = formatTime(cur);
       if (!scrubDragging && els.scrub) {
-        els.scrub.value = String(Math.max(0, Math.min(1000, Math.round((cur/dur)*1000))));
+        els.scrub.value = String(Math.max(0, Math.min(1000, Math.round((cur / dur) * 1000))));
       }
     } else {
       setScrubVisible(false);
@@ -806,13 +842,13 @@
     scrubDragging = true;
     scrubWasPlaying = !!(lastState && lastState.isPlaying);
   });
+
   window.addEventListener('pointerup', () => {
     if (!scrubDragging) return;
     scrubDragging = false;
-    // On release, send one final seek (and resume if it was playing)
     const dur = getDuration();
     if (dur > 0.1 && els.scrub) {
-      const pct = Number(els.scrub.value||0) / 1000;
+      const pct = Number(els.scrub.value || 0) / 1000;
       const t = dur * pct;
       socket.emit('wp:seek', { t });
       if (scrubWasPlaying) socket.emit('wp:play', { t });
@@ -823,11 +859,10 @@
     if (!scrubDragging) return;
     const dur = getDuration();
     if (dur <= 0.1) return;
-    const pct = Number(els.scrub.value||0) / 1000;
+    const pct = Number(els.scrub.value || 0) / 1000;
     const t = dur * pct;
     if (els.timeCur) els.timeCur.textContent = formatTime(t);
     const nowTs = Date.now();
-    // Throttle emits so others see it nearly realtime but stable
     if (nowTs - scrubLastEmitAt > 140) {
       scrubLastEmitAt = nowTs;
       socket.emit('wp:seek', { t });
@@ -840,16 +875,22 @@
     markGesture();
     setIntent('play');
     suppressLocalEvents = true;
-    setTimeout(()=>{suppressLocalEvents=false;}, 450);
+    setTimeout(() => {
+      suppressLocalEvents = false;
+    }, 450);
     socket.emit('wp:play', { t: getLocalTime() });
   });
+
   els.pause?.addEventListener('click', () => {
     markGesture();
     setIntent('pause');
     suppressLocalEvents = true;
-    setTimeout(()=>{suppressLocalEvents=false;}, 650);
+    setTimeout(() => {
+      suppressLocalEvents = false;
+    }, 650);
     socket.emit('wp:pause', { t: getLocalTime() });
   });
+
   els.sync?.addEventListener('click', () => socket.emit('wp:ping_state'));
 
   // -------- private room: invite UI --------
@@ -865,9 +906,10 @@
           els.friends.innerHTML = '<div style="color:#9aa7b3;font-size:12px;padding:8px;">ยังไม่มีเพื่อน</div>';
           return;
         }
-        els.friends.innerHTML = friends.map(f => {
-          const av = f.avatar_path ? f.avatar_path : '/uploads/avatars/default.png';
-          return `
+        els.friends.innerHTML = friends
+          .map((f) => {
+            const av = f.avatar_path ? f.avatar_path : '/uploads/avatars/default.png';
+            return `
             <label class="wp-friend">
               <div class="wp-friend__left">
                 <img class="wp-avatar" src="${av}" alt="" onerror="this.style.display='none'" />
@@ -876,16 +918,21 @@
               <input type="checkbox" class="wp-friendPick" value="${f.id}" />
             </label>
           `;
-        }).join('');
+          })
+          .join('');
       } catch (e) {
         els.friends.innerHTML = '<div style="color:#ffb3ff;font-size:12px;padding:8px;">โหลดรายชื่อเพื่อนไม่สำเร็จ</div>';
       }
     }
 
     els.invite?.addEventListener('click', async () => {
-      const picks = Array.from(document.querySelectorAll('.wp-friendPick:checked')).map(i => Number(i.value)).filter(Boolean);
+      const picks = Array.from(document.querySelectorAll('.wp-friendPick:checked'))
+        .map((i) => Number(i.value))
+        .filter(Boolean);
       if (picks.length === 0) {
-        return window.Swal ? Swal.fire({ icon: 'info', title: 'เลือกเพื่อนก่อน', background: '#0b0f14', color: '#e6f7ff' }) : alert('Pick friends');
+        return window.Swal
+          ? Swal.fire({ icon: 'info', title: 'เลือกเพื่อนก่อน', background: '#0b0f14', color: '#e6f7ff' })
+          : alert('Pick friends');
       }
       els.invite.disabled = true;
       try {
@@ -897,10 +944,18 @@
         const j = await resp.json();
         if (!j.ok) throw j;
         if (window.Swal) {
-          Swal.fire({ icon: 'success', title: 'Invite สำเร็จ', text: `เพิ่ม ${j.added} คน`, timer: 1200, showConfirmButton: false, background: '#0b0f14', color: '#e6f7ff' });
+          Swal.fire({
+            icon: 'success',
+            title: 'Invite สำเร็จ',
+            text: `เพิ่ม ${j.added} คน`,
+            timer: 1200,
+            showConfirmButton: false,
+            background: '#0b0f14',
+            color: '#e6f7ff',
+          });
         }
       } catch (e) {
-        const reason = (e && (e.reason || e.message)) ? String(e.reason || e.message) : 'invite_failed';
+        const reason = e && (e.reason || e.message) ? String(e.reason || e.message) : 'invite_failed';
         const msgMap = {
           not_owner: 'ต้องเป็นเจ้าของห้องเท่านั้นถึงจะเชิญได้',
           not_friends: 'คนที่เลือกยังไม่ได้เป็นเพื่อนของคุณ',
@@ -919,67 +974,52 @@
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
+
     loadFriends();
   }
 
   // -------------------------
-  // Smooth drift correction (v7-style)
-  // - Small drift: gently correct using playbackRate (HTML5 + YouTube if supported)
-  // - Large drift: hard seek
-  // Runs only while PLAYING; when paused, we do not touch the player to avoid YouTube glitches.
-  function serverNowMs(){ return Date.now() + (__wpTimeOffsetMs || 0); }
-  function expectedFromState(st){
-    const baseT = Number(st?.t) || 0;
-    if (!st?.isPlaying) return baseT;
-    const updatedAt = Number(st?.updatedAt) || Date.now();
-    const delta = (serverNowMs() - updatedAt) / 1000;
-    return Math.max(0, baseT + delta);
-  }
-  function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-  function setRate(r){
-    r = clamp(r, 0.75, 1.25);
-    try{
-      if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r);
-      if (html5Video) html5Video.playbackRate = r;
-    } catch(e){}
-  }
+  // Smooth drift correction loop
+  // -------------------------
   let lastRateBumpAt = 0;
   setInterval(() => {
-    try{
+    try {
       if (!lastState || !lastState.isPlaying) return;
-      // don't fight right after applying remote state
       if (Date.now() - (lastRemoteAppliedAt || 0) < 700) return;
 
       const expected = expectedFromState(lastState);
       const cur = getLocalTime();
       if (!Number.isFinite(expected) || !Number.isFinite(cur)) return;
+
       const diff = expected - cur;
       const ad = Math.abs(diff);
 
-      // Hard-seek only if far off
       if (ad > 1.25) {
         if (current.provider === 'youtube' && ytPlayer) {
-          try { markCommand(); ytPlayer.seekTo(expected, true); } catch(e){}
+          try {
+            markCommand();
+            ytPlayer.seekTo(expected, true);
+          } catch (e) {}
         } else if (html5Video) {
-          try { html5Video.currentTime = expected; } catch(e){}
+          try {
+            html5Video.currentTime = expected;
+          } catch (e) {}
         }
         setRate(1.0);
         return;
       }
 
-      // Gentle correction
       if (ad > 0.18) {
         const bump = diff > 0 ? 1.05 : 0.95;
         setRate(bump);
         lastRateBumpAt = Date.now();
       } else {
-        // return to normal after a short time
         if (Date.now() - lastRateBumpAt > 900) setRate(1.0);
       }
-    } catch(e){}
+    } catch (e) {}
   }, 800);
 
-// Detect YouTube seeks made via the native player UI (best-effort)
+  // Detect YouTube seeks made via the native player UI (best-effort)
   let __wpLastSeekEmitAt = 0;
   let ytLastT = 0;
   let ytLastAt = Date.now();
@@ -988,10 +1028,9 @@
     if (current.provider !== 'youtube' || !ytPlayer || !ytReady) return;
     try {
       const nowTs2 = Date.now();
-      const cur = ytPlayer.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
+      const cur = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() || 0 : 0;
       const dt = (nowTs2 - ytLastAt) / 1000;
       const jump = Math.abs(cur - ytLastT);
-      // If time jumps noticeably compared to expected flow, treat as seek/scrub
       if (dt > 0.12 && jump > 0.85) {
         const nowTs3 = Date.now();
         if (!__wpLastSeekEmitAt || nowTs3 - __wpLastSeekEmitAt > 160) {
@@ -1001,6 +1040,6 @@
       }
       ytLastT = cur;
       ytLastAt = nowTs2;
-    } catch(e){}
+    } catch (e) {}
   }, 250);
 })();
