@@ -28,57 +28,61 @@
 
     <div class="wp-body">
       <div class="wp-playerCard">
-        <div class="wp-row">
+        <div class="wp-row wp-row--url">
           <input class="wp-input" id="wpUrl" placeholder="วางลิงก์คลิป (YouTube/Vimeo/mp4/webm หรือเว็บที่ embed ได้)" />
           <button class="wp-btn wp-btn--primary" id="wpSet">Set</button>
         </div>
+
         <div class="wp-player-wrap" id="wpPlayerWrap">
           <div class="wp-player" id="wpPlayer"></div>
           <button id="wpTapToggle" class="wp-tap-toggle" type="button" aria-label="Play/Pause"></button>
           <div id="wpCenterIcon" class="wp-center-icon" aria-hidden="true"></div>
         </div>
-
-        </div>
-        <div class="wp-controls" id="wpControls" style="display:none">
-          <div class="wp-controls__row">
-            <div class="wp-controls__group">
-              <button class="wp-btn wp-btn--primary" id="wpPlay">Play</button>
-              <button class="wp-btn" id="wpPause">Pause</button>
-              <button class="wp-btn" id="wpSync">Sync</button>
-            </div>
-            <div class="wp-controls__group wp-controls__group--right">
-              <div class="wp-vol">
-                <button class="wp-btn wp-btn--ghost" id="wpMute" type="button" title="Mute/Unmute">🔊</button>
-                <input id="wpVol" class="wp-vol__range" type="range" min="0" max="100" value="80" />
-                <span class="wp-vol__val" id="wpVolVal">80%</span>
-              </div>
-            </div>
-          </div>
-<div class="wp-scrub" id="wpScrubWrap" style="display:none">
-            <span class="wp-time" id="wpTimeCur">0:00</span>
-            <input type="range" min="0" max="1000" value="0" id="wpScrub" class="wp-scrub__range" />
-            <span class="wp-time" id="wpTimeDur">0:00</span>
-          </div>
-        </div>
       </div>
 
-      <% if (!isPublic) { %>
-      <aside class="wp-side">
-        <div class="wp-side__card">
-          <div class="wp-side__hdr">Invite friends</div>
-          <div class="wp-side__desc">เลือกเพื่อนแล้วกด Invite • คนที่ถูกเชิญจะเข้าห้องนี้ได้</div>
-          <div id="wpFriends" class="wp-friends">Loading...</div>
-          <button class="wp-btn wp-btn--primary" id="wpInvite">Invite</button>
+      <aside class="wp-panel">
+        <div class="wp-side__card wp-side__card--controls" id="wpControls" style="display:none">
+          <div class="wp-side__hdr">Controls</div>
+          <div class="wp-controls">
+            <div class="wp-controls__row">
+              <div class="wp-controls__group">
+                <button class="wp-btn wp-btn--primary" id="wpPlay">Play</button>
+                <button class="wp-btn" id="wpPause">Pause</button>
+                <button class="wp-btn" id="wpSync">Sync</button>
+              </div>
+              <div class="wp-controls__group wp-controls__group--right">
+                <div class="wp-vol">
+                  <button class="wp-btn wp-btn--ghost" id="wpMute" type="button" title="Mute/Unmute">🔊</button>
+                  <input id="wpVol" class="wp-vol__range" type="range" min="0" max="100" value="80" />
+                  <span class="wp-vol__val" id="wpVolVal">80%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="wp-scrub" id="wpScrubWrap" style="display:none">
+              <span class="wp-time" id="wpTimeCur">0:00</span>
+              <input type="range" min="0" max="1000" value="0" id="wpScrub" class="wp-scrub__range" />
+              <span class="wp-time" id="wpTimeDur">0:00</span>
+            </div>
+          </div>
         </div>
 
-        <div class="wp-side__card">
-          <div class="wp-side__hdr">Share link</div>
-          <div class="wp-side__desc">ส่งลิงก์นี้ให้ใครก็ได้ • กดเข้าได้เลย (ต้องล็อกอินก่อน)</div>
-          <input class="wp-input" id="wpShare" readonly value="" />
-          <button class="wp-btn" id="wpCopy">Copy</button>
-        </div>
+        <% if (!isPublic) { %>
+          <div class="wp-side__card">
+            <div class="wp-side__hdr">Invite friends</div>
+            <div class="wp-side__desc">เลือกเพื่อนแล้วกด Invite • คนที่ถูกเชิญจะเข้าห้องนี้ได้</div>
+            <div id="wpFriends" class="wp-friends">Loading...</div>
+            <button class="wp-btn wp-btn--primary" id="wpInvite">Invite</button>
+          </div>
+
+          <div class="wp-side__card">
+            <div class="wp-side__hdr">Share link</div>
+            <div class="wp-side__desc">ส่งลิงก์นี้ให้ใครก็ได้ • กดเข้าได้เลย (ต้องล็อกอินก่อน)</div>
+            <input class="wp-input" id="wpShare" readonly value="" />
+            <button class="wp-btn" id="wpCopy">Copy</button>
+          </div>
+        <% } %>
       </aside>
-      <% } %>
     </div>
   </div>
 
