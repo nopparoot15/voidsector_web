@@ -109,34 +109,43 @@
   function parseYouTubeId(input) {
     const s = String(input || '').trim();
     if (!s) return null;
+  
+    // raw video id
     if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
-
+  
     try {
       const u = new URL(s);
       const host = u.hostname.replace(/^www\./, '').toLowerCase();
-
+  
+      // youtu.be/<id>
       if (host === 'youtu.be') {
         const id = u.pathname.split('/').filter(Boolean)[0];
         return id && /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
       }
-
-      if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+  
+      // youtube.com/*
+      if (
+        host === 'youtube.com' ||
+        host === 'm.youtube.com' ||
+        host === 'music.youtube.com'
+      ) {
+        // /watch?v=<id>
         const v = u.searchParams.get('v');
         if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
-
+  
+        // /shorts/<id> | /embed/<id> | /live/<id>
         const parts = u.pathname.split('/').filter(Boolean);
-        const idx = parts.findIndex((p) => children's.includes(p));
-        // (fix) don't rely on external var; do it explicitly:
+        const idx = parts.findIndex(p =>
+          ['shorts', 'embed', 'live'].includes(p)
+        );
+        if (idx >= 0 && parts[idx + 1] &&
+            /^[a-zA-Z0-9_-]{11}$/.test(parts[idx + 1])) {
+          return parts[idx + 1];
+        }
       }
-      // fallback explicit patterns
-      if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
-        const parts = u.pathname.split('/').filter(Boolean);
-        const idx = parts.findIndex((p) => ['shorts', 'embed', 'live'].includes(p));
-        if (idx >= 0 && parts[idx + 1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[idx + 1])) return parts[idx + 1];
-      }
-
+  
       return null;
-    } catch (_) {
+    } catch {
       return null;
     }
   }
