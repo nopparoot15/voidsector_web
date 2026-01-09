@@ -6,7 +6,13 @@
   --wp-muted:#9aa7b3;
 }
 
-.wp-shell{max-width:1100px;margin:24px auto;padding:0 16px}
+.wp-shell{
+  /* Make the room feel as wide as the Public room even when Private has a sidebar. */
+  width: min(1680px, calc(100vw - 32px));
+  max-width: none;
+  margin: 24px auto;
+  padding: 0;
+}
 /* Prevent browser scroll anchoring from "pulling" the page back when the player finishes loading/resizing */
 .wp-shell{overflow-anchor:none}
 .wp-playerCard, .wp-player{overflow-anchor:none;min-height:560px}
@@ -24,7 +30,7 @@
 .wp-meta__sub{color:var(--wp-muted);font-size:12px}
 .wp-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
 
-.wp-top__right{display:flex;gap:8px;align-items:center;min-width:340px;justify-content:flex-end}
+.wp-top__right{display:flex;gap:8px;align-items:center;min-width:380px;justify-content:flex-end}
 
 .wp-body{margin-top:14px;display:flex;gap:14px;align-items:flex-start}
 .wp-playerCard{flex:1;min-width:0;background:rgba(11,15,20,0.78);border:1px solid var(--wp-line);border-radius:16px;padding:14px}
@@ -36,7 +42,7 @@
 .wp-unlock{margin-top:12px;border:1px solid rgba(180,0,255,0.18);background:rgba(180,0,255,0.08);border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .wp-unlock__title{color:var(--wp-text);font-weight:800;font-size:13px}
 
-.wp-side{width:340px;display:flex;flex-direction:column;gap:14px}
+.wp-side{width:340px;display:flex;flex-direction:column;gap:14px;margin-left:auto}
 .wp-side__card{background:rgba(11,15,20,0.78);border:1px solid var(--wp-line);border-radius:16px;padding:14px}
 .wp-side__hdr{font-weight:900;color:#7cf7ff;margin-bottom:6px}
 .wp-side__desc{color:var(--wp-muted);font-size:12px;line-height:1.4;margin-bottom:10px}

@@ -18,12 +18,10 @@
           <div class="wp-meta__sub">room: <span class="wp-mono"><%= roomId %></span> • online: <span id="wpOnline">0</span></div>
         </div>
       </div>
-      <% if (isPublic) { %>
       <div class="wp-top__right">
         <input class="wp-input" id="wpShare" readonly value="" />
         <button class="wp-btn" id="wpCopy">Copy</button>
       </div>
-      <% } %>
     </div>
 
     <div class="wp-body">
@@ -72,13 +70,6 @@
           <div class="wp-side__desc">เลือกเพื่อนแล้วกด Invite • คนที่ถูกเชิญจะเข้าห้องนี้ได้</div>
           <div id="wpFriends" class="wp-friends">Loading...</div>
           <button class="wp-btn wp-btn--primary" id="wpInvite">Invite</button>
-        </div>
-
-        <div class="wp-side__card">
-          <div class="wp-side__hdr">Share link</div>
-          <div class="wp-side__desc">ส่งลิงก์นี้ให้ใครก็ได้ • กดเข้าได้เลย (ต้องล็อกอินก่อน)</div>
-          <input class="wp-input" id="wpShare" readonly value="" />
-          <button class="wp-btn" id="wpCopy">Copy</button>
         </div>
       </aside>
       <% } %>
