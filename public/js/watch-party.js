@@ -41,6 +41,23 @@
     invite: document.getElementById('wpInvite'),
   };
 
+  function fitPlayer(){
+    if (!els.playerWrap || !yt || typeof yt.setSize !== 'function') return;
+    const r = els.playerWrap.getBoundingClientRect();
+    // YT API expects numbers
+    const w = Math.max(1, Math.floor(r.width));
+    const h = Math.max(1, Math.floor(r.height));
+    try { yt.setSize(w, h); } catch (e) {}
+  }
+
+  window.addEventListener('resize', () => {
+    // throttle resize a bit
+    clearTimeout(window.__wpResizeT);
+    window.__wpResizeT = setTimeout(fitPlayer, 120);
+  });
+
+
+
   // -------------------------
   // Share link (public/private)
   // -------------------------
@@ -184,6 +201,7 @@
         onReady: () => {
           ytReady = true;
           applyAudioToPlayer();
+          fitPlayer();
           refreshQualityList();
           tick();
           // ask current room state
