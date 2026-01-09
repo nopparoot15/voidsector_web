@@ -1,15 +1,14 @@
 /* public/js/watch-party.js
- * Realtime watch party (best-effort cross-platform).
- * Full control for:
- *  - YouTube (IFrame API)
- *  - Direct HTML5 media (mp4/webm/ogg)
- * For other sites, we embed if allowed, otherwise users can open in new tab and use Sync for timestamps.
+ * YouTube-only Watch Party (custom controls)
+ * - Sync: play/pause/seek/url via Socket.IO
+ * - Audio: local-only (not synced)
  */
 
 (function(){
-  const roomId = window.WP_ROOM_ID;
+  const roomId = String(window.WP_ROOM_ID || '');
   const isPublic = !!window.WP_IS_PUBLIC;
-  const joinKeyFallback = window.WP_JOIN_KEY || '';
+  const joinKey = String(window.WP_JOIN_KEY || '');
+  const socket = window.VS_SOCKET;
 
   const els = {
     online: document.getElementById('wpOnline'),
@@ -17,1080 +16,534 @@
     copy: document.getElementById('wpCopy'),
     url: document.getElementById('wpUrl'),
     set: document.getElementById('wpSet'),
+    urlError: document.getElementById('wpUrlError'),
+
+    playerWrap: document.getElementById('wpPlayerWrap'),
     player: document.getElementById('wpPlayer'),
-    controls: document.getElementById('wpControls'),
+
     play: document.getElementById('wpPlay'),
     pause: document.getElementById('wpPause'),
     sync: document.getElementById('wpSync'),
-        friends: document.getElementById('wpFriends'),
-    invite: document.getElementById('wpInvite'),
-    tap: null,
-    centerIcon: document.getElementById('wpCenterIcon'),
-    scrubWrap: document.getElementById('wpScrubWrap'),
+
     scrub: document.getElementById('wpScrub'),
     timeCur: document.getElementById('wpTimeCur'),
     timeDur: document.getElementById('wpTimeDur'),
-        volPct: document.getElementById('wpVolPct'),
-    mute: document.getElementById('wpMute'),
-    muteIcon: document.getElementById('wpMuteIcon'),
-    volume: document.getElementById('wpVolume'),
-    ytOnly: document.getElementById('wpYtOnly'),
+
     quality: document.getElementById('wpQuality'),
-    subTh: document.getElementById('wpSubTh'),
-    fs: document.getElementById('wpFs'),
-    playerWrap: document.getElementById('wpPlayerWrap'),
+    subTH: document.getElementById('wpSubTH'),
+    fs: document.getElementById('wpFullscreen'),
+
+    mute: document.getElementById('wpMute'),
+    vol: document.getElementById('wpVol'),
+    volText: document.getElementById('wpVolText'),
+
+    friends: document.getElementById('wpFriends'),
+    invite: document.getElementById('wpInvite'),
   };
 
-  // Build share link
-  (function(){
-    const params = new URLSearchParams(window.location.search);
-    const k = params.get('k') || params.get('key') || joinKeyFallback;
-    const base = (String(roomId) === 'public')
-      ? `${window.location.origin}/watch/public`
-      : `${window.location.origin}/watch/r/${encodeURIComponent(roomId)}`;
-    els.share.value = (!isPublic && k) ? `${base}?k=${encodeURIComponent(k)}` : base;
-    els.copy?.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(els.share.value); } catch(e){}
-    });
-  })();
-
-  // Use the app-wide VS_SOCKET if available. If this page loads before it exists, create
-  // our own socket AND identify it via chat:hello (otherwise server-side wp:* guards will ignore us).
-  const socket = (() => {
-    if (window.VS_SOCKET) return window.VS_SOCKET;
-    if (typeof io === 'function') return io({ withCredentials: true });
-    return null;
-  })();
-  if (!socket) return;
-
-  let identified = false;
-  function sendHello() {
-    try {
-      const me = window.VS_ME || {};
-      const username = String(me.username || '').trim();
-      if (!username) return;
-      socket.emit('chat:hello', { userId: me.id || null, username });
-    } catch (e) {}
+  // -------------------------
+  // Share link (public/private)
+  // -------------------------
+  function buildShareUrl(){
+    const origin = window.location.origin;
+    if (roomId === 'public' || isPublic) return `${origin}/watch/public`;
+    // private room uses /watch/r/:id?k=...
+    const base = `${origin}/watch/r/${encodeURIComponent(roomId)}`;
+    return joinKey ? `${base}?k=${encodeURIComponent(joinKey)}` : base;
   }
-  socket.on('chat:me', () => { identified = true; });
-
-  // If we created our own socket (not the singleton), we must identify on connect.
-  if (socket !== window.VS_SOCKET) {
-    sendHello();
-    socket.on('connect', sendHello);
-  } else {
-    // singleton usually identifies itself, but be safe on reconnect
-    socket.on('connect', sendHello);
-  }
-
-  // Track recent user gestures so we don't broadcast "autoplay-block" pauses as real pauses.
-  // Browsers can pause/deny playback without user intent; we only propagate play/pause when
-  // the user likely initiated it (click/key) or when it's not immediately after a remote apply.
-  let lastUserGestureAt = 0;
-  // Once the user has interacted with the watch UI, we can safely play with audio.
-  // Before that, browsers may block autoplay with sound.
-  let playbackUnlocked = false;
-  let lastCommandAt = 0;
-  let lastUrlSetAt = 0;
-  function markCommand(){ lastCommandAt = Date.now(); }
-  function markGesture(){ lastUserGestureAt = Date.now(); playbackUnlocked = true; }
-  // Interaction with the controls/player area counts as a gesture
-  ['pointerdown','mousedown','touchstart','keydown'].forEach(evt => {
-    document.addEventListener(evt, (e) => {
-      const t = e.target;
-      // only count gestures inside the watch UI
-      if (t && (t.closest?.('#wpControls') || t.closest?.('#wpPlayer'))) markGesture();
-    }, { passive: true });
+  if (els.share) els.share.value = buildShareUrl();
+  if (els.copy) els.copy.addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(els.share.value || '');
+      els.copy.textContent = 'Copied';
+      setTimeout(()=>els.copy.textContent='Copy', 900);
+    }catch(_){}
   });
 
   // -------------------------
-  // Time sync (server clock) to reduce jitter/drift
+  // YouTube helpers
   // -------------------------
-  let __wpTimeOffsetMs = 0; // serverNow ~= Date.now() + offset
-  let __wpTimeSynced = false;
-  let __wpTimeSyncInit = false;
-  let __wpTimeSyncRunning = false;
+  function parseYouTubeId(input){
+    const s = String(input || '').trim();
+    if (!s) return null;
 
-  function nowServerMs() {
-    return Date.now() + (__wpTimeOffsetMs || 0);
-  }
+    // If user pasted just an ID
+    if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
 
-  function median(arr){
-    const a = arr.slice().sort((x,y)=>x-y);
-    const m = Math.floor(a.length/2);
-    return a.length ? (a.length % 2 ? a[m] : (a[m-1]+a[m])/2) : 0;
-  }
+    try{
+      const u = new URL(s);
+      const host = u.hostname.replace(/^www\./,'').toLowerCase();
 
-  function startTimeSync(samples = 7){
-    if (__wpTimeSynced) return;
-    // Avoid registering duplicate listeners / running multiple concurrent sync loops.
-    if (__wpTimeSyncRunning) return;
-    __wpTimeSyncRunning = true;
-
-    const offsets = [];
-    let done = 0;
-
-    function ping(){
-      const t0 = Date.now();
-      socket.emit('wp:time_sync', { t0 });
-      // safety timeout in case reply lost
-      setTimeout(() => {
-        if (done >= samples) return;
-        // try again
-        if (done < samples) ping();
-      }, 800);
-    }
-
-    if (!__wpTimeSyncInit) {
-      __wpTimeSyncInit = true;
-      socket.on('wp:time_sync', (m) => {
-      try{
-        const t1 = Date.now();
-        const t0 = Number(m?.t0) || 0;
-        const ts = Number(m?.ts) || 0; // server timestamp
-        if (!t0 || !ts) return;
-        // offset = server - midpoint(client)
-        const off = ts - ((t0 + t1) / 2);
-        if (Number.isFinite(off)) offsets.push(off);
-        done += 1;
-        if (done < samples) ping();
-        else {
-          __wpTimeOffsetMs = median(offsets);
-          __wpTimeSynced = true;
-          __wpTimeSyncRunning = false;
-        }
-      } catch(e){}
-      });
-    }
-
-    ping();
-  }
-
-  let __wpJoined = false;
-
-  function join(){
-    const params = new URLSearchParams(window.location.search);
-    const k = params.get('k') || params.get('key') || joinKeyFallback;
-    socket.emit('wp:join', { roomId, k });
-  }
-
-  // Show errors (and keep retrying join if we were not identified yet)
-  socket.on('wp:error', (e) => {
-    try {
-      const msg = String(e?.message || 'Watch party error');
-      console.warn('[watchparty]', msg);
-      // Small inline hint (avoid modal spam)
-      if (els.online && msg.toLowerCase().includes('not identified')) {
-        els.online.textContent = '—';
+      // youtu.be/<id>
+      if (host === 'youtu.be'){
+        const id = u.pathname.split('/').filter(Boolean)[0];
+        return (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) ? id : null;
       }
-    } catch (err) {}
-  });
 
-  // Robust join: on some pages the socket connects before VS_ME/identity is ready.
-  // We retry until we receive wp:joined.
-  function ensureJoined(){
-    if (__wpJoined) return;
-    if (!socket.connected) return;
-    if (!identified) {
-      sendHello();
-      setTimeout(ensureJoined, 250);
+      // youtube.com
+      if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com'){
+        // /watch?v=<id>
+        const v = u.searchParams.get('v');
+        if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+
+        // /shorts/<id> or /embed/<id> or /live/<id>
+        const parts = u.pathname.split('/').filter(Boolean);
+        const idx = parts.findIndex(p => ['shorts','embed','live'].includes(p));
+        if (idx >= 0 && parts[idx+1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[idx+1])) return parts[idx+1];
+      }
+      return null;
+    }catch(_){
+      return null;
+    }
+  }
+
+  function normalizeYouTubeUrl(id){
+    return `https://www.youtube.com/watch?v=${id}`;
+  }
+
+  function showUrlError(msg){
+    if (!els.urlError) return;
+    if (!msg){
+      els.urlError.style.display = 'none';
+      els.urlError.textContent = '';
       return;
     }
-    startTimeSync();
-    join();
-    setTimeout(ensureJoined, 900);
-  }
-
-  socket.on('connect', () => { setTimeout(ensureJoined, 50); });
-  if (socket.connected) setTimeout(ensureJoined, 50);
-
-  socket.on('wp:presence', (p) => {
-    if (els.online) els.online.textContent = String(p?.membersOnline || p?.count || 0);
-  });
-
-  // -------------------------
-  // Provider detection
-  // -------------------------
-  function detectProvider(url){
-    const u = String(url || '').trim();
-    if (!u) return { provider:'generic', id:null };
-    const lower = u.toLowerCase();
-    if (lower.match(/\.(mp4|webm|ogg)(\?|#|$)/)) return { provider:'html5', id:null };
-    // YouTube
-    try {
-      const uu = new URL(u);
-      if (uu.hostname.includes('youtu.be')) {
-        const id = uu.pathname.replace(/^\//,'').split('/')[0];
-        if (id) return { provider:'youtube', id };
-      }
-      if (uu.hostname.includes('youtube.com')) {
-        const id = uu.searchParams.get('v');
-        if (id) return { provider:'youtube', id };
-      }
-    } catch(e){}
-    // Vimeo (we embed but no full control here without extra lib)
-    if (lower.includes('vimeo.com')) return { provider:'vimeo', id:null };
-    return { provider:'generic', id:null };
+    els.urlError.style.display = 'block';
+    els.urlError.textContent = msg;
   }
 
   // -------------------------
-  // Player implementations
+  // Player state (local-only audio)
   // -------------------------
-  let current = { url:'', provider:'generic' };
-  let suppressLocalEvents = false;
-  let localIntent = { type: null, at: 0 };
-  function setIntent(type){ localIntent = { type, at: Date.now() }; }
+  const LS_VOL = `vs_wp_vol_${roomId}`;
+  const LS_MUTED = `vs_wp_muted_${roomId}`;
+  let lastVolume = 80;
 
-  let ytPlayer = null;
-  let html5Video = null;
-  let lastRemoteAppliedAt = 0;
-  let lastState = null;
-  let desiredPlaying = null; // mirrors lastState.isPlaying (server truth)
-  let pendingState = null;
+  function loadAudioPrefs(){
+    const v = Number(localStorage.getItem(LS_VOL));
+    const m = localStorage.getItem(LS_MUTED);
+    if (Number.isFinite(v)) lastVolume = Math.max(0, Math.min(100, v));
+    if (els.vol) els.vol.value = String(lastVolume);
+    if (els.volText) els.volText.textContent = `${lastVolume}%`;
+    if (m === '1') setMutedUI(true); else setMutedUI(false);
+  }
+
+  function saveAudioPrefs(){
+    try{
+      localStorage.setItem(LS_VOL, String(lastVolume));
+      localStorage.setItem(LS_MUTED, isMutedUI() ? '1' : '0');
+    }catch(_){}
+  }
+
+  function isMutedUI(){
+    return els.mute?.getAttribute('data-muted') === '1';
+  }
+  function setMutedUI(muted){
+    if (!els.mute) return;
+    els.mute.setAttribute('data-muted', muted ? '1' : '0');
+    els.mute.textContent = muted ? '🔇' : '🔊';
+    if (els.vol) els.vol.disabled = muted;
+  }
+
+  function fmtTime(sec){
+    sec = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  // -------------------------
+  // YouTube IFrame API integration
+  // -------------------------
+  let yt = null;
   let ytReady = false;
+  let currentVideoId = null;
+  let suppressScrub = false;
+  let lastStateFromServer = null;
+  let desiredQuality = 'auto';
+  let desiredTHSub = false;
 
-  // YouTube-only UI state
-  let ytCaptionsOn = false;
-  let ytQualityLevels = [];
-  let ytDesiredQuality = 'auto';
+  // Ensure api is ready
+  window.onYouTubeIframeAPIReady = function(){
+    createPlayer();
+  };
 
-  // Local (device) volume state
-  let localVolumePct = 100;
-  let localMuted = false;
-  let preMuteVolumePct = 100;
-
-
-  const audioKey = `vs_wp_audio_${String(roomId)}`;
-  function loadLocalAudio(){
-    try{
-      const raw = localStorage.getItem(audioKey);
-      if (!raw) return;
-      const obj = JSON.parse(raw);
-      if (typeof obj.v === 'number') localVolumePct = clampPct(obj.v);
-      if (typeof obj.m === 'boolean') localMuted = obj.m;
-      if (typeof obj.pm === 'number') preMuteVolumePct = clampPct(obj.pm);
-    }catch(e){}
-  }
-  function saveLocalAudio(){
-    try{
-      localStorage.setItem(audioKey, JSON.stringify({ v: clampPct(localVolumePct), m: !!localMuted, pm: clampPct(preMuteVolumePct||0) }));
-    }catch(e){}
-  }
-  loadLocalAudio();
-
-  function clearPlayer(){
-    if (ytPlayer) {
-      try { ytPlayer.destroy(); } catch(e){}
-      ytPlayer = null;
-    }
-    if (html5Video) {
-      try { html5Video.pause(); } catch(e){}
-      html5Video.remove();
-      html5Video = null;
-    }
-    if (els.player) els.player.innerHTML = '';
-    els.controls.style.display = 'none';
-    if (els.ytOnly) els.ytOnly.style.display = 'none';
-    if (els.quality) { els.quality.innerHTML = ''; els.quality.disabled = true; }
-    ytCaptionsOn = false;
-    try { refreshYtCaptionUI(); } catch (e) {}
-  }
-
-  function ensureYouTubeAPI(){
-    if (window.YT && window.YT.Player) return Promise.resolve();
-    if (window.__WP_YT_LOADING) return window.__WP_YT_LOADING;
-    window.__WP_YT_LOADING = new Promise((resolve) => {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-      window.onYouTubeIframeAPIReady = () => resolve();
-      // fallback timeout
-      setTimeout(resolve, 5000);
-    });
-    return window.__WP_YT_LOADING;
-  }
-
-  async function mountYouTube(videoId){
-    await ensureYouTubeAPI();
-    clearPlayer();
-    const div = document.createElement('div');
-    div.id = 'wpYt';
-    els.player.appendChild(div);
-    ytReady = false;
-    ytPlayer = new window.YT.Player('wpYt', {
-      videoId,
-      // Hide YouTube's native player UI and drive everything from our own control bar.
+  function createPlayer(){
+    if (yt) return;
+    yt = new YT.Player('wpPlayer', {
+      videoId: '',
       playerVars: {
+        controls: 0,
         rel: 0,
         modestbranding: 1,
-        controls: 0,
+        playsinline: 1,
         disablekb: 1,
-        fs: 1,
         iv_load_policy: 3,
-        cc_load_policy: 0,
       },
       events: {
         onReady: () => {
           ytReady = true;
-          els.controls.style.display = '';
-          if (els.ytOnly) els.ytOnly.style.display = '';
-          setTimeout(refreshYtQualityUI, 200);
-          refreshYtQualityUI();
-          // Apply desired quality after we have levels
-          setTimeout(()=>applyDesiredYtQuality(), 350);
-          refreshYtCaptionUI();
-          // Apply latest state that arrived before player was ready
-          if (pendingState) {
-            const s = pendingState;
-            pendingState = null;
-            applyState(s);
-          }
+          applyAudioToPlayer();
+          refreshQualityList();
+          tick();
+          // ask current room state
+          socket.emit('wp:ping_state');
         },
-        onPlaybackQualityChange: () => {
-          // Levels/selection can change after playback starts
-          try { refreshYtQualityUI(); } catch(e){}
-          try { applyDesiredYtQuality(); } catch(e){}
+        onStateChange: () => {
+          // refresh quality list after playback begins
+          refreshQualityList();
+          // best-effort apply desired quality when playing
+          if (desiredQuality && desiredQuality !== 'auto') applyQuality(desiredQuality, true);
         },
-        onStateChange: (evt) => {
-          if (suppressLocalEvents) return;
-          try {
-            const st = evt?.data;
-            const t = ytPlayer?.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
-
-            // If server says we should be paused, and YouTube flips to PLAYING, force it back to pause unless we explicitly intended to play.
-            const nowTs1 = Date.now();
-            const intentAge = nowTs1 - (localIntent?.at || 0);
-            const intentType = localIntent?.type || null;
-            if (st === 1 && desiredPlaying === false) {
-              if (!(intentType === 'play' && intentAge < 1400)) {
-                try { ytPlayer.pauseVideo(); } catch (e) {}
-                return;
-              }
-            }
-
-
-            // 1=PLAYING, 2=PAUSED
-            const nowTs2 = Date.now();
-            const sinceRemote = nowTs2 - (lastRemoteAppliedAt || 0);
-            const sinceCmd = nowTs2 - (lastCommandAt || 0);
-            const sinceUrl = nowTs2 - (lastUrlSetAt || 0);
-
-            // Ignore reconcile events right after we applied remote state or issued a command.
-            if (sinceRemote < 900 || sinceCmd < 900) return;
-
-            // Heuristic: right after setting a new URL, YouTube may bounce states due to autoplay policy/buffering.
-            // Don't treat those as user-intent.
-            const inAutoplayWindow = sinceUrl >= 0 && sinceUrl < 1800;
-
-            if (st === 2) {
-              // PAUSED: right after setting URL YouTube may pause due to autoplay policy.
-              // Ignore only very-early pauses near the start; otherwise treat as user intent (even inside iframe controls).
-              if (desiredPlaying === true && inAutoplayWindow && (t <= 1.0)) return;
-              socket.emit('wp:pause', { t });
-              return;
-            }
-            if (st === 1) {
-              try { refreshYtQualityUI(); } catch(e){}
-              try { applyDesiredYtQuality(); } catch(e){}
-              // PLAYING: only propagate if this looks like intentional play (explicit play intent OR server previously paused).
-              const now2 = Date.now();
-              const intentAge2 = now2 - (localIntent?.at || 0);
-              const intentType2 = localIntent?.type || null;
-              const sinceRemote2 = now2 - (lastRemoteAppliedAt || 0);
-              if ((intentType2 === 'play' && intentAge2 < 1600) || (desiredPlaying === false && sinceRemote2 > 800)) {
-                socket.emit('wp:play', { t });
-              }
-              return;
-            }
-          } catch(e){}
+        onError: (e) => {
+          console.warn('YT error', e?.data);
         }
       }
     });
   }
 
-  // ---- YouTube-only controls (Quality, Thai subtitles) ----
-  const QUALITY_LABEL = {
-    auto: 'Auto',
-    default: 'Auto',
-    highres: '8K/4K',
-    hd2160: '2160p',
-    hd1440: '1440p',
-    hd1080: '1080p',
-    hd720: '720p',
-    large: '480p',
-    medium: '360p',
-    small: '240p',
-    tiny: '144p',
-  };
+  function applyAudioToPlayer(){
+    if (!ytReady || !yt) return;
+    try{
+      yt.setVolume(lastVolume);
+      if (isMutedUI()) yt.mute(); else yt.unMute();
+    }catch(_){}
+  }
 
-  function refreshYtQualityUI(){
+  function setVolume(v){
+    lastVolume = Math.max(0, Math.min(100, Number(v) || 0));
+    if (els.volText) els.volText.textContent = `${lastVolume}%`;
+    if (ytReady && yt && !isMutedUI()){
+      try{ yt.setVolume(lastVolume); }catch(_){}
+    }
+    saveAudioPrefs();
+  }
+
+  function toggleMute(){
+    const now = !isMutedUI();
+    setMutedUI(now);
+    if (ytReady && yt){
+      try{
+        if (now) yt.mute(); else { yt.unMute(); yt.setVolume(lastVolume); }
+      }catch(_){}
+    }
+    saveAudioPrefs();
+  }
+
+  // -------------------------
+  // Quality + Captions (best-effort)
+  // -------------------------
+  function refreshQualityList(){
     if (!els.quality) return;
-    if (!(current.provider === 'youtube' && ytPlayer && ytReady && ytPlayer.getAvailableQualityLevels)) {
-      els.quality.innerHTML = '';
-      els.quality.disabled = true;
-      return;
-    }
-    try {
-      const levels = ytPlayer.getAvailableQualityLevels() || [];
-      ytQualityLevels = Array.isArray(levels) ? levels.slice() : [];
-      // Always include Auto option at top
-      const opts = ['auto'].concat(ytQualityLevels);
-      const curRaw = (ytPlayer.getPlaybackQuality ? (ytPlayer.getPlaybackQuality() || 'auto') : 'auto');
-      const cur = (ytDesiredQuality && ytDesiredQuality !== 'auto') ? ytDesiredQuality : curRaw;
-      els.quality.innerHTML = opts.map(v => {
-        const label = QUALITY_LABEL[v] || v;
-        const sel = (v === cur || (v === 'auto' && (cur === 'default' || cur === 'auto'))) ? 'selected' : '';
-        return `<option value="${String(v)}" ${sel}>${label}</option>`;
-      }).join('');
-      els.quality.disabled = opts.length <= 1;
-    } catch (e) {
-      els.quality.disabled = true;
-    }
-  }
-
-  function applyDesiredYtQuality(){
-  if (!(ytPlayer && ytReady)) return;
-  const desired = String(ytDesiredQuality || 'auto');
-  try{
-    // Ensure list is fresh
-    if (ytPlayer.getAvailableQualityLevels) {
-      const lv = ytPlayer.getAvailableQualityLevels() || [];
-      ytQualityLevels = Array.isArray(lv) ? lv.slice() : [];
-    }
-    if (desired === 'auto') {
-      // 'default' is auto in IFrame API
-      ytPlayer.setPlaybackQuality && ytPlayer.setPlaybackQuality('default');
-      // Some players expose range setter
-      ytPlayer.setPlaybackQualityRange && ytPlayer.setPlaybackQualityRange('default');
-      return;
-    }
-    if (ytQualityLevels.length && !ytQualityLevels.includes(desired)) {
-      // Not available; don't force (YouTube may ignore)
-      return;
-    }
-    ytPlayer.setPlaybackQuality && ytPlayer.setPlaybackQuality(desired);
-    ytPlayer.setPlaybackQualityRange && ytPlayer.setPlaybackQualityRange(desired);
-  }catch(e){}
-}
-
-function setYtQuality(value){
-  ytDesiredQuality = String(value || 'auto');
-  // Apply immediately and retry after a short delay (levels might not be ready yet)
-  applyDesiredYtQuality();
-  setTimeout(applyDesiredYtQuality, 450);
-  setTimeout(applyDesiredYtQuality, 1200);
-}
-
-  function refreshYtCaptionUI(){
-    if (!els.subTh) return;
-    // Best-effort: we can't reliably query caption availability via IFrame API.
-    // We'll just reflect our toggle state.
-    els.subTh.classList.toggle('is-on', !!ytCaptionsOn);
-  }
-
-  function setYtThaiCaptions(on){
-    if (!(ytPlayer && ytReady)) return;
-    try {
-      // captions module is required for setOption to work
-      if (ytPlayer.loadModule) ytPlayer.loadModule('captions');
-      if (on) {
-        // Try to pick Thai track if available
-        if (ytPlayer.setOption) ytPlayer.setOption('captions', 'track', { languageCode: 'th' });
-      } else {
-        // Disable captions by clearing track
-        if (ytPlayer.setOption) ytPlayer.setOption('captions', 'track', {});
-      }
-      ytCaptionsOn = !!on;
-      refreshYtCaptionUI();
-    } catch (e) {
-      // If YouTube disallows/captions not available, revert toggle.
-      ytCaptionsOn = false;
-      refreshYtCaptionUI();
-    }
-  }
-
-  function mountHtml5(url){
-    clearPlayer();
-    const v = document.createElement('video');
-    v.src = url;
-    v.controls = true;
-    v.playsInline = true;
-    v.style.width = '100%';
-    v.style.maxHeight = '70vh';
-    v.style.borderRadius = '12px';
-    els.player.appendChild(v);
-    html5Video = v;
-    els.controls.style.display = '';
-
-    const emitPlay = () => {
-      if (suppressLocalEvents) return;
-      const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
-      const sinceGesture = Date.now() - (lastUserGestureAt || 0);
-      if (sinceRemote <= 1600 || sinceGesture >= 1400) return;
-      socket.emit('wp:play', { t: v.currentTime || 0 });
-    };
-    const emitPause = () => {
-      if (suppressLocalEvents) return;
-      const sinceRemote = Date.now() - (lastRemoteAppliedAt || 0);
-      const sinceGesture = Date.now() - (lastUserGestureAt || 0);
-      if (sinceRemote <= 1600 || sinceGesture >= 1400) return;
-      socket.emit('wp:pause', { t: v.currentTime || 0 });
-    };
-    const emitSeek = () => {
-      if (suppressLocalEvents) return;
-      socket.emit('wp:seek', { t: v.currentTime || 0 });
-    };
-    v.addEventListener('play', emitPlay);
-    v.addEventListener('pause', emitPause);
-    v.addEventListener('seeked', emitSeek);
-  }
-
-  function mountGeneric(url){
-    clearPlayer();
-    const box = document.createElement('div');
-    box.className = 'wp-generic';
-    box.innerHTML = `
-      <div style="color:#e6f7ff;font-weight:700;margin-bottom:8px">ไม่สามารถควบคุมเว็บนี้ได้โดยตรง</div>
-      <div style="color:#9aa7b3;font-size:13px;line-height:1.4">
-        ถ้าเว็บปลายทาง <b>อนุญาตให้ embed</b> จะพยายามแสดงด้านล่าง • ถ้าไม่ขึ้น ให้เปิดลิงก์ในแท็บใหม่ แล้วใช้ปุ่ม <b>Sync</b> เพื่อซิงก์เวลา
-      </div>
-      <a href="${escapeAttr(url)}" target="_blank" rel="noopener" class="wp-open">Open in new tab</a>
-    `;
-    const frame = document.createElement('iframe');
-    frame.src = url;
-    frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-    frame.referrerPolicy = 'no-referrer';
-    frame.sandbox = 'allow-scripts allow-same-origin allow-presentation allow-popups allow-forms';
-    frame.className = 'wp-iframe';
-    els.player.appendChild(box);
-    els.player.appendChild(frame);
-    els.controls.style.display = '';
-  }
-
-  function escapeAttr(s){
-    return String(s).replace(/["<>&]/g, m => ({'"':'&quot;','<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
-  }
-
-  async function mountForUrl(url){
-    const det = detectProvider(url);
-    current = { url, provider: det.provider, id: det.id };
-    if (!url) { clearPlayer(); return; }
-    if (det.provider === 'youtube' && det.id) return mountYouTube(det.id);
-    if (det.provider === 'html5') return mountHtml5(url);
-    return mountGeneric(url);
-  }
-
-  // -------------------------
-  // Apply state from server
-  // -------------------------
-  async function applyState(st){
-    if (!st) return;
-    lastState = st;
-    desiredPlaying = !!st.isPlaying;
-    const urlChanged = (String(st.url||'') !== String(current.url||''));
-    if (urlChanged) {
-      await mountForUrl(String(st.url||''));
-    }
-
-    // If YouTube not ready yet, postpone
-    if (current.provider === 'youtube' && ytPlayer && !ytReady) {
-      pendingState = st;
-      return;
-    }
-
-    // Compute "expected" time using server clock: t + (serverNow-updatedAt) if playing
-    const baseT = Number(st.t) || 0;
-    const serverNow = nowServerMs();
-    const drift = st.isPlaying ? Math.max(0, (serverNow - (Number(st.updatedAt) || serverNow)) / 1000) : 0;
-    const expectedT = baseT + drift;
-
-    const curT = getLocalTime();
-    const diff = expectedT - curT;
-    const absDiff = Math.abs(diff);
-
-    function setRate(rate) {
-      rate = Math.max(0.75, Math.min(1.25, rate));
-      try {
-        if (current.provider === 'html5' && html5Video) html5Video.playbackRate = rate;
-        if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(rate);
-      } catch (e) {}
-    }
-
-    suppressLocalEvents = true;
-    lastRemoteAppliedAt = Date.now();
-    try {
-      if (current.provider === 'youtube' && ytPlayer) {
-        try {
-          if (!st.isPlaying) {
-            try { markCommand(); ytPlayer.pauseVideo(); } catch (e) {}
-            try { ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0); } catch (e) {}
-          } else {
-            // Playing: snap only if far off; otherwise let drift-correction do the work.
-            if (absDiff > 0.9) {
-              try { markCommand(); ytPlayer.seekTo(expectedT, true); } catch (e) {}
-            }
-            // Apply local volume/mute state. Don't force-mute on every remote update;
-            // that would mute during scrubbing/seek events.
-            try {
-              const pct = Math.max(0, Math.min(100, Math.round(localVolumePct||100)));
-              ytPlayer.setVolume && ytPlayer.setVolume(pct);
-              if (localMuted || pct === 0) ytPlayer.mute && ytPlayer.mute();
-              else ytPlayer.unMute && ytPlayer.unMute();
-            } catch (e) {}
-
-            // If the user has not interacted yet, browsers may block autoplay with sound.
-            // In that case, temporarily mute just for the play attempt, then restore.
-            const needAutoplayAssist = !playbackUnlocked && (Date.now() - lastUserGestureAt > 1200);
-            if (needAutoplayAssist) {
-              try { ytPlayer.mute && ytPlayer.mute(); } catch(e) {}
-            }
-            try { markCommand(); ytPlayer.playVideo(); } catch (e) {}
-            if (needAutoplayAssist) {
-              setTimeout(() => {
-                try {
-                  const pct = Math.max(0, Math.min(100, Math.round(localVolumePct||100)));
-                  if (!(localMuted || pct === 0)) ytPlayer.unMute && ytPlayer.unMute();
-                } catch(e) {}
-              }, 450);
-            }
-            // Apply desired quality after playback begins (levels become available then)
-            setTimeout(() => { try { refreshYtQualityUI(); applyDesiredYtQuality(); } catch(e){} }, 350);
-          }
-        } catch (e) {}
-      } else if (current.provider === 'html5' && html5Video) {
-        try {
-          if (!st.isPlaying) {
-            // Paused: keep exact frame, ok to snap
-            if (absDiff > 0.15) html5Video.currentTime = expectedT;
-            html5Video.pause();
-            setRate(1.0);
-          } else {
-            // Playing: avoid frequent snaps -> smooth with playbackRate; snap only if far
-            if (absDiff > 1.0) {
-              html5Video.currentTime = expectedT;
-              setRate(1.0);
-            } else if (absDiff > 0.2) {
-              setRate(diff > 0 ? 1.05 : 0.95);
-              setTimeout(() => setRate(1.0), 1400);
-            } else {
-              setRate(1.0);
-            }
-            const p = html5Video.play();
-            if (p && p.catch) p.catch(()=>{});
-          }
-        } catch (e) {}
-      }
-      // generic: nothing to control
-    } finally {
-      setTimeout(() => { suppressLocalEvents = false; }, 600);
-    }
-  }
-
-  socket.on('wp:joined', (j) => {
-    __wpJoined = true;
-    if (els.online) els.online.textContent = String(j?.membersOnline || 0);
-    applyState(j?.state);
-  });
-  socket.on('wp:state', applyState);
-
-  // -------------------------
-  // UI actions
-  // -------------------------
-  els.set?.addEventListener('click', () => {
-    const url = String(els.url.value || '').trim();
-    const det = detectProvider(url);
-    lastUrlSetAt = Date.now();
-    // Optimistic mount so the user sees the player immediately; server state will follow.
-    try { mountForUrl(url); } catch(e){}
-    // Server-side guardWP already knows the roomId from wp:join (socket.data.wpRoomId).
-    // Passing roomId as a positional argument will shift parameters and break parsing.
-    socket.emit('wp:set_url', { url, provider: det.provider });
-  });
-
-
-  function tryLocalPlay(){
-    try{
-      if (current.provider === 'youtube' && ytPlayer) { markCommand(); ytPlayer.playVideo(); return true; }
-      if (current.provider === 'html5' && html5Video) {
-        const p = html5Video.play();
-        if (p && p.catch) p.catch(()=>{});
-        return true;
-      }
-    }catch(e){}
-    return false;
-  }
-  function tryLocalPause(){
-    try{
-      if (current.provider === 'youtube' && ytPlayer) { markCommand(); ytPlayer.pauseVideo(); return true; }
-      if (current.provider === 'html5' && html5Video) { html5Video.pause(); return true; }
-    }catch(e){}
-    return false;
-  }
-
-  function getLocalTime(){
-    if (current.provider === 'youtube' && ytPlayer) {
-      try { return ytPlayer.getCurrentTime() || 0; } catch(e) { return 0; }
-    }
-    if (current.provider === 'html5' && html5Video) return html5Video.currentTime || 0;
-    return 0;
-  }
-
-  function getDuration(){
-    try{
-      if (current.provider === 'youtube' && ytPlayer && ytReady && typeof ytPlayer.getDuration === 'function') {
-        return Number(ytPlayer.getDuration() || 0);
-      }
-      if (current.provider === 'html5' && html5Video) return Number(html5Video.duration || 0);
-    } catch(e){}
-    return 0;
-  }
-  function formatTime(sec){
-    const s = Math.max(0, Math.floor(Number(sec||0)));
-    const m = Math.floor(s/60);
-    const r = s%60;
-    return m + ':' + String(r).padStart(2,'0');
-  }
-  // NOTE: We intentionally do NOT toggle play/pause by clicking the video area.
-  // Users should use the explicit Play/Pause buttons in the control bar.
-
-  // Scrub slider (realtime seek, throttled for stability)
-  let scrubDragging = false;
-  let scrubLastEmitAt = 0;
-  let scrubWasPlaying = false;
-
-  function setScrubVisible(on){
-    if (els.scrubWrap) els.scrubWrap.style.display = on ? '' : 'none';
-  }
-  function updateScrubUI(){
-    const dur = getDuration();
-    if (dur > 0.1) {
-      setScrubVisible(true);
-      if (els.timeDur) els.timeDur.textContent = formatTime(dur);
-      const cur = getLocalTime();
-      if (els.timeCur) els.timeCur.textContent = formatTime(cur);
-      if (!scrubDragging && els.scrub) {
-        els.scrub.value = String(Math.max(0, Math.min(1000, Math.round((cur/dur)*1000))));
-      }
-    } else {
-      setScrubVisible(false);
-    }
-  }
-
-  els.scrub?.addEventListener('pointerdown', () => {
-    scrubDragging = true;
-    scrubWasPlaying = !!(lastState && lastState.isPlaying);
-  });
-  window.addEventListener('pointerup', () => {
-    if (!scrubDragging) return;
-    scrubDragging = false;
-    // On release, send one final seek (and resume if it was playing)
-    const dur = getDuration();
-    if (dur > 0.1 && els.scrub) {
-      const pct = Number(els.scrub.value||0) / 1000;
-      const t = dur * pct;
-      socket.emit('wp:seek', { t });
-      if (scrubWasPlaying) socket.emit('wp:play', { t });
-    }
-  });
-
-  els.scrub?.addEventListener('input', () => {
-    if (!scrubDragging) return;
-    const dur = getDuration();
-    if (dur <= 0.1) return;
-    const pct = Number(els.scrub.value||0) / 1000;
-    const t = dur * pct;
-    if (els.timeCur) els.timeCur.textContent = formatTime(t);
-    const nowTs = Date.now();
-    // Throttle emits so others see it nearly realtime but stable
-    if (nowTs - scrubLastEmitAt > 140) {
-      scrubLastEmitAt = nowTs;
-      socket.emit('wp:seek', { t });
-    }
-  });
-
-  setInterval(updateScrubUI, 250);
-
-  els.play?.addEventListener('click', () => {
-    markGesture();
-    setIntent('play');
-    suppressLocalEvents = true;
-    setTimeout(()=>{suppressLocalEvents=false;}, 450);
-    socket.emit('wp:play', { t: getLocalTime() });
-  });
-  els.pause?.addEventListener('click', () => {
-    markGesture();
-    setIntent('pause');
-    suppressLocalEvents = true;
-    setTimeout(()=>{suppressLocalEvents=false;}, 650);
-    socket.emit('wp:pause', { t: getLocalTime() });
-  });
-  els.sync?.addEventListener('click', () => socket.emit('wp:ping_state'));
-
-  // Volume controls (local only)
-function clampPct(p){ return Math.max(0, Math.min(100, Math.round(Number(p)||0))); }
-
-function applyVolumeToPlayer(){
-  const pct = clampPct(localVolumePct);
-  try{
-    if (current.provider === 'youtube' && ytPlayer) {
-      ytPlayer.setVolume && ytPlayer.setVolume(pct);
-      if (localMuted || pct === 0) ytPlayer.mute && ytPlayer.mute();
-      else ytPlayer.unMute && ytPlayer.unMute();
-    }
-    if (current.provider === 'html5' && html5Video) {
-      html5Video.volume = pct/100;
-      html5Video.muted = !!(localMuted || pct === 0);
-    }
-  }catch(e){}
-  if (els.volPct) els.volPct.textContent = pct + '%';
-  if (els.volume) els.volume.value = String(pct);
-  updateMuteIcon();
-  saveLocalAudio();
-}
-
-function updateMuteIcon(){
-  if (!els.muteIcon) return;
-  const pct = clampPct(localVolumePct);
-  const mutedNow = !!(localMuted || pct === 0);
-  els.muteIcon.textContent = mutedNow ? '🔇' : (pct < 40 ? '🔉' : '🔊');
-  els.mute?.classList.toggle('is-on', mutedNow);
-}
-
-function readPlayerVolume(){
-  try{
-    if (current.provider === 'youtube' && ytPlayer && ytPlayer.getVolume) {
-      const v = clampPct(ytPlayer.getVolume() || 0);
-      const m = ytPlayer.isMuted ? !!ytPlayer.isMuted() : false;
-      return { v, m };
-    }
-    if (current.provider === 'html5' && html5Video) {
-      const v = clampPct((html5Video.volume||0)*100);
-      const m = !!html5Video.muted;
-      return { v, m };
-    }
-  }catch(e){}
-  return { v: clampPct(localVolumePct), m: !!localMuted };
-}
-
-function refreshVolumeUI(){
-  // Keep volume/mute per-device. Never adopt transient player-mute state (e.g. autoplay restrictions).
-  const st = readPlayerVolume();
-  if (!volumeDragging) {
-    // If user used hardware/media keys, reflect volume only (not mute)
-    if (typeof st.v === 'number' && Math.abs(clampPct(st.v) - clampPct(localVolumePct)) >= 2) {
-      localVolumePct = clampPct(st.v);
-    }
-    if (localVolumePct === 0) localMuted = true;
-  }
-  applyVolumeToPlayer();
-}
-
-let volumeDragging = false;
-
-els.volume?.addEventListener('pointerdown', () => { volumeDragging = true; });
-window.addEventListener('pointerup', () => { volumeDragging = false; });
-
-els.volume?.addEventListener('input', () => {
-  markGesture();
-  localVolumePct = clampPct(els.volume.value);
-  if (localVolumePct > 0) preMuteVolumePct = localVolumePct;
-  if (localVolumePct === 0) localMuted = true;
-  else localMuted = false;
-  applyVolumeToPlayer();
-});
-
-els.mute?.addEventListener('click', () => {
-  markGesture();
-  const pct = clampPct(localVolumePct);
-  const mutedNow = !!(localMuted || pct === 0);
-  if (mutedNow) {
-    // unmute: restore volume
-    localMuted = false;
-    localVolumePct = clampPct(preMuteVolumePct || 30);
-    applyVolumeToPlayer();
-  } else {
-    // mute: remember volume
-    preMuteVolumePct = pct || preMuteVolumePct || 50;
-    localMuted = true;
-    applyVolumeToPlayer();
-  }
-});
-
-// keep UI in sync
-setInterval(refreshVolumeUI, 800);
-
-// YouTube-only UI events
-
-  els.quality?.addEventListener('change', () => {
-    markGesture();
-    setYtQuality(els.quality.value);
-  });
-  els.subTh?.addEventListener('click', () => {
-    markGesture();
-    // Toggle Thai subtitles (best-effort; only works if the video has a Thai track)
-    setYtThaiCaptions(!ytCaptionsOn);
-  });
-  els.fs?.addEventListener('click', () => {
-    markGesture();
-    const box = els.playerWrap || document.getElementById('wpPlayerWrap');
-    if (!box) return;
-    try {
-      if (document.fullscreenElement) document.exitFullscreen();
-      else box.requestFullscreen?.();
-    } catch (e) {}
-  });
-
-
-
-  // -------- private room: invite UI --------
-  if (!isPublic) {
-    async function loadFriends() {
-      if (!els.friends) return;
-      try {
-        const r = await fetch('/api/friends/list');
-        const j = await r.json();
-        if (!j.ok) throw new Error('no_friends');
-        const friends = Array.isArray(j.friends) ? j.friends : [];
-        if (friends.length === 0) {
-          els.friends.innerHTML = '<div style="color:#9aa7b3;font-size:12px;padding:8px;">ยังไม่มีเพื่อน</div>';
-          return;
-        }
-        els.friends.innerHTML = friends.map(f => {
-          const av = f.avatar_path ? f.avatar_path : '/uploads/avatars/default.png';
-          return `
-            <label class="wp-friend">
-              <div class="wp-friend__left">
-                <img class="wp-avatar" src="${av}" alt="" onerror="this.style.display='none'" />
-                <div class="wp-name">${escapeHtml(f.username)}</div>
-              </div>
-              <input type="checkbox" class="wp-friendPick" value="${f.id}" />
-            </label>
-          `;
-        }).join('');
-      } catch (e) {
-        els.friends.innerHTML = '<div style="color:#ffb3ff;font-size:12px;padding:8px;">โหลดรายชื่อเพื่อนไม่สำเร็จ</div>';
-      }
-    }
-
-    els.invite?.addEventListener('click', async () => {
-      const picks = Array.from(document.querySelectorAll('.wp-friendPick:checked')).map(i => Number(i.value)).filter(Boolean);
-      if (picks.length === 0) {
-        return window.Swal ? Swal.fire({ icon: 'info', title: 'เลือกเพื่อนก่อน', background: '#0b0f14', color: '#e6f7ff' }) : alert('Pick friends');
-      }
-      els.invite.disabled = true;
-      try {
-        const resp = await fetch(`/api/watch/rooms/${encodeURIComponent(roomId)}/invite`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ friendIds: picks }),
-        });
-        const j = await resp.json();
-        if (!j.ok) throw j;
-        if (window.Swal) {
-          Swal.fire({ icon: 'success', title: 'Invite สำเร็จ', text: `เพิ่ม ${j.added} คน`, timer: 1200, showConfirmButton: false, background: '#0b0f14', color: '#e6f7ff' });
-        }
-      } catch (e) {
-        const reason = (e && (e.reason || e.message)) ? String(e.reason || e.message) : 'invite_failed';
-        const msgMap = {
-          not_owner: 'ต้องเป็นเจ้าของห้องเท่านั้นถึงจะเชิญได้',
-          not_friends: 'คนที่เลือกยังไม่ได้เป็นเพื่อนของคุณ',
-          no_targets: 'กรุณาเลือกเพื่อนอย่างน้อย 1 คน',
-          not_found: 'ไม่พบห้องนี้',
-          server_error: 'เซิร์ฟเวอร์มีปัญหา ลองใหม่อีกครั้ง',
-        };
-        const text = msgMap[reason] || 'เชิญไม่สำเร็จ ลองใหม่อีกครั้ง';
-        if (window.Swal) Swal.fire({ icon: 'error', title: 'Invite ไม่สำเร็จ', text, background: '#0b0f14', color: '#e6f7ff' });
-        else alert(text);
-      } finally {
-        els.invite.disabled = false;
+    if (!ytReady || !yt) return;
+    let levels = [];
+    try{ levels = yt.getAvailableQualityLevels() || []; }catch(_){}
+    // Build options
+    const keep = new Set(['auto', ...levels]);
+    // remove stale
+    [...els.quality.options].forEach(opt=>{
+      if (!keep.has(opt.value)) els.quality.removeChild(opt);
+    });
+    // add missing
+    const existing = new Set([...els.quality.options].map(o=>o.value));
+    levels.forEach(l=>{
+      if (!existing.has(l)){
+        const opt = document.createElement('option');
+        opt.value = l;
+        opt.textContent = l;
+        els.quality.appendChild(opt);
       }
     });
+  }
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  function applyQuality(q, retry){
+    if (!ytReady || !yt) return;
+    if (!q || q === 'auto') return;
+    try{
+      // Range first (helps on some players)
+      yt.setPlaybackQualityRange(q);
+    }catch(_){}
+    try{
+      yt.setPlaybackQuality(q);
+    }catch(_){}
+    if (retry){
+      setTimeout(()=>{ try{ yt.setPlaybackQualityRange(q); yt.setPlaybackQuality(q); }catch(_){} }, 450);
+      setTimeout(()=>{ try{ yt.setPlaybackQualityRange(q); yt.setPlaybackQuality(q); }catch(_){} }, 1200);
     }
-    loadFriends();
+  }
+
+  function setTHSub(enabled){
+    desiredTHSub = !!enabled;
+    if (!ytReady || !yt) return;
+    try{
+      yt.loadModule('captions');
+      if (desiredTHSub){
+        yt.setOption('captions', 'track', { languageCode: 'th' });
+        yt.setOption('captions', 'reload', true);
+      }else{
+        yt.setOption('captions', 'track', {});
+        yt.setOption('captions', 'reload', true);
+      }
+    }catch(_){}
+    // UI state
+    if (els.subTH){
+      els.subTH.setAttribute('data-on', desiredTHSub ? '1' : '0');
+      els.subTH.textContent = desiredTHSub ? 'TH Sub: ON' : 'TH Sub';
+    }
   }
 
   // -------------------------
-  // Smooth drift correction (v7-style)
-  // - Small drift: gently correct using playbackRate (HTML5 + YouTube if supported)
-  // - Large drift: hard seek
-  // Runs only while PLAYING; when paused, we do not touch the player to avoid YouTube glitches.
-  function serverNowMs(){ return Date.now() + (__wpTimeOffsetMs || 0); }
-  function expectedFromState(st){
-    const baseT = Number(st?.t) || 0;
-    if (!st?.isPlaying) return baseT;
-    const updatedAt = Number(st?.updatedAt) || Date.now();
-    const delta = (serverNowMs() - updatedAt) / 1000;
-    return Math.max(0, baseT + delta);
+  // Sync (server-authoritative)
+  // -------------------------
+  function getCurrentTime(){
+    if (!ytReady || !yt) return 0;
+    try{ return Number(yt.getCurrentTime()) || 0; }catch(_){ return 0; }
   }
-  function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-  function setRate(r){
-    r = clamp(r, 0.75, 1.25);
-    try{
-      if (current.provider === 'youtube' && ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r);
-      if (html5Video) html5Video.playbackRate = r;
-    } catch(e){}
+  function getDuration(){
+    if (!ytReady || !yt) return 0;
+    try{ return Number(yt.getDuration()) || 0; }catch(_){ return 0; }
   }
-  let lastRateBumpAt = 0;
-  setInterval(() => {
+
+  function loadVideo(id){
+    if (!ytReady || !yt) return;
+    if (!id) return;
+    currentVideoId = id;
     try{
-      if (!lastState || !lastState.isPlaying) return;
-      // don't fight right after applying remote state
-      if (Date.now() - (lastRemoteAppliedAt || 0) < 700) return;
+      yt.loadVideoById(id, 0);
+    }catch(_){
+      try{ yt.cueVideoById(id, 0); }catch(__){}
+    }
+    // re-apply local audio + prefs
+    setTimeout(applyAudioToPlayer, 0);
+    setTimeout(refreshQualityList, 800);
+    if (desiredQuality && desiredQuality !== 'auto') setTimeout(()=>applyQuality(desiredQuality, true), 900);
+    setTimeout(()=>setTHSub(desiredTHSub), 900);
+  }
 
-      const expected = expectedFromState(lastState);
-      const cur = getLocalTime();
-      if (!Number.isFinite(expected) || !Number.isFinite(cur)) return;
-      const diff = expected - cur;
-      const ad = Math.abs(diff);
+  function applyServerState(st){
+    lastStateFromServer = st;
+    const url = String(st?.url || '');
+    const vid = parseYouTubeId(url) || null;
 
-      // Hard-seek only if far off
-      if (ad > 1.25) {
-        if (current.provider === 'youtube' && ytPlayer) {
-          try { markCommand(); ytPlayer.seekTo(expected, true); } catch(e){}
-        } else if (html5Video) {
-          try { html5Video.currentTime = expected; } catch(e){}
-        }
-        setRate(1.0);
+    if (vid && vid !== currentVideoId){
+      loadVideo(vid);
+    }
+
+    // play/pause
+    if (ytReady && yt){
+      const wantPlay = !!st?.isPlaying;
+      const nowState = (()=>{ try{ return yt.getPlayerState(); }catch(_){ return -1; }})();
+      const nowPlay = (nowState === YT.PlayerState.PLAYING);
+      if (wantPlay && !nowPlay){
+        try{ yt.playVideo(); }catch(_){}
+      }
+      if (!wantPlay && nowPlay){
+        try{ yt.pauseVideo(); }catch(_){}
+      }
+
+      // drift correction
+      const t = Number(st?.t) || 0;
+      const cur = getCurrentTime();
+      const drift = Math.abs(cur - t);
+      if (drift > 0.45){
+        try{ yt.seekTo(t, true); }catch(_){}
+      }
+    }
+  }
+
+  // -------------------------
+  // UI actions -> emit events
+  // -------------------------
+  function setUrlFromInput(){
+    const id = parseYouTubeId(els.url?.value || '');
+    if (!id){
+      showUrlError('ลิงก์ไม่ถูกต้อง — ใส่ได้เฉพาะ YouTube เท่านั้น');
+      return;
+    }
+    showUrlError('');
+    socket.emit('wp:set_url', { url: normalizeYouTubeUrl(id), provider: 'youtube' });
+  }
+
+  // seek throttling (avoid spam while dragging)
+  let seekRAF = null;
+  let lastSeekEmit = 0;
+  function emitSeekFromScrub(){
+    if (!ytReady || !yt) return;
+    const dur = getDuration();
+    if (!dur) return;
+    const v = Number(els.scrub.value) || 0;
+    const t = (v/1000) * dur;
+    const now = Date.now();
+    if (now - lastSeekEmit < 120) return;
+    lastSeekEmit = now;
+    socket.emit('wp:seek', { t });
+  }
+
+  function requestFullscreen(){
+    const el = els.playerWrap;
+    if (!el) return;
+    const doc = document;
+    if (!doc.fullscreenElement){
+      el.requestFullscreen?.();
+    }else{
+      doc.exitFullscreen?.();
+    }
+  }
+
+  // -------------------------
+  // Friends invite (private)
+  // -------------------------
+  async function loadFriends(){
+    if (!els.friends) return;
+    try{
+      const r = await fetch('/api/friends/list', { credentials:'include' });
+      const data = await r.json();
+      const friends = data?.friends || [];
+      els.friends.innerHTML = '';
+      if (!friends.length){
+        els.friends.innerHTML = '<div class="wp-help">ยังไม่มีเพื่อน</div>';
         return;
       }
+      friends.forEach(f=>{
+        const row = document.createElement('label');
+        row.className = 'wp-friendRow';
+        row.innerHTML = `<span class="wp-friendName">${escapeHtml(f.username || ('user#'+f.id))}</span>
+                         <input type="checkbox" value="${String(f.id)}" />`;
+        els.friends.appendChild(row);
+      });
+    }catch(e){
+      console.warn(e);
+      els.friends.innerHTML = '<div class="wp-help wp-help--error">โหลดรายชื่อเพื่อนไม่ได้</div>';
+    }
+  }
 
-      // Gentle correction
-      if (ad > 0.18) {
-        const bump = diff > 0 ? 1.05 : 0.95;
-        setRate(bump);
-        lastRateBumpAt = Date.now();
-      } else {
-        // return to normal after a short time
-        if (Date.now() - lastRateBumpAt > 900) setRate(1.0);
+  async function inviteSelected(){
+    const checks = els.friends ? [...els.friends.querySelectorAll('input[type="checkbox"]:checked')] : [];
+    const friendIds = checks.map(c=>Number(c.value)).filter(n=>Number.isFinite(n));
+    if (!friendIds.length) return;
+    try{
+      const r = await fetch(`/api/watch/rooms/${encodeURIComponent(roomId)}/invite`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify({ friendIds })
+      });
+      const data = await r.json();
+      if (data?.ok){
+        els.invite.textContent = 'Invited';
+        setTimeout(()=>els.invite.textContent='Invite', 900);
+        checks.forEach(c=>c.checked=false);
       }
-    } catch(e){}
-  }, 800);
+    }catch(e){ console.warn(e); }
+  }
 
-// Detect YouTube seeks made via the native player UI (best-effort)
-  let __wpLastSeekEmitAt = 0;
-  let ytLastT = 0;
-  let ytLastAt = Date.now();
-  setInterval(() => {
-    if (suppressLocalEvents) return;
-    if (current.provider !== 'youtube' || !ytPlayer || !ytReady) return;
-    try {
-      const nowTs2 = Date.now();
-      const cur = ytPlayer.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
-      const dt = (nowTs2 - ytLastAt) / 1000;
-      const jump = Math.abs(cur - ytLastT);
-      // If time jumps noticeably compared to expected flow, treat as seek/scrub
-      if (dt > 0.12 && jump > 0.85) {
-        const nowTs3 = Date.now();
-        if (!__wpLastSeekEmitAt || nowTs3 - __wpLastSeekEmitAt > 160) {
-          __wpLastSeekEmitAt = nowTs3;
-          socket.emit('wp:seek', { t: cur });
-        }
-      }
-      ytLastT = cur;
-      ytLastAt = nowTs2;
-    } catch(e){}
-  }, 250);
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  // -------------------------
+  // Loop: update scrub/time
+  // -------------------------
+  function tick(){
+    if (!ytReady || !yt){
+      requestAnimationFrame(tick);
+      return;
+    }
+    const dur = getDuration();
+    const cur = getCurrentTime();
+    if (els.timeCur) els.timeCur.textContent = fmtTime(cur);
+    if (els.timeDur) els.timeDur.textContent = fmtTime(dur);
+
+    if (dur > 0 && els.scrub && !suppressScrub){
+      const v = Math.max(0, Math.min(1000, Math.round((cur/dur)*1000)));
+      els.scrub.value = String(v);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // -------------------------
+  // Socket wiring
+  // -------------------------
+  if (!socket){
+    console.error('VS_SOCKET not found');
+    return;
+  }
+
+  socket.emit('wp:join', { roomId, k: joinKey });
+
+  socket.on('wp:presence', ({ online }={})=>{
+    if (els.online) els.online.textContent = String(Number(online)||0);
+  });
+
+  socket.on('wp:state', (st)=>{
+    applyServerState(st || {});
+  });
+
+  socket.on('wp:error', (e)=>{
+    showUrlError(e?.message || 'Error');
+  });
+
+  // -------------------------
+  // UI events
+  // -------------------------
+  if (els.set) els.set.addEventListener('click', setUrlFromInput);
+  if (els.url) els.url.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter') setUrlFromInput();
+  });
+
+  if (els.play) els.play.addEventListener('click', ()=>{
+    socket.emit('wp:play', { t: getCurrentTime() });
+  });
+  if (els.pause) els.pause.addEventListener('click', ()=>{
+    socket.emit('wp:pause', { t: getCurrentTime() });
+  });
+  if (els.sync) els.sync.addEventListener('click', ()=>{
+    socket.emit('wp:ping_state');
+  });
+
+  if (els.scrub){
+    els.scrub.addEventListener('input', ()=>{
+      // show time preview locally without emitting constantly
+      suppressScrub = true;
+      const dur = getDuration();
+      const t = dur ? ((Number(els.scrub.value)||0)/1000)*dur : 0;
+      if (els.timeCur) els.timeCur.textContent = fmtTime(t);
+    });
+    els.scrub.addEventListener('change', ()=>{
+      suppressScrub = false;
+      emitSeekFromScrub();
+    });
+  }
+
+  if (els.quality){
+    els.quality.addEventListener('change', ()=>{
+      desiredQuality = els.quality.value || 'auto';
+      if (desiredQuality !== 'auto') applyQuality(desiredQuality, true);
+    });
+  }
+
+  if (els.subTH){
+    els.subTH.addEventListener('click', ()=>{
+      setTHSub(!desiredTHSub);
+    });
+  }
+
+  if (els.fs) els.fs.addEventListener('click', requestFullscreen);
+
+  loadAudioPrefs();
+  if (els.vol){
+    els.vol.addEventListener('input', ()=> setVolume(els.vol.value));
+  }
+  if (els.mute){
+    els.mute.addEventListener('click', toggleMute);
+  }
+
+  if (!isPublic){
+    loadFriends();
+    if (els.invite) els.invite.addEventListener('click', inviteSelected);
+  }
+
+  // Player may already be ready if iframe_api loaded before this script
+  if (window.YT && window.YT.Player) createPlayer();
+
 })();

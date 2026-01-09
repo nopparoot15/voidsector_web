@@ -422,94 +422,78 @@ io.on('connection', async (socket) => {
     io.to(`wp:${rid}`).emit('wp:presence', { membersOnline: room.presence?.size || 0 });
   });
 
-  function guardWP(cb, { requireHost = false } = {}) {
+  function guardWP(cb) {
     return (...args) => {
       const rid = socket.data.wpRoomId;
       const userId = Number(socket.data.userId);
       if (!rid || !Number.isFinite(userId) || userId <= 0) return;
-
-      const room = watchPartyStore.get(rid);
-      if (!room) return;
       if (!watchPartyStore.canAccess(rid, userId)) return;
-
-      // Private rooms: only owner can control playback/state (stable sync).
-      if (!room.isPublic && Number(room.ownerId) !== userId) {
-        socket.emit('wp:error', { message: 'Not owner' });
-        return;
-      }
-
-      // Public room (optional): if requireHost, only current host can control.
-      if (room.isPublic && requireHost && room.hostUserId && Number(room.hostUserId) !== userId) {
-        socket.emit('wp:error', { message: 'Not host' });
-        return;
-      }
-
-      cb(rid, room, userId, ...args);
+      cb(rid, ...args);
     };
   }
 
-  // Host (or anyone in public) sets the URL to watch
-  socket.on('wp:set_url', guardWP((rid, room, userId, { url, provider } = {}) => {
+  // Host (or anyone) sets the URL to watch
+  socket.on('wp:set_url', guardWP((rid, { url } = {}) => {
     const u = String(url || '').trim().slice(0, 2000);
-    const p = String(provider || 'generic').slice(0, 16);
 
-    // In public room: first person to set a URL becomes host (store handles host assignment).
-    const st = watchPartyStore.setState(rid, { url: u, provider: p, isPlaying: true, t: 0 }, userId);
-    io.to(`wp:${rid}`).emit('wp:state', st);
-  }));
+    function parseYouTubeId(input){
+      try{
+        const s = String(input || '').trim();
+        if (!s) return null;
+        if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+        const U = new URL(s);
+        const host = String(U.hostname || '').replace(/^www\./,'').toLowerCase();
 
-    socket.on('wp:play', guardWP((rid, room, userId, { t } = {}) => {
-    const cur = room.state;
-    const now = Date.now();
+        if (host === 'youtu.be'){
+          const id = U.pathname.split('/').filter(Boolean)[0];
+          return (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) ? id : null;
+        }
+        if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com'){
+          const v = U.searchParams.get('v');
+          if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
 
-    // If currently playing, don't spam state; just refresh host if needed.
-    if (cur.isPlaying) {
-      const st = watchPartyStore.setState(rid, {}, userId);
-      io.to(`wp:${rid}`).emit('wp:state', st);
+          const parts = U.pathname.split('/').filter(Boolean);
+          const idx = parts.findIndex(p => ['shorts','embed','live'].includes(p));
+          if (idx >= 0 && parts[idx+1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[idx+1])) return parts[idx+1];
+        }
+        return null;
+      }catch(_){
+        return null;
+      }
+    }
+
+    const vid = parseYouTubeId(u);
+    if (!vid){
+      socket.emit('wp:error', { message: 'YouTube link only' });
       return;
     }
 
-    // Prefer provided time (user pressed play around their current time), otherwise compute from server state.
-    let time = Number(t);
-    if (!Number.isFinite(time)) {
-      time = cur.t || 0;
-    }
-    time = Math.max(0, Math.min(time, 10 ** 7));
-
-    const st = watchPartyStore.setState(rid, { isPlaying: true, t: time }, userId);
+    const normalized = `https://www.youtube.com/watch?v=${vid}`;
+    // When URL changes, start from 0 (room sync state only)
+    const st = watchPartyStore.setState(rid, { url: normalized, provider: 'youtube', isPlaying: false, t: 0 });
+    io.to(`wp:${rid}`).emit('wp:state', st);
+  }));
+  socket.on('wp:play', guardWP((rid, { t } = {}) => {
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { isPlaying: true, t: time });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
-    socket.on('wp:pause', guardWP((rid, room, userId, { t } = {}) => {
-    const cur = room.state;
-    const now = Date.now();
-
-    // Compute authoritative current time if the room was playing.
-    let serverT = Number(cur.t) || 0;
-    if (cur.isPlaying) {
-      const dt = (now - (Number(cur.updatedAt) || now)) / 1000;
-      serverT = Math.max(0, serverT + Math.max(0, dt));
-    }
-
-    let time = Number(t);
-    if (!Number.isFinite(time)) time = serverT;
-    time = Math.max(0, Math.min(time, 10 ** 7));
-
-    const st = watchPartyStore.setState(rid, { isPlaying: false, t: time }, userId);
+  socket.on('wp:pause', guardWP((rid, { t } = {}) => {
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { isPlaying: false, t: time });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
-    socket.on('wp:seek', guardWP((rid, room, userId, { t } = {}) => {
-    let time = Number(t);
-    if (!Number.isFinite(time)) return;
-    time = Math.max(0, Math.min(time, 10 ** 7));
-
-    // When seeking while playing, reset updatedAt so clients can compute expected time cleanly.
-    const st = watchPartyStore.setState(rid, { t: time }, userId);
+  socket.on('wp:seek', guardWP((rid, { t } = {}) => {
+    const time = Math.max(0, Math.min(Number(t) || 0, 10 ** 7));
+    const st = watchPartyStore.setState(rid, { t: time });
     io.to(`wp:${rid}`).emit('wp:state', st);
   }));
 
-  socket.on('wp:ping_state', guardWP((rid, room) => {
+  socket.on('wp:ping_state', guardWP((rid) => {
+    const room = watchPartyStore.get(rid);
+    if (!room) return;
     socket.emit('wp:state', room.state);
   }));
 
