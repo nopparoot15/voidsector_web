@@ -28,8 +28,6 @@
     scrub: document.getElementById('wpScrub'),
     timeCur: document.getElementById('wpTimeCur'),
     timeDur: document.getElementById('wpTimeDur'),
-
-    quality: document.getElementById('wpQuality'),
     subTH: document.getElementById('wpSubTH'),
     fs: document.getElementById('wpFullscreen'),
 
@@ -201,8 +199,7 @@
   let currentVideoId = null;
   let suppressScrub = false;
   let lastStateFromServer = null;
-  let desiredQuality = 'auto';
-  let desiredTHSub = false;
+let desiredTHSub = false;
 
   // NOTE: onYouTubeIframeAPIReady is managed by loadYTApi() so we don't overwrite it here.
 
@@ -210,6 +207,7 @@
     if (yt) return;
     yt = new YT.Player('wpPlayer', {
       playerVars:{
+        vq: 'highres',
         controls: 0,
         rel: 0,
         modestbranding: 1,
@@ -226,16 +224,14 @@
           ytReady = true;
           applyAudioToPlayer();
           fitPlayer();
-          refreshQualityList();
+          forceMaxQuality();
           tick();
           // ask current room state
           socket.emit('wp:ping_state');
         },
         onStateChange: () => {
           // refresh quality list after playback begins
-          refreshQualityList();
-          // best-effort apply desired quality / captions when playing
-          if (desiredQuality && desiredQuality !== 'auto') applyQuality(desiredQuality);
+          forceMaxQuality();
           if (desiredTHSub) setTimeout(()=>setTHSub(true), 120);
         },
         onError: (e) => {
@@ -276,53 +272,14 @@
   // -------------------------
   // Quality + Captions (best-effort)
   // -------------------------
-  function refreshQualityList(){
-    if (!els.quality) return;
+    function forceMaxQuality(){
     if (!ytReady || !yt) return;
-    let levels = [];
-    try{ levels = yt.getAvailableQualityLevels() || []; }catch(_){}
-    // Build options
-    const keep = new Set(['auto', ...levels]);
-    // remove stale
-    [...els.quality.options].forEach(opt=>{
-      if (!keep.has(opt.value)) els.quality.removeChild(opt);
-    });
-    // add missing
-    const existing = new Set([...els.quality.options].map(o=>o.value));
-    levels.forEach(l=>{
-      if (!existing.has(l)){
-        const opt = document.createElement('option');
-        opt.value = l;
-        opt.textContent = l;
-        els.quality.appendChild(opt);
-      }
-    });
-  }
-
-  function applyQuality(q){
-    if (!ytReady || !yt) return;
-    if (!q || q === 'auto') return;
-    // Quality is LOCAL-ONLY: do not sync to others.
-    // YouTube may ignore setPlaybackQuality on adaptive streams, so we also re-cue with suggestedQuality.
-    const vid = currentVideoId;
-    const curT = getCurrentTime();
-    const wantPlay = (()=>{ try{ return yt.getPlayerState() === YT.PlayerState.PLAYING; }catch(_){ return false; }})();
+    const q = 'highres';
     try{ yt.setPlaybackQualityRange(q); }catch(_){}
     try{ yt.setPlaybackQuality(q); }catch(_){}
-
-    if (vid){
-      try{
-        yt.cueVideoById({ videoId: vid, startSeconds: curT, suggestedQuality: q });
-      }catch(_){
-        try{ yt.loadVideoById({ videoId: vid, startSeconds: curT, suggestedQuality: q }); }catch(__){}
-      }
-      // Restore playback state after re-cue.
-      if (wantPlay){
-        setTimeout(()=>{ try{ yt.playVideo(); }catch(_){} }, 120);
-      }
-      setTimeout(()=>{ try{ yt.seekTo(curT, true); }catch(_){} }, 220);
-    }
   }
+
+
 
   function setTHSub(enabled){
     desiredTHSub = !!enabled;
@@ -410,13 +367,13 @@
     await waitReady();
 
     try{
-      yt.loadVideoById({ videoId: vid, startSeconds: 0 });
+      yt.loadVideoById({ videoId: vid, startSeconds: 0, suggestedQuality: 'highres' });
     }catch(_){
-      try{ yt.cueVideoById({ videoId: vid, startSeconds: 0 }); }catch(__){}
+      try{ yt.cueVideoById({ videoId: vid, startSeconds: 0, suggestedQuality: 'highres' }); }catch(__){}
     }
 
     // Re-apply user prefs after load
-    setTimeout(()=> applyQuality(desiredQuality), 650);
+    setTimeout(()=> forceMaxQuality(), 650);
     setTimeout(()=> setTHSub(desiredTHSub), 750);
   }
 
@@ -634,14 +591,6 @@
       emitSeekFromScrub();
     });
   }
-
-  if (els.quality){
-    els.quality.addEventListener('change', ()=>{
-      desiredQuality = els.quality.value || 'auto';
-      if (desiredQuality !== 'auto') applyQuality(desiredQuality);
-    });
-  }
-
   if (els.subTH){
     els.subTH.addEventListener('click', ()=>{
       setTHSub(!desiredTHSub);
