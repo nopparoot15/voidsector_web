@@ -76,6 +76,9 @@
 .wp-btn.is-on{background:rgba(180,0,255,0.16);border-color:rgba(180,0,255,0.45)}
 
 .wp-vol{display:flex;align-items:center;gap:8px;margin-left:6px}
+.wp-vol__range{width:120px;accent-color:#4cf}
+.wp-btn--icon{padding:6px 10px;min-width:38px;display:inline-flex;align-items:center;justify-content:center}
+.wp-ico{display:inline-block;transform:translateY(-1px)}
 .wp-vol__pct{color:var(--wp-muted);font-size:12px;min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
 
 .wp-note{margin-top:14px;color:var(--wp-muted);font-size:12px;line-height:1.5}

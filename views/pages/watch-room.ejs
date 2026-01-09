@@ -37,8 +37,6 @@
           <button id="wpTapToggle" class="wp-tap-toggle" type="button" aria-label="Play/Pause"></button>
           <div id="wpCenterIcon" class="wp-center-icon" aria-hidden="true"></div>
         </div>
-        <div class="wp-unlock" id="wpUnlock" style="display:none">
-          <div class="wp-unlock__title">แตะที่วิดีโอหนึ่งครั้งเพื่อปลดล็อกการเล่นอัตโนมัติ (Autoplay)</div>
         </div>
         <div class="wp-controls" id="wpControls" style="display:none">
           <button class="wp-btn" id="wpPlay">Play</button>
@@ -53,10 +51,12 @@
             <button class="wp-btn" id="wpFs" title="Fullscreen">Fullscreen</button>
           </div>
           <div class="wp-vol">
-            <button class="wp-btn" id="wpVolDown" title="ลดเสียง">Vol-</button>
-            <button class="wp-btn" id="wpVolUp" title="เพิ่มเสียง">Vol+</button>
-            <span class="wp-vol__pct" id="wpVolPct">100%</span>
-          </div>
+  <button class="wp-btn wp-btn--icon" id="wpMute" title="Mute/Unmute" aria-label="Mute/Unmute">
+    <span class="wp-ico" id="wpMuteIcon">🔊</span>
+  </button>
+  <input type="range" min="0" max="100" value="100" id="wpVolume" class="wp-vol__range" aria-label="Volume" />
+  <span class="wp-vol__pct" id="wpVolPct">100%</span>
+</div>
           <span class="wp-hint">(Sync จะดึงสถานะล่าสุดจากเซิร์ฟเวอร์)</span>
           <div class="wp-scrub" id="wpScrubWrap" style="display:none">
             <span class="wp-time" id="wpTimeCur">0:00</span>

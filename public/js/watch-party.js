@@ -22,8 +22,7 @@
     play: document.getElementById('wpPlay'),
     pause: document.getElementById('wpPause'),
     sync: document.getElementById('wpSync'),
-    unlock: document.getElementById('wpUnlock'),
-    friends: document.getElementById('wpFriends'),
+        friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
     tap: document.getElementById('wpTapToggle'),
     centerIcon: document.getElementById('wpCenterIcon'),
@@ -31,9 +30,10 @@
     scrub: document.getElementById('wpScrub'),
     timeCur: document.getElementById('wpTimeCur'),
     timeDur: document.getElementById('wpTimeDur'),
-    volDown: document.getElementById('wpVolDown'),
-    volUp: document.getElementById('wpVolUp'),
-    volPct: document.getElementById('wpVolPct'),
+        volPct: document.getElementById('wpVolPct'),
+    mute: document.getElementById('wpMute'),
+    muteIcon: document.getElementById('wpMuteIcon'),
+    volume: document.getElementById('wpVolume'),
     ytOnly: document.getElementById('wpYtOnly'),
     quality: document.getElementById('wpQuality'),
     subTh: document.getElementById('wpSubTh'),
@@ -249,11 +249,12 @@
   // YouTube-only UI state
   let ytCaptionsOn = false;
   let ytQualityLevels = [];
+  let ytDesiredQuality = 'auto';
 
-  function showUnlock(show) {
-    if (!els.unlock) return;
-    els.unlock.style.display = show ? '' : 'none';
-  }
+  // Local (device) volume state
+  let localVolumePct = 100;
+  let localMuted = false;
+  let preMuteVolumePct = 100;
 
   function clearPlayer(){
     if (ytPlayer) {
@@ -311,7 +312,10 @@
           ytReady = true;
           els.controls.style.display = '';
           if (els.ytOnly) els.ytOnly.style.display = '';
+          setTimeout(refreshYtQualityUI, 200);
           refreshYtQualityUI();
+          // Apply desired quality after we have levels
+          setTimeout(()=>applyDesiredYtQuality(), 350);
           refreshYtCaptionUI();
           // Apply latest state that arrived before player was ready
           if (pendingState) {
@@ -319,6 +323,11 @@
             pendingState = null;
             applyState(s);
           }
+        },
+        onPlaybackQualityChange: () => {
+          // Levels/selection can change after playback starts
+          try { refreshYtQualityUI(); } catch(e){}
+          try { applyDesiredYtQuality(); } catch(e){}
         },
         onStateChange: (evt) => {
           if (suppressLocalEvents) return;
@@ -340,9 +349,9 @@
 
             // 1=PLAYING, 2=PAUSED
             const nowTs2 = Date.now();
-            const sinceRemote = now - (lastRemoteAppliedAt || 0);
-            const sinceCmd = now - (lastCommandAt || 0);
-            const sinceUrl = now - (lastUrlSetAt || 0);
+            const sinceRemote = nowTs2 - (lastRemoteAppliedAt || 0);
+            const sinceCmd = nowTs2 - (lastCommandAt || 0);
+            const sinceUrl = nowTs2 - (lastUrlSetAt || 0);
 
             // Ignore reconcile events right after we applied remote state or issued a command.
             if (sinceRemote < 900 || sinceCmd < 900) return;
@@ -359,6 +368,8 @@
               return;
             }
             if (st === 1) {
+              try { refreshYtQualityUI(); } catch(e){}
+              try { applyDesiredYtQuality(); } catch(e){}
               // PLAYING: only propagate if this looks like intentional play (explicit play intent OR server previously paused).
               const now2 = Date.now();
               const intentAge2 = now2 - (localIntent?.at || 0);
@@ -402,7 +413,8 @@
       ytQualityLevels = Array.isArray(levels) ? levels.slice() : [];
       // Always include Auto option at top
       const opts = ['auto'].concat(ytQualityLevels);
-      const cur = (ytPlayer.getPlaybackQuality ? (ytPlayer.getPlaybackQuality() || 'auto') : 'auto');
+      const curRaw = (ytPlayer.getPlaybackQuality ? (ytPlayer.getPlaybackQuality() || 'auto') : 'auto');
+      const cur = (ytDesiredQuality && ytDesiredQuality !== 'auto') ? ytDesiredQuality : curRaw;
       els.quality.innerHTML = opts.map(v => {
         const label = QUALITY_LABEL[v] || v;
         const sel = (v === cur || (v === 'auto' && (cur === 'default' || cur === 'auto'))) ? 'selected' : '';
@@ -414,14 +426,38 @@
     }
   }
 
-  function setYtQuality(value){
-    if (!(ytPlayer && ytReady && ytPlayer.setPlaybackQuality)) return;
-    try {
-      const v = String(value || 'auto');
-      // YouTube expects "default" for auto
-      ytPlayer.setPlaybackQuality(v === 'auto' ? 'default' : v);
-    } catch (e) {}
-  }
+  function applyDesiredYtQuality(){
+  if (!(ytPlayer && ytReady)) return;
+  const desired = String(ytDesiredQuality || 'auto');
+  try{
+    // Ensure list is fresh
+    if (ytPlayer.getAvailableQualityLevels) {
+      const lv = ytPlayer.getAvailableQualityLevels() || [];
+      ytQualityLevels = Array.isArray(lv) ? lv.slice() : [];
+    }
+    if (desired === 'auto') {
+      // 'default' is auto in IFrame API
+      ytPlayer.setPlaybackQuality && ytPlayer.setPlaybackQuality('default');
+      // Some players expose range setter
+      ytPlayer.setPlaybackQualityRange && ytPlayer.setPlaybackQualityRange('default');
+      return;
+    }
+    if (ytQualityLevels.length && !ytQualityLevels.includes(desired)) {
+      // Not available; don't force (YouTube may ignore)
+      return;
+    }
+    ytPlayer.setPlaybackQuality && ytPlayer.setPlaybackQuality(desired);
+    ytPlayer.setPlaybackQualityRange && ytPlayer.setPlaybackQualityRange(desired);
+  }catch(e){}
+}
+
+function setYtQuality(value){
+  ytDesiredQuality = String(value || 'auto');
+  // Apply immediately and retry after a short delay (levels might not be ready yet)
+  applyDesiredYtQuality();
+  setTimeout(applyDesiredYtQuality, 450);
+  setTimeout(applyDesiredYtQuality, 1200);
+}
 
   function refreshYtCaptionUI(){
     if (!els.subTh) return;
@@ -563,24 +599,22 @@
     try {
       if (current.provider === 'youtube' && ytPlayer) {
         try {
-          // Pause is sacred: when paused, do NOT seek or change rate (YouTube can resume unexpectedly).
           if (!st.isPlaying) {
             try { markCommand(); ytPlayer.pauseVideo(); } catch (e) {}
             try { ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(1.0); } catch (e) {}
-            showUnlock(false);
           } else {
-            // Playing: snap only if we're far off. Otherwise let it run (event-based sync).
+            // Playing: snap only if far off; otherwise let drift-correction do the work.
             if (absDiff > 0.9) {
               try { markCommand(); ytPlayer.seekTo(expectedT, true); } catch (e) {}
             }
-            try { markCommand(); markCommand(); ytPlayer.playVideo(); } catch (e) {}
-            // Autoplay may be blocked; show unlock prompt if it doesn't start.
-            setTimeout(() => {
-              try {
-                const stt = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : 0;
-                if (stt !== 1) showUnlock(true);
-              } catch (e) {}
-            }, 350);
+            // Remote-forced playback should be muted to avoid autoplay blocks.
+            try {
+              ytPlayer.setVolume && ytPlayer.setVolume(Math.max(0, Math.min(100, Math.round(localVolumePct||100))));
+              if (ytPlayer.mute) ytPlayer.mute();
+            } catch (e) {}
+            try { markCommand(); ytPlayer.playVideo(); } catch (e) {}
+            // Apply desired quality after playback begins (levels become available then)
+            setTimeout(() => { try { refreshYtQualityUI(); applyDesiredYtQuality(); } catch(e){} }, 350);
           }
         } catch (e) {}
       } else if (current.provider === 'html5' && html5Video) {
@@ -590,7 +624,6 @@
             if (absDiff > 0.15) html5Video.currentTime = expectedT;
             html5Video.pause();
             setRate(1.0);
-            showUnlock(false);
           } else {
             // Playing: avoid frequent snaps -> smooth with playbackRate; snap only if far
             if (absDiff > 1.0) {
@@ -603,8 +636,7 @@
               setRate(1.0);
             }
             const p = html5Video.play();
-            if (p && p.catch) p.catch(() => { showUnlock(true); });
-            else showUnlock(false);
+            if (p && p.catch) p.catch(()=>{});
           }
         } catch (e) {}
       }
@@ -704,9 +736,7 @@
     } else {
       setIntent('play');
       // Start locally inside the gesture (this is the reliable "autoplay unlock")
-      tryLocalPlay();
-      showUnlock(false);
-      suppressLocalEvents = true;
+      tryLocalPlay();      suppressLocalEvents = true;
       setTimeout(()=>{suppressLocalEvents=false;}, 450);
       socket.emit('wp:play', { t });
       flashCenter(false);
@@ -769,7 +799,6 @@
   });
 
   setInterval(updateScrubUI, 250);
-  setInterval(refreshVolumeUI, 800);
 
   els.play?.addEventListener('click', () => {
     markGesture();
@@ -788,34 +817,97 @@
   els.sync?.addEventListener('click', () => socket.emit('wp:ping_state'));
 
   // Volume controls (local only)
-  function getVolumePct(){
-    try{
-      if (current.provider === 'youtube' && ytPlayer && ytPlayer.getVolume) return Number(ytPlayer.getVolume() || 0);
-      if (current.provider === 'html5' && html5Video) return Math.round((Number(html5Video.volume || 0)) * 100);
-    }catch(e){}
-    return 100;
-  }
-  function setVolumePct(pct){
-    pct = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
-    try{
-      if (current.provider === 'youtube' && ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(pct);
-      if (current.provider === 'html5' && html5Video) html5Video.volume = pct / 100;
-    }catch(e){}
-    if (els.volPct) els.volPct.textContent = pct + '%';
-  }
-  function bumpVolume(delta){
-    const cur = getVolumePct();
-    setVolumePct(cur + delta);
-  }
-  function refreshVolumeUI(){
-    if (!els.volPct) return;
-    els.volPct.textContent = getVolumePct() + '%';
-  }
+function clampPct(p){ return Math.max(0, Math.min(100, Math.round(Number(p)||0))); }
 
-  els.volDown?.addEventListener('click', () => { markGesture(); bumpVolume(-5); });
-  els.volUp?.addEventListener('click', () => { markGesture(); bumpVolume(+5); });
+function applyVolumeToPlayer(){
+  const pct = clampPct(localVolumePct);
+  try{
+    if (current.provider === 'youtube' && ytPlayer) {
+      ytPlayer.setVolume && ytPlayer.setVolume(pct);
+      if (localMuted || pct === 0) ytPlayer.mute && ytPlayer.mute();
+      else ytPlayer.unMute && ytPlayer.unMute();
+    }
+    if (current.provider === 'html5' && html5Video) {
+      html5Video.volume = pct/100;
+      html5Video.muted = !!(localMuted || pct === 0);
+    }
+  }catch(e){}
+  if (els.volPct) els.volPct.textContent = pct + '%';
+  if (els.volume) els.volume.value = String(pct);
+  updateMuteIcon();
+}
 
-  // YouTube-only UI events
+function updateMuteIcon(){
+  if (!els.muteIcon) return;
+  const pct = clampPct(localVolumePct);
+  const mutedNow = !!(localMuted || pct === 0);
+  els.muteIcon.textContent = mutedNow ? '🔇' : (pct < 40 ? '🔉' : '🔊');
+  els.mute?.classList.toggle('is-on', mutedNow);
+}
+
+function readPlayerVolume(){
+  try{
+    if (current.provider === 'youtube' && ytPlayer && ytPlayer.getVolume) {
+      const v = clampPct(ytPlayer.getVolume() || 0);
+      const m = ytPlayer.isMuted ? !!ytPlayer.isMuted() : false;
+      return { v, m };
+    }
+    if (current.provider === 'html5' && html5Video) {
+      const v = clampPct((html5Video.volume||0)*100);
+      const m = !!html5Video.muted;
+      return { v, m };
+    }
+  }catch(e){}
+  return { v: clampPct(localVolumePct), m: !!localMuted };
+}
+
+function refreshVolumeUI(){
+  // Prefer our local state; but if user changed via browser keys, reflect back.
+  const st = readPlayerVolume();
+  // Don't overwrite while user is dragging slider
+  if (!volumeDragging) {
+    localVolumePct = st.v;
+    localMuted = st.m || localVolumePct === 0;
+  }
+  applyVolumeToPlayer();
+}
+
+let volumeDragging = false;
+
+els.volume?.addEventListener('pointerdown', () => { volumeDragging = true; });
+window.addEventListener('pointerup', () => { volumeDragging = false; });
+
+els.volume?.addEventListener('input', () => {
+  markGesture();
+  localVolumePct = clampPct(els.volume.value);
+  if (localVolumePct > 0) preMuteVolumePct = localVolumePct;
+  if (localVolumePct === 0) localMuted = true;
+  else localMuted = false;
+  applyVolumeToPlayer();
+});
+
+els.mute?.addEventListener('click', () => {
+  markGesture();
+  const pct = clampPct(localVolumePct);
+  const mutedNow = !!(localMuted || pct === 0);
+  if (mutedNow) {
+    // unmute: restore volume
+    localMuted = false;
+    localVolumePct = clampPct(preMuteVolumePct || 30);
+    applyVolumeToPlayer();
+  } else {
+    // mute: remember volume
+    preMuteVolumePct = pct || preMuteVolumePct || 50;
+    localMuted = true;
+    applyVolumeToPlayer();
+  }
+});
+
+// keep UI in sync
+setInterval(refreshVolumeUI, 800);
+
+// YouTube-only UI events
+
   els.quality?.addEventListener('change', () => {
     markGesture();
     setYtQuality(els.quality.value);
