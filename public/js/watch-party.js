@@ -173,6 +173,30 @@
   // YouTube IFrame API integration
   // -------------------------
   let yt = null;
+
+  let ytApiPromise = null;
+  function loadYTApi(){
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (ytApiPromise) return ytApiPromise;
+    ytApiPromise = new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.async = true;
+      s.onerror = ()=>reject(new Error('YT API failed'));
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = ()=>{
+        try{ if (typeof prev === 'function') prev(); }catch(_){}
+        resolve();
+      };
+      document.head.appendChild(s);
+    });
+    return ytApiPromise;
+  }
+  async function ensurePlayer(){
+    await loadYTApi();
+    if (!yt) createPlayer();
+  }
+
   let ytReady = false;
   let currentVideoId = null;
   let suppressScrub = false;
@@ -189,13 +213,17 @@
     if (yt) return;
     yt = new YT.Player('wpPlayer', {
       videoId: '',
-      playerVars: {
+      playerVars:{
         controls: 0,
         rel: 0,
         modestbranding: 1,
         playsinline: 1,
         disablekb: 1,
         iv_load_policy: 3,
+        cc_load_policy: 1,
+        cc_lang_pref: 'th',
+        hl: 'th',
+
       },
       events: {
         onReady: () => {
@@ -290,25 +318,59 @@
     }
   }
 
+  
   function setTHSub(enabled){
     desiredTHSub = !!enabled;
-    if (!ytReady || !yt) return;
-    try{
-      yt.loadModule('captions');
-      if (desiredTHSub){
-        yt.setOption('captions', 'track', { languageCode: 'th' });
-        yt.setOption('captions', 'reload', true);
-      }else{
-        yt.setOption('captions', 'track', {});
-        yt.setOption('captions', 'reload', true);
-      }
-    }catch(_){}
-    // UI state
+    // UI optimistic (will be corrected)
     if (els.subTH){
       els.subTH.setAttribute('data-on', desiredTHSub ? '1' : '0');
       els.subTH.textContent = desiredTHSub ? 'TH Sub: ON' : 'TH Sub';
     }
+    if (!ytReady || !yt) return;
+
+    try{
+      yt.loadModule('captions');
+      if (desiredTHSub){
+        // Try Thai normal, then Thai auto-generated (asr)
+        try{ yt.setOption('captions', 'track', { languageCode: 'th' }); }catch(_){}
+        try{ yt.setOption('captions', 'reload', true); }catch(_){}
+        setTimeout(()=>{
+          try{
+            const cur = yt.getOption('captions','track') || {};
+            const ok = (cur && (cur.languageCode === 'th'));
+            if (!ok){
+              try{ yt.setOption('captions','track', { languageCode:'th', kind:'asr' }); }catch(_){}
+              try{ yt.setOption('captions','reload', true); }catch(_){}
+            }
+          }catch(_){}
+        }, 150);
+      }else{
+        try{ yt.setOption('captions', 'track', {}); }catch(_){}
+        try{ yt.setOption('captions', 'reload', true); }catch(_){}
+      }
+
+      // Verify after a moment; if no captions available, revert button to OFF (no hints per request)
+      setTimeout(()=>{
+        if (!els.subTH) return;
+        if (!desiredTHSub) return;
+        try{
+          const cur = yt.getOption('captions','track') || {};
+          const ok = (cur && cur.languageCode === 'th');
+          if (!ok){
+            desiredTHSub = false;
+            els.subTH.setAttribute('data-on','0');
+            els.subTH.textContent = 'TH Sub';
+          }
+        }catch(_){
+          desiredTHSub = false;
+          els.subTH.setAttribute('data-on','0');
+          els.subTH.textContent = 'TH Sub';
+        }
+      }, 600);
+
+    }catch(_){}
   }
+
 
   // -------------------------
   // Sync (server-authoritative)
@@ -322,21 +384,37 @@
     try{ return Number(yt.getDuration()) || 0; }catch(_){ return 0; }
   }
 
-  function loadVideo(id){
-    if (!ytReady || !yt) return;
-    if (!id) return;
-    currentVideoId = id;
+  
+  async function loadVideo(id){
+    const vid = String(id || '').trim();
+    if (!vid) return;
+    currentVideoId = vid;
+    document.body.classList.add('wp-hasVideo');
+
     try{
-      yt.loadVideoById(id, 0);
+      await ensurePlayer();
     }catch(_){
-      try{ yt.cueVideoById(id, 0); }catch(__){}
+      return;
     }
-    // re-apply local audio + prefs
-    setTimeout(applyAudioToPlayer, 0);
-    setTimeout(refreshQualityList, 800);
-    if (desiredQuality && desiredQuality !== 'auto') setTimeout(()=>applyQuality(desiredQuality, true), 900);
-    setTimeout(()=>setTHSub(desiredTHSub), 900);
+    // Wait until ready
+    const waitReady = async ()=>{
+      if (ytReady && yt) return;
+      await new Promise(r=>setTimeout(r, 60));
+      return waitReady();
+    };
+    await waitReady();
+
+    try{
+      yt.loadVideoById({ videoId: vid, startSeconds: 0 });
+    }catch(_){
+      try{ yt.cueVideoById({ videoId: vid, startSeconds: 0 }); }catch(__){}
+    }
+
+    // Re-apply user prefs after load
+    setTimeout(()=> applyQuality(desiredQuality, true), 650);
+    setTimeout(()=> setTHSub(desiredTHSub), 750);
   }
+
 
   function applyServerState(st){
     lastStateFromServer = st;
@@ -560,8 +638,4 @@
     loadFriends();
     if (els.invite) els.invite.addEventListener('click', inviteSelected);
   }
-
-  // Player may already be ready if iframe_api loaded before this script
-  if (window.YT && window.YT.Player) createPlayer();
-
 })();

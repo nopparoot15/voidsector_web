@@ -181,3 +181,58 @@
   border: none;
   box-shadow: none;
 }
+
+
+/* v4 tweaks: centered + public smaller + hard block YT UI + empty state */
+.wp-shell[data-roomtype="public"] .wp-main{
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 1100px){
+  .wp-shell[data-roomtype="public"] .wp-main{ max-width: 100%; }
+}
+
+/* Make iframe always fill wrap */
+.wp-yt iframe{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  border:0 !important;
+  pointer-events:none !important; /* hard block native player interactions */
+}
+
+/* Hard block layer on top (for browsers that ignore pointer-events on iframe in some cases) */
+.wp-playerBlock{
+  position:absolute;
+  inset:0;
+  pointer-events:auto; /* capture all clicks */
+  background: transparent;
+  z-index: 5;
+}
+
+/* Empty state (no preloaded YouTube) */
+.wp-emptyState{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding: 24px;
+  color: rgba(220,240,255,0.75);
+  font-size: 14px;
+  letter-spacing: .2px;
+  z-index: 2;
+}
+.wp-hasVideo .wp-emptyState{ display:none; }
+
+
+/* Hide controls until a video is loaded */
+body:not(.wp-hasVideo) #wpControls,
+body:not(.wp-hasVideo) #wpScrubWrap,
+body:not(.wp-hasVideo) #wpPlayerWrap{
+  display:none;
+}
+body.wp-hasVideo #wpPlayerWrap{ display:block; }

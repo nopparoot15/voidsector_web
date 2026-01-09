@@ -13,7 +13,7 @@
 
   <div class="container vs-page">
     <div class="card vs-card wp-centerCard">
-      <div class="wp-shell wp-shell--inCard">
+      <div class="wp-shell wp-shell--inCard" data-roomtype="<%= isPublic ? 'public' : 'private' %>">
     <header class="wp-top">
       <div class="wp-top__left">
         <a class="wp-back" href="/watch">← Lobby</a>
@@ -43,8 +43,8 @@
         <div id="wpPlayerWrap" class="wp-playerWrap">
           <div id="wpPlayer" class="wp-yt"></div>
           <div id="wpPlayerBlock" class="wp-playerBlock" aria-hidden="true"></div>
-          <div id="wpPlayerHint" class="wp-playerHint" style="display:none;"></div>
-        </div>
+          <div id="wpEmpty" class="wp-emptyState">วางลิงก์ YouTube แล้วกด Set เพื่อเริ่มดูร่วมกัน</div>
+</div>
 
         <div id="wpControls" class="wp-controls">
           <button id="wpPlay" class="wp-btn wp-btn--icon" type="button" title="Play">▶</button>
@@ -98,8 +98,7 @@
     window.WP_IS_PUBLIC = <%- JSON.stringify(!!isPublic) %>;
     window.WP_JOIN_KEY = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
   </script>
-  <script defer src="https://www.youtube.com/iframe_api"></script>
-      </div>
+</div>
     </div>
   </div>
 
