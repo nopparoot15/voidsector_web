@@ -34,42 +34,29 @@
         </div>
         <div class="wp-player-wrap" id="wpPlayerWrap">
           <div class="wp-player" id="wpPlayer"></div>
+          <button id="wpTapToggle" class="wp-tap-toggle" type="button" aria-label="Play/Pause"></button>
+          <div id="wpCenterIcon" class="wp-center-icon" aria-hidden="true"></div>
         </div>
-
-        <!-- Controls under the player (custom, stable + detailed seeking) -->
+        <div class="wp-unlock" id="wpUnlock" style="display:none">
+          <div class="wp-unlock__title">แตะหนึ่งครั้งเพื่อเริ่มเล่น (ปลดล็อก Autoplay)</div>
+          <button class="wp-btn wp-btn--primary" id="wpUnlockBtn">Play & Sync</button>
+        </div>
         <div class="wp-controls" id="wpControls" style="display:none">
-          <div class="wp-controls__row">
-            <button class="wp-btn" id="wpPlay" type="button">Play</button>
-            <button class="wp-btn" id="wpPause" type="button">Pause</button>
-            <button class="wp-btn" id="wpSync" type="button">Sync</button>
-
-            <div class="wp-vol" id="wpVolWrap">
-              <button class="wp-btn wp-btn--ghost" id="wpMute" type="button" title="Mute/Unmute">🔊</button>
-              <input id="wpVol" class="wp-vol__range" type="range" min="0" max="100" value="80" />
-              <span class="wp-vol__val" id="wpVolVal">80%</span>
-            </div>
-
-            <div class="wp-q" id="wpQWrap" style="display:none">
-              <span class="wp-q__lbl">Quality</span>
-              <select class="wp-select" id="wpQuality"></select>
-            </div>
-
-            <button class="wp-btn wp-btn--ghost" id="wpMark" type="button" title="Add mark">+ Mark</button>
-            <button class="wp-btn wp-btn--ghost" id="wpFs" type="button" title="Fullscreen">⛶</button>
-            <span class="wp-hint">(ซิงก์จะปรับเวลาตามสถานะล่าสุดของห้อง)</span>
+          <button class="wp-btn" id="wpPlay">Play</button>
+          <button class="wp-btn" id="wpPause">Pause</button>
+          <button class="wp-btn" id="wpSync">Sync</button>
+          <div class="wp-vol">
+            <button class="wp-btn wp-btn--ghost" id="wpMute" type="button" title="Mute/Unmute">🔊</button>
+            <input id="wpVol" class="wp-vol__range" type="range" min="0" max="100" value="80" />
+            <span class="wp-vol__val" id="wpVolVal">80%</span>
           </div>
-
+          <button class="wp-btn wp-btn--ghost" id="wpFs" type="button" title="Fullscreen">⛶</button>
+          <span class="wp-hint">(ซิงก์จะปรับเวลาตามเจ้าห้อง/สถานะล่าสุด)</span>
           <div class="wp-scrub" id="wpScrubWrap" style="display:none">
             <span class="wp-time" id="wpTimeCur">0:00</span>
-            <div class="wp-scrub__stack">
-              <input type="range" min="0" max="0" step="0.01" value="0" id="wpScrub" class="wp-scrub__range" list="wpMarks" />
-              <div class="wp-marks" id="wpMarksBar" aria-hidden="true"></div>
-              <datalist id="wpMarks"></datalist>
-            </div>
+            <input type="range" min="0" max="1000" value="0" id="wpScrub" class="wp-scrub__range" />
             <span class="wp-time" id="wpTimeDur">0:00</span>
           </div>
-
-          <div class="wp-marksList" id="wpMarksList" style="display:none"></div>
         </div>
       </div>
 
