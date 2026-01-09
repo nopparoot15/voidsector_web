@@ -32,7 +32,11 @@
           <input class="wp-input" id="wpUrl" placeholder="วางลิงก์คลิป (YouTube/Vimeo/mp4/webm หรือเว็บที่ embed ได้)" />
           <button class="wp-btn wp-btn--primary" id="wpSet">Set</button>
         </div>
-        <div class="wp-player" id="wpPlayer"></div>
+        <div class="wp-player-wrap" id="wpPlayerWrap">
+          <div class="wp-player" id="wpPlayer"></div>
+          <button id="wpTapToggle" class="wp-tap-toggle" type="button" aria-label="Play/Pause"></button>
+          <div id="wpCenterIcon" class="wp-center-icon" aria-hidden="true"></div>
+        </div>
         <div class="wp-unlock" id="wpUnlock" style="display:none">
           <div class="wp-unlock__title">แตะหนึ่งครั้งเพื่อเริ่มเล่น (ปลดล็อก Autoplay)</div>
           <button class="wp-btn wp-btn--primary" id="wpUnlockBtn">Play & Sync</button>
@@ -42,6 +46,11 @@
           <button class="wp-btn" id="wpPause">Pause</button>
           <button class="wp-btn" id="wpSync">Sync</button>
           <span class="wp-hint">(ซิงก์จะปรับเวลาตามเจ้าห้อง/สถานะล่าสุด)</span>
+          <div class="wp-scrub" id="wpScrubWrap" style="display:none">
+            <span class="wp-time" id="wpTimeCur">0:00</span>
+            <input type="range" min="0" max="1000" value="0" id="wpScrub" class="wp-scrub__range" />
+            <span class="wp-time" id="wpTimeDur">0:00</span>
+          </div>
         </div>
       </div>
 

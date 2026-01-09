@@ -26,6 +26,12 @@
     unlockBtn: document.getElementById('wpUnlockBtn'),
     friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
+    tap: document.getElementById('wpTapToggle'),
+    centerIcon: document.getElementById('wpCenterIcon'),
+    scrubWrap: document.getElementById('wpScrubWrap'),
+    scrub: document.getElementById('wpScrub'),
+    timeCur: document.getElementById('wpTimeCur'),
+    timeDur: document.getElementById('wpTimeDur'),
   };
 
   // Build share link
@@ -550,6 +556,108 @@
     return 0;
   }
 
+  function getDuration(){
+    try{
+      if (current.provider === 'youtube' && ytPlayer && ytReady && typeof ytPlayer.getDuration === 'function') {
+        return Number(ytPlayer.getDuration() || 0);
+      }
+      if (current.provider === 'html5' && html5Video) return Number(html5Video.duration || 0);
+    } catch(e){}
+    return 0;
+  }
+  function formatTime(sec){
+    const s = Math.max(0, Math.floor(Number(sec||0)));
+    const m = Math.floor(s/60);
+    const r = s%60;
+    return m + ':' + String(r).padStart(2,'0');
+  }
+  function flashCenter(isPlaying){
+    if (!els.centerIcon) return;
+    els.centerIcon.innerHTML = isPlaying
+      ? '<div class="wp-i">⏸</div>'
+      : '<div class="wp-i">▶</div>';
+    els.centerIcon.classList.add('show');
+    setTimeout(()=>els.centerIcon && els.centerIcon.classList.remove('show'), 260);
+  }
+
+  // Tap-to-toggle overlay (works around cross-origin iframe clicks)
+  els.tap?.addEventListener('click', (e) => {
+    e.preventDefault();
+    markGesture();
+    const playing = !!(lastState && lastState.isPlaying);
+    const t = getLocalTime();
+    if (playing) {
+      setIntent('pause');
+      suppressLocalEvents = true;
+      setTimeout(()=>{suppressLocalEvents=false;}, 650);
+      socket.emit('wp:pause', { t });
+      flashCenter(true);
+    } else {
+      setIntent('play');
+      suppressLocalEvents = true;
+      setTimeout(()=>{suppressLocalEvents=false;}, 450);
+      socket.emit('wp:play', { t });
+      flashCenter(false);
+    }
+  });
+
+  // Scrub slider (realtime seek, throttled for stability)
+  let scrubDragging = false;
+  let scrubLastEmitAt = 0;
+  let scrubWasPlaying = false;
+
+  function setScrubVisible(on){
+    if (els.scrubWrap) els.scrubWrap.style.display = on ? '' : 'none';
+  }
+  function updateScrubUI(){
+    const dur = getDuration();
+    if (dur > 0.1) {
+      setScrubVisible(true);
+      if (els.timeDur) els.timeDur.textContent = formatTime(dur);
+      const cur = getLocalTime();
+      if (els.timeCur) els.timeCur.textContent = formatTime(cur);
+      if (!scrubDragging && els.scrub) {
+        els.scrub.value = String(Math.max(0, Math.min(1000, Math.round((cur/dur)*1000))));
+      }
+    } else {
+      setScrubVisible(false);
+    }
+  }
+
+  els.scrub?.addEventListener('pointerdown', () => {
+    scrubDragging = true;
+    scrubWasPlaying = !!(lastState && lastState.isPlaying);
+  });
+  window.addEventListener('pointerup', () => {
+    if (!scrubDragging) return;
+    scrubDragging = false;
+    // On release, send one final seek (and resume if it was playing)
+    const dur = getDuration();
+    if (dur > 0.1 && els.scrub) {
+      const pct = Number(els.scrub.value||0) / 1000;
+      const t = dur * pct;
+      socket.emit('wp:seek', { t });
+      if (scrubWasPlaying) socket.emit('wp:play', { t });
+    }
+  });
+
+  els.scrub?.addEventListener('input', () => {
+    if (!scrubDragging) return;
+    const dur = getDuration();
+    if (dur <= 0.1) return;
+    const pct = Number(els.scrub.value||0) / 1000;
+    const t = dur * pct;
+    if (els.timeCur) els.timeCur.textContent = formatTime(t);
+    const nowTs = Date.now();
+    // Throttle emits so others see it nearly realtime but stable
+    if (nowTs - scrubLastEmitAt > 140) {
+      scrubLastEmitAt = nowTs;
+      socket.emit('wp:seek', { t });
+    }
+  });
+
+  setInterval(updateScrubUI, 250);
+
   els.play?.addEventListener('click', () => {
     markGesture();
     setIntent('play');
@@ -694,6 +802,7 @@
   }, 800);
 
 // Detect YouTube seeks made via the native player UI (best-effort)
+  let __wpLastSeekEmitAt = 0;
   let ytLastT = 0;
   let ytLastAt = Date.now();
   setInterval(() => {
@@ -704,12 +813,16 @@
       const cur = ytPlayer.getCurrentTime ? (ytPlayer.getCurrentTime() || 0) : 0;
       const dt = (nowTs2 - ytLastAt) / 1000;
       const jump = Math.abs(cur - ytLastT);
-      // If time jumps more than ~1.5s compared to expected flow, treat as seek
-      if (dt > 0.4 && jump > 1.6) {
-        socket.emit('wp:seek', { t: cur });
+      // If time jumps noticeably compared to expected flow, treat as seek/scrub
+      if (dt > 0.12 && jump > 0.85) {
+        const nowTs3 = Date.now();
+        if (!__wpLastSeekEmitAt || nowTs3 - __wpLastSeekEmitAt > 160) {
+          __wpLastSeekEmitAt = nowTs3;
+          socket.emit('wp:seek', { t: cur });
+        }
       }
       ytLastT = cur;
       ytLastAt = nowTs2;
     } catch(e){}
-  }, 900);
+  }, 250);
 })();

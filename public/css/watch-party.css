@@ -76,3 +76,50 @@
 .wp-generic{padding:14px;text-align:left;width:100%}
 .wp-open{display:inline-block;margin-top:10px;color:#7cf7ff;text-decoration:none;font-weight:800}
 .wp-iframe{width:100%;height:560px;border:0;margin-top:12px;border-radius:12px;background:#000}
+
+/* --- Tap-to-toggle overlay + scrub bar --- */
+.wp-player-wrap{ position: relative; }
+.wp-tap-toggle{
+  position:absolute; inset:0;
+  background:transparent; border:0;
+  cursor:pointer;
+  z-index: 6;
+  /* don't steal clicks from bottom control area of embedded players */
+  clip-path: inset(0 0 56px 0);
+}
+.wp-center-icon{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  z-index:7;
+  pointer-events:none;
+  opacity:0;
+  transform:scale(.95);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.wp-center-icon.show{ opacity:1; transform:scale(1); }
+.wp-center-icon .wp-i{
+  font-size: 44px;
+  line-height: 1;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.wp-scrub{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:10px;
+}
+.wp-time{
+  font-variant-numeric: tabular-nums;
+  opacity:.8;
+  min-width: 48px;
+  text-align:center;
+  font-size: 12px;
+}
+.wp-scrub__range{
+  width:100%;
+  accent-color: #4cf; /* harmless; browsers may ignore */
+}
