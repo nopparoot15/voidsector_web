@@ -3,6 +3,7 @@ const express = require('express');
 const { requireLogin } = require('../middleware/requireLogin');
 const { watchPartyStore } = require('../watchparty/store');
 const { pool } = require('../config/db');
+const { getIO } = require('../socket');
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router.post('/watch/rooms', requireLogin, (req, res) => {
 router.post('/watch/rooms/:roomId/invite', requireLogin, async (req, res) => {
   try {
     const me = Number(req.session.user.id);
+    const myName = String(req.session.user?.username || '').slice(0, 32) || 'friend';
     const roomId = String(req.params.roomId);
     const friendIds = Array.isArray(req.body?.friendIds) ? req.body.friendIds : [];
 
@@ -45,6 +47,21 @@ router.post('/watch/rooms/:roomId/invite', requireLogin, async (req, res) => {
     if (okIds.length === 0) return res.status(400).json({ ok: false, reason: 'not_friends' });
 
     const out = watchPartyStore.invite(roomId, me, okIds);
+
+    // ✅ Realtime notify invited friends (private rooms)
+    // Clients that called chat:hello will be in room `user:<id>`.
+    const io = getIO && getIO();
+    if (io) {
+      for (const toId of okIds) {
+        io.to(`user:${toId}`).emit('wp:invite_notify', {
+          roomId,
+          from_user_id: me,
+          from_username: myName,
+          at: new Date().toISOString(),
+        });
+      }
+    }
+
     res.json({ ok: true, added: out.added, friendIds: okIds });
   } catch (e) {
     console.warn('watch invite failed:', e.code || e.message);

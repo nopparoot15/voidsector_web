@@ -9,6 +9,7 @@ const { createApp } = require('./app');
 const { pool, initDb } = require('./config/db');
 const { whiteboardStore } = require('./whiteboard/store');
 const { watchPartyStore } = require('./watchparty/store');
+const { setIO } = require('./socket');
 
 const app = createApp();
 const server = http.createServer(app);
@@ -19,6 +20,10 @@ const io = new Server(server, {
     credentials: true,
   }
 });
+
+// Allow HTTP routes (e.g. watchPartyApi) to emit realtime notifications
+// without circular imports.
+setIO(io);
 
 // --------------------------------------------------
 // Helper: check room membership (for DM privacy)
