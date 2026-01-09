@@ -88,6 +88,56 @@ function vsBumpDmToTop(container, friendId, ts){
 
   const nameOf = (el) => el.getAttribute('data-menu') || '';
 
+  // --------------------
+  // Watch Party invites (client-side, realtime)
+  // - Summary API doesn't include these, so we keep a small local queue.
+  // - Rendered inside topbar "Notifications" dropdown.
+  // --------------------
+  const WP_INV_KEY = 'vs_wp_invites_v1';
+  function loadWpInvites(){
+    try{
+      const raw = sessionStorage.getItem(WP_INV_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    }catch(_){
+      return [];
+    }
+  }
+  function saveWpInvites(arr){
+    try{ sessionStorage.setItem(WP_INV_KEY, JSON.stringify(arr || [])); }catch(_){ }
+  }
+  let wpInvitesLocal = loadWpInvites();
+  function pushWpInvite(inv){
+    if(!inv) return;
+    const roomId = String(inv.roomId || '');
+    const fromUserId = String(inv.from_user_id || '');
+    if(!roomId) return;
+    // dedupe (same room + same inviter)
+    const key = `${roomId}::${fromUserId}`;
+    wpInvitesLocal = (wpInvitesLocal || []).filter(x => `${x.roomId}::${x.from_user_id||''}` !== key);
+    wpInvitesLocal.unshift({
+      roomId,
+      from_user_id: inv.from_user_id || null,
+      from_username: String(inv.from_username || 'Someone'),
+      created_at: inv.at || new Date().toISOString(),
+    });
+    // cap
+    if (wpInvitesLocal.length > 20) wpInvitesLocal = wpInvitesLocal.slice(0, 20);
+    saveWpInvites(wpInvitesLocal);
+  }
+  function removeWpInvite(roomId, fromUserId){
+    const rid = String(roomId || '');
+    const fid = String(fromUserId || '');
+    if(!rid) return;
+    wpInvitesLocal = (wpInvitesLocal || []).filter(x => {
+      if (String(x.roomId||'') !== rid) return true;
+      if (fid && String(x.from_user_id||'') !== fid) return true;
+      // same room (and same inviter if present) => remove
+      return false;
+    });
+    saveWpInvites(wpInvitesLocal);
+  }
+
   function closeAll(exceptName = null) {
     menus.forEach((m) => {
       if (exceptName && nameOf(m) === exceptName) return;
@@ -179,20 +229,44 @@ function vsBumpDmToTop(container, friendId, ts){
   // Renderers
   // --------------------
 
-  function renderAlerts(friendRequests, wbInvites) {
+  function renderAlerts(friendRequests, wbInvites, wpInvites) {
     const list = document.getElementById('vsNotifList');
     if (!list) return;
 
     list.innerHTML = '';
     const frList = Array.isArray(friendRequests) ? friendRequests : [];
     const wbList = Array.isArray(wbInvites) ? wbInvites : [];
-    if (frList.length === 0 && wbList.length === 0) {
+    const wpList = Array.isArray(wpInvites) ? wpInvites : [];
+    if (frList.length === 0 && wbList.length === 0 && wpList.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'vs-dd__empty';
       empty.textContent = 'No notifications yet';
       list.appendChild(empty);
       return;
     }
+
+    // Watch Party invites (show first)
+    wpList.forEach((inv) => {
+      const item = document.createElement('div');
+      item.className = 'vs-dd__item';
+      item.dataset.wpRoomId = inv.roomId || inv.room_id || '';
+      item.dataset.wpFromUserId = String(inv.from_user_id || '');
+
+      const fromName = inv.from_username || inv.username || 'Unknown';
+      const createdAt = inv.created_at || inv.at || '';
+
+      item.innerHTML = `
+        <div style="flex:1; min-width:0;">
+          <div class="vs-dd__itemTitle">📺 Watch Party invite</div>
+          <div class="vs-dd__itemMeta"><b>${escapeHtml(fromName)}</b> invited you · ${escapeHtml(fmtTime(createdAt))}</div>
+        </div>
+        <div class="vs-dd__actions">
+          <button class="vs-dd__act vs-dd__act--ok" type="button" data-action="wp-join">Join</button>
+          <button class="vs-dd__act vs-dd__act--bad" type="button" data-action="wp-dismiss">Dismiss</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
 
     // Whiteboard invites (show first)
     wbList.forEach((inv) => {
@@ -382,10 +456,13 @@ div.innerHTML = `
       lastSummary = j;
       window.VS_NOTIFY = j;
 
-      setBadge('notifications', j.counts?.alerts || 0);
+      // notifications badge = server alerts + local watch party invites
+      const serverAlerts = Number(j.counts?.alerts) || 0;
+      const wpCount = (wpInvitesLocal || []).length;
+      setBadge('notifications', serverAlerts + wpCount);
       setBadge('messages', j.counts?.messages || 0);
 
-      renderAlerts(j.friend_requests || [], j.whiteboard_invites || []);
+      renderAlerts(j.friend_requests || [], j.whiteboard_invites || [], wpInvitesLocal || []);
 
       // Friends dropdown (list + preview)
       renderFriends(lastFriends || [], j.dm_threads || []);
@@ -419,16 +496,11 @@ div.innerHTML = `
 
     // watch party invite notifications (realtime)
     s.on('wp:invite_notify', (p = {}) => {
-      const from = String(p.from_username || 'Someone');
-      const roomId = String(p.roomId || '');
-      // show toast immediately (summary endpoint may not include watch invites)
-      showToast(`📺 ${from} invited you to a Watch Party`, {
-        actionText: roomId ? 'Join' : null,
-        onAction: roomId ? (() => { window.location.href = `/watch/r/${encodeURIComponent(roomId)}`; }) : null,
-        ttlMs: 9000,
-      });
-      // keep existing badges fresh if your summary changes later
-      fetchSummary();
+      pushWpInvite(p);
+      // update notifications dropdown + badge immediately
+      const serverAlerts = Number(lastSummary?.counts?.alerts) || 0;
+      setBadge('notifications', serverAlerts + (wpInvitesLocal || []).length);
+      renderAlerts(lastSummary?.friend_requests || [], lastSummary?.whiteboard_invites || [], wpInvitesLocal || []);
     });
   };
 
@@ -442,6 +514,23 @@ div.innerHTML = `
       if (!btn) return;
       const item = btn.closest('.vs-dd__item');
       const action = btn.dataset.action;
+
+      // Watch Party invite actions (client-side)
+      if (action === 'wp-join' || action === 'wp-dismiss') {
+        const roomId = item?.dataset.wpRoomId;
+        const fromUserId = item?.dataset.wpFromUserId || '';
+        if (!roomId) return;
+        btn.disabled = true;
+        removeWpInvite(roomId, fromUserId);
+        // refresh UI
+        const serverAlerts = Number(lastSummary?.counts?.alerts) || 0;
+        setBadge('notifications', serverAlerts + (wpInvitesLocal || []).length);
+        renderAlerts(lastSummary?.friend_requests || [], lastSummary?.whiteboard_invites || [], wpInvitesLocal || []);
+        if (action === 'wp-join') {
+          window.location.href = `/watch/r/${encodeURIComponent(roomId)}`;
+        }
+        return;
+      }
 
       // Whiteboard invite actions
       if (action === 'wb-join' || action === 'wb-dismiss') {
