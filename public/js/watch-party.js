@@ -204,15 +204,11 @@
   let desiredQuality = 'auto';
   let desiredTHSub = false;
 
-  // Ensure api is ready
-  window.onYouTubeIframeAPIReady = function(){
-    createPlayer();
-  };
+  // NOTE: onYouTubeIframeAPIReady is managed by loadYTApi() so we don't overwrite it here.
 
   function createPlayer(){
     if (yt) return;
     yt = new YT.Player('wpPlayer', {
-      videoId: '',
       playerVars:{
         controls: 0,
         rel: 0,
@@ -238,8 +234,9 @@
         onStateChange: () => {
           // refresh quality list after playback begins
           refreshQualityList();
-          // best-effort apply desired quality when playing
-          if (desiredQuality && desiredQuality !== 'auto') applyQuality(desiredQuality, true);
+          // best-effort apply desired quality / captions when playing
+          if (desiredQuality && desiredQuality !== 'auto') applyQuality(desiredQuality);
+          if (desiredTHSub) setTimeout(()=>setTHSub(true), 120);
         },
         onError: (e) => {
           console.warn('YT error', e?.data);
@@ -302,23 +299,31 @@
     });
   }
 
-  function applyQuality(q, retry){
+  function applyQuality(q){
     if (!ytReady || !yt) return;
     if (!q || q === 'auto') return;
-    try{
-      // Range first (helps on some players)
-      yt.setPlaybackQualityRange(q);
-    }catch(_){}
-    try{
-      yt.setPlaybackQuality(q);
-    }catch(_){}
-    if (retry){
-      setTimeout(()=>{ try{ yt.setPlaybackQualityRange(q); yt.setPlaybackQuality(q); }catch(_){} }, 450);
-      setTimeout(()=>{ try{ yt.setPlaybackQualityRange(q); yt.setPlaybackQuality(q); }catch(_){} }, 1200);
+    // Quality is LOCAL-ONLY: do not sync to others.
+    // YouTube may ignore setPlaybackQuality on adaptive streams, so we also re-cue with suggestedQuality.
+    const vid = currentVideoId;
+    const curT = getCurrentTime();
+    const wantPlay = (()=>{ try{ return yt.getPlayerState() === YT.PlayerState.PLAYING; }catch(_){ return false; }})();
+    try{ yt.setPlaybackQualityRange(q); }catch(_){}
+    try{ yt.setPlaybackQuality(q); }catch(_){}
+
+    if (vid){
+      try{
+        yt.cueVideoById({ videoId: vid, startSeconds: curT, suggestedQuality: q });
+      }catch(_){
+        try{ yt.loadVideoById({ videoId: vid, startSeconds: curT, suggestedQuality: q }); }catch(__){}
+      }
+      // Restore playback state after re-cue.
+      if (wantPlay){
+        setTimeout(()=>{ try{ yt.playVideo(); }catch(_){} }, 120);
+      }
+      setTimeout(()=>{ try{ yt.seekTo(curT, true); }catch(_){} }, 220);
     }
   }
 
-  
   function setTHSub(enabled){
     desiredTHSub = !!enabled;
     // UI optimistic (will be corrected)
@@ -411,7 +416,7 @@
     }
 
     // Re-apply user prefs after load
-    setTimeout(()=> applyQuality(desiredQuality, true), 650);
+    setTimeout(()=> applyQuality(desiredQuality), 650);
     setTimeout(()=> setTHSub(desiredTHSub), 750);
   }
 
@@ -565,10 +570,29 @@
     return;
   }
 
+  // Preload YouTube IFrame API + create an empty player immediately.
+  // The room state (url) will cue/load the actual video when someone presses Set.
+  ensurePlayer().catch(()=>{});
+
   socket.emit('wp:join', { roomId, k: joinKey });
 
-  socket.on('wp:presence', ({ online }={})=>{
-    if (els.online) els.online.textContent = String(Number(online)||0);
+  socket.on('wp:joined', (payload = {})=>{
+    // Initial presence/state on join
+    const n = Number(payload.membersOnline);
+    if (els.online && Number.isFinite(n)) els.online.textContent = String(n);
+    if (payload.state) applyServerState(payload.state);
+  });
+
+  socket.on('wp:presence', ({ online, membersOnline } = {})=>{
+    const n = Number.isFinite(Number(online)) ? Number(online)
+            : (Number.isFinite(Number(membersOnline)) ? Number(membersOnline) : 0);
+    if (els.online) els.online.textContent = String(n);
+  });
+
+  socket.on('wp:joined', (p = {})=>{
+    const n = Number(p.membersOnline) || 0;
+    if (els.online) els.online.textContent = String(n);
+    if (p.state) applyServerState(p.state);
   });
 
   socket.on('wp:state', (st)=>{
@@ -614,7 +638,7 @@
   if (els.quality){
     els.quality.addEventListener('change', ()=>{
       desiredQuality = els.quality.value || 'auto';
-      if (desiredQuality !== 'auto') applyQuality(desiredQuality, true);
+      if (desiredQuality !== 'auto') applyQuality(desiredQuality);
     });
   }
 

@@ -3,6 +3,7 @@
 <head>
   <title>VOIDSECTOR | YouTube Watch Party</title>
   <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/css/whiteboard.css" />
   <link rel="stylesheet" href="/css/watch-party.css" />
 </head>
 <body>
@@ -12,9 +13,15 @@
   
 
   <div class="container vs-page">
-    <div class="card vs-card wp-centerCard">
+    <div class="card vs-card">
       <div class="wp-shell wp-shell--inCard" data-roomtype="<%= isPublic ? 'public' : 'private' %>">
-    <header class="wp-top">
+
+        <div class="wb-lobby__title" style="margin-bottom: 8px;">
+          <h1>YOUTUBE WATCH PARTY</h1>
+          <p>ควบคุมด้วยเมนูของ VOIDSECTOR • ซิงก์ play/pause/seek แบบ realtime • เสียงแยกแต่ละคน</p>
+        </div>
+
+        <header class="wp-top">
       <div class="wp-top__left">
         <a class="wp-back" href="/watch">← Lobby</a>
         <div class="wp-meta">
