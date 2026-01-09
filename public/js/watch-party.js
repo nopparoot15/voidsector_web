@@ -201,7 +201,6 @@
   let ytReady = false;
   let currentVideoId = null;
   let suppressScrub = false;
-  let scrubWasPlaying = false;
 
   let lastStateFromServer = null;
 let desiredTHSub = false;
