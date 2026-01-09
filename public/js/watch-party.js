@@ -281,6 +281,7 @@
         onStateChange: (ev) => {
           const st = ev && typeof ev.data === 'number' ? ev.data : null;
           if (st === window.YT.PlayerState.PLAYING || st === window.YT.PlayerState.BUFFERING) {
+            if (typeof desiredTHSub !== 'undefined' && desiredTHSub) { tryEnableThaiCaptions(); }
             forceMaxQuality();
             setTimeout(forceMaxQuality, 250);
             setTimeout(forceMaxQuality, 900);
@@ -690,6 +691,8 @@
   // -------------------------
   // UI actions -> emits (server is truth)
   // -------------------------
+  // When user clicks Set, we want: set URL -> when server confirms state, play immediately.
+  let __pendingSetPlay = null; // { vid, startedAt }
   function setUrlFromInput() {
     const id = parseYouTubeId(els.url?.value || '');
     if (!id) {
@@ -697,6 +700,7 @@
       return;
     }
     showUrlError('');
+    __pendingSetPlay = { vid: id, startedAt: Date.now() };
     socket.emit('wp:set_url', { url: normalizeYouTubeUrl(id), provider: 'youtube' });
   }
 
@@ -868,6 +872,17 @@
       applyServerState.__last = payload.state;
       applyServerState(payload.state);
       startDriftLock();
+
+      if (__pendingSetPlay) {
+        const age = Date.now() - (__pendingSetPlay.startedAt || 0);
+        const vid = parseYouTubeId(String(payload.state.url || '')) || null;
+        if (age < 4000 && vid && vid === __pendingSetPlay.vid) {
+          socket.emit('wp:play', { t: Math.max(0, Number(payload.state.t) || 0) });
+          __pendingSetPlay = null;
+        } else if (age >= 4000) {
+          __pendingSetPlay = null;
+        }
+      }
     }
   });
 
@@ -880,6 +895,19 @@
     applyServerState.__last = st;
     applyServerState(st);
     startDriftLock();
+
+    // Auto-play after Set, only once, after server confirms the URL/state.
+    if (__pendingSetPlay) {
+      const age = Date.now() - (__pendingSetPlay.startedAt || 0);
+      const vid = parseYouTubeId(String(st.url || '')) || null;
+      if (age < 4000 && vid && vid === __pendingSetPlay.vid) {
+        // If server state is paused at/near 0, start playing now.
+        socket.emit('wp:play', { t: Math.max(0, Number(st.t) || 0) });
+        __pendingSetPlay = null;
+      } else if (age >= 4000) {
+        __pendingSetPlay = null;
+      }
+    }
   });
 
   socket.on('wp:error', (e) => {
