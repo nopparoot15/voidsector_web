@@ -18,7 +18,6 @@ const whiteboardApiRoutes = require('./routes/whiteboardApi');
 const whiteboardPageRoutes = require('./routes/whiteboard');
 const watchPartyApiRoutes = require('./routes/watchPartyApi');
 const watchPartyPageRoutes = require('./routes/watchParty');
-const fahsaiRoutes = require('./routes/fahsai');
 const viewLocals = require('./middleware/viewLocals');
 const { requireLogin } = require('./middleware/requireLogin');
 
@@ -131,7 +130,6 @@ function createApp() {
   app.use('/', authRoutes);
   app.use(terminalRoutes);
   app.use('/', profileRoutes);
-  app.use('/', fahsaiRoutes);
 
   // pages last
   app.use('/', pageRoutes);
