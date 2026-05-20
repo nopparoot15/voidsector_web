@@ -285,40 +285,6 @@
       }
     };
 
-    // ── Fake typing animation ──
-    const typeText = (el, text, onDone) => {
-      const SPEED = 18; // ms per character
-      let i = 0;
-      const cursor = document.createElement('span');
-      cursor.className = 'fs-cursor';
-      el.textContent = '';
-      el.appendChild(cursor);
-
-      const tick = () => {
-        if (i >= text.length) {
-          cursor.remove();
-          if (onDone) onDone();
-          return;
-        }
-        // Advance past combining characters (Thai vowel marks etc.)
-        let end = i + 1;
-        while (end < text.length) {
-          const cat = [...text[end]].reduce((_, c) => {
-            const cp = c.codePointAt(0);
-            return (cp >= 0x0E00 && cp <= 0x0E7F) ? 'thai' : 'other';
-          }, '');
-          // Thai combining marks (sara, tone marks) have no width — include them
-          const cp = text.codePointAt(end);
-          if (cp >= 0x0E30 && cp <= 0x0E4E) { end++; } else break;
-        }
-        el.insertBefore(document.createTextNode(text.slice(i, end)), cursor);
-        i = end;
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        setTimeout(tick, SPEED);
-      };
-      tick();
-    };
-
     // ── Send ──
     const send = async () => {
       if (busy) return;
@@ -334,6 +300,8 @@
       cursor.className = 'fs-cursor';
       botBubble.appendChild(cursor);
 
+      let botText = '';
+
       try {
         const resp = await fetch('/api/fahsai/chat', {
           method: 'POST',
@@ -341,32 +309,57 @@
           body: JSON.stringify({ message: msg, history }),
         });
 
-        const data = await resp.json().catch(() => ({}));
-
         if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
           cursor.remove();
-          botBubble.textContent = data.error || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';
+          botBubble.textContent = err.error || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';
           setUI(true);
           inputEl.focus();
           return;
         }
 
-        const text = data.text || 'ขอโทษนะพี่ หนูสับสนนิดหน่อย ลองถามใหม่ได้เลย';
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
 
-        // Save to history before typing animation
-        history.push({ role: 'user', content: msg });
-        history.push({ role: 'assistant', content: text });
-        if (history.length > 40) history = history.slice(-40);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
 
-        cursor.remove();
-        setUI(true);
+          const lines = buf.split('\n');
+          buf = lines.pop();
 
-        // Animate typing
-        typeText(botBubble, text, () => { inputEl.focus(); });
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.token) {
+                botText += data.token;
+                const display = botText
+                  .replace(/<think>[\s\S]*?<\/think>/g, '')
+                  .replace(/<think>[\s\S]*/g, '')
+                  .trim();
+                botBubble.textContent = display;
+                botBubble.appendChild(cursor);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+              }
+              if (data.done) botText = data.text || botText;
+              if (data.error) botBubble.textContent = 'Error: ' + data.error;
+            } catch { /* ignore malformed line */ }
+          }
+        }
 
       } catch (e) {
-        cursor.remove();
         botBubble.textContent = 'เชื่อมต่อไม่ได้ — ตรวจสอบว่า Fahsai เปิดอยู่และ tunnel กำลังทำงาน';
+      } finally {
+        cursor.remove();
+        const finalText = botText.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || botBubble.textContent;
+        if (finalText) {
+          history.push({ role: 'user', content: msg });
+          history.push({ role: 'assistant', content: finalText });
+          if (history.length > 40) history = history.slice(-40);
+        }
         setUI(true);
         inputEl.focus();
       }

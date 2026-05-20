@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Readable } = require('stream');
 const { requireLogin } = require('../middleware/requireLogin');
 
 const FAHSAI_URL = (process.env.FAHSAI_API_URL || '').replace(/\/$/, '');
@@ -40,13 +41,31 @@ router.post('/api/fahsai/chat', requireLogin, async (req, res) => {
     return res.status(502).json({ error: 'Cannot reach Fahsai server — is the tunnel running?' });
   }
 
-  const data = await fahsaiRes.json().catch(() => ({}));
-
   if (!fahsaiRes.ok) {
-    return res.status(fahsaiRes.status).json({ error: data.error || 'Fahsai error' });
+    const body = await fahsaiRes.json().catch(() => ({}));
+    return res.status(fahsaiRes.status).json({ error: body.error || 'Fahsai error' });
   }
 
-  res.json(data);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  // Disable TCP Nagle buffering so each SSE token is sent immediately
+  if (res.socket) res.socket.setNoDelay(true);
+  res.flushHeaders();
+
+  try {
+    const nodeStream = Readable.fromWeb(fahsaiRes.body);
+    for await (const chunk of nodeStream) {
+      if (res.writableEnded) break;
+      res.write(chunk);
+      // Force flush if compression middleware wraps res
+      if (typeof res.flush === 'function') res.flush();
+    }
+  } catch (e) {
+    // client disconnected
+  } finally {
+    if (!res.writableEnded) res.end();
+  }
 });
 
 // GET /api/fahsai/status — check if server is reachable
