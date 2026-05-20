@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { Readable } = require('stream');
 const { requireLogin } = require('../middleware/requireLogin');
 
 const FAHSAI_URL = (process.env.FAHSAI_API_URL || '').replace(/\/$/, '');
@@ -41,26 +40,13 @@ router.post('/api/fahsai/chat', requireLogin, async (req, res) => {
     return res.status(502).json({ error: 'Cannot reach Fahsai server — is the tunnel running?' });
   }
 
+  const data = await fahsaiRes.json().catch(() => ({}));
+
   if (!fahsaiRes.ok) {
-    const body = await fahsaiRes.text().catch(() => '');
-    return res.status(fahsaiRes.status).json({ error: body || 'Fahsai error' });
+    return res.status(fahsaiRes.status).json({ error: data.error || 'Fahsai error' });
   }
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders(); // send headers immediately so browser starts reading
-
-  // Convert WHATWG ReadableStream (Node 18 fetch) → Node.js Readable → pipe to response
-  try {
-    const nodeStream = Readable.fromWeb(fahsaiRes.body);
-    nodeStream.pipe(res);
-    nodeStream.on('error', () => { if (!res.writableEnded) res.end(); });
-    res.on('close', () => nodeStream.destroy());
-  } catch (e) {
-    console.error('[fahsai] stream error:', e.message);
-    if (!res.writableEnded) res.end();
-  }
+  res.json(data);
 });
 
 // GET /api/fahsai/status — check if server is reachable
