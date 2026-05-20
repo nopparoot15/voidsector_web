@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Readable } = require('stream');
 const { requireLogin } = require('../middleware/requireLogin');
 
 const FAHSAI_URL = (process.env.FAHSAI_API_URL || '').replace(/\/$/, '');
@@ -48,23 +49,18 @@ router.post('/api/fahsai/chat', requireLogin, async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders(); // send headers immediately so browser starts reading
 
-  // Pipe SSE stream from Flask → browser
-  const reader = fahsaiRes.body.getReader();
-  const pump = async () => {
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!res.writableEnded) res.write(value);
-      }
-    } catch (e) {
-      // client disconnected
-    } finally {
-      if (!res.writableEnded) res.end();
-    }
-  };
-  pump();
+  // Convert WHATWG ReadableStream (Node 18 fetch) → Node.js Readable → pipe to response
+  try {
+    const nodeStream = Readable.fromWeb(fahsaiRes.body);
+    nodeStream.pipe(res);
+    nodeStream.on('error', () => { if (!res.writableEnded) res.end(); });
+    res.on('close', () => nodeStream.destroy());
+  } catch (e) {
+    console.error('[fahsai] stream error:', e.message);
+    if (!res.writableEnded) res.end();
+  }
 });
 
 // GET /api/fahsai/status — check if server is reachable
