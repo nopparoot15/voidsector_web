@@ -33,8 +33,6 @@ async function initDb() {
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
   }
-  // Old schema had password NOT NULL — relax it
-  await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`).catch(() => {});
 
   console.log('✅ Schema ready');
 }
