@@ -35,6 +35,26 @@
       </div>
     </div>
   </div>
+
+  <% if (user) { %>
+  <div class="hobby-section">
+    <h2>🛠 Tools</h2>
+    <div class="hobby-grid">
+      <div class="hobby-card">
+        <div class="hobby-card-media">📺</div>
+        <h3>YouTube Watch Party</h3>
+        <p>ดู YouTube ด้วยกันแบบ realtime — sync play/pause/seek พร้อมกันทุกคน</p>
+        <a href="/watch" class="btn-outline btn-sm">เข้าห้อง →</a>
+      </div>
+      <div class="hobby-card">
+        <div class="hobby-card-media">🖌</div>
+        <h3>Whiteboard</h3>
+        <p>กระดานวาดรูปร่วมกัน realtime — ห้อง Public หรือห้องส่วนตัวแชร์ลิงก์</p>
+        <a href="/whiteboard" class="btn-outline btn-sm">เข้ากระดาน →</a>
+      </div>
+    </div>
+  </div>
+  <% } %>
 </main>
 </body>
 </html>

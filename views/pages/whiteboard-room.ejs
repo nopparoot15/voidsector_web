@@ -65,10 +65,20 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     window.WB_ROOM_ID = <%- JSON.stringify(roomId) %>;
     window.WB_IS_PUBLIC = <%- JSON.stringify(!!isPublic) %>;
     window.WB_JOIN_KEY = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
+    window.__USER__ = <%- JSON.stringify(user || null) %>;
+    // Create shared socket and identify before whiteboard.js runs
+    const _sock = window.io();
+    _sock.on('connect', () => {
+      if (window.__USER__) {
+        _sock.emit('vs:hello', { userId: window.__USER__.id, username: window.__USER__.username });
+      }
+    });
+    window.VS_SOCKET = _sock;
   </script>
   <script defer src="/js/whiteboard.js"></script>
 </body>
