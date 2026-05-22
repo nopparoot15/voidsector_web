@@ -10,18 +10,31 @@ async function initDb() {
   const schema = fs.readFileSync(
     path.join(__dirname, '../../database/schema.sql'), 'utf8'
   );
-  await pool.query(schema);
 
-  // Migrations: align old schema to new column names
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(200)`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(200)`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak INTEGER DEFAULT 0`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_date DATE`);
-  // Old schema had 'password' NOT NULL — drop that constraint so new inserts work
+  // Split into individual statements and run each one — avoids multi-statement issues
+  const statements = schema
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+
+  for (const stmt of statements) {
+    await pool.query(stmt);
+  }
+
+  // Migrations for deployments that have an older users table schema
+  const migrations = [
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(200)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(200)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS streak INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_date DATE`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL`,
+  ];
+  for (const m of migrations) {
+    await pool.query(m).catch(() => {});
+  }
+  // Old schema had password NOT NULL — relax it
   await pool.query(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`).catch(() => {});
-  // Unique index on email
-  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL`);
 
   console.log('✅ Schema ready');
 }
