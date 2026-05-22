@@ -5,12 +5,27 @@ const { requireLogin } = require('../middleware/requireLogin');
 const { pool } = require('../config/db');
 
 router.get('/', (req, res) => {
-  if (req.session && req.session.user) return res.redirect('/home');
-  res.render('pages/landing', { title: 'LinguaVoid' });
+  res.render('pages/landing', { title: 'VoidSector' });
 });
 
 router.get('/home', requireLogin, (req, res) => {
-  res.render('pages/home', { title: 'หน้าแรก' });
+  res.render('pages/home', { title: 'VoidSector' });
+});
+
+router.get('/languages', (req, res) => {
+  res.render('pages/languages', { title: 'เรียนภาษา' });
+});
+
+router.get('/coding', (req, res) => {
+  res.render('pages/coding', { title: 'Coding' });
+});
+
+router.get('/games', (req, res) => {
+  res.render('pages/games', { title: 'เกม & Anime' });
+});
+
+router.get('/music', (req, res) => {
+  res.render('pages/music', { title: 'ดนตรี' });
 });
 
 router.get('/login', (req, res) => {

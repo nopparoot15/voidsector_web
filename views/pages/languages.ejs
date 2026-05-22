@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %></head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="hub-main">
+  <div class="section-header">
+    <h1>🌐 เรียนภาษา</h1>
+    <p class="section-sub">เลือกภาษาที่ต้องการฝึก — มีบทเรียนอินเตอร์แอคทีฟและ Flashcard SRS</p>
+  </div>
+
+  <% if (!user) { %>
+  <div class="auth-gate">
+    <p>ต้องเข้าสู่ระบบเพื่อติดตามความคืบหน้าและสะสม XP</p>
+    <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
+      <a href="/register" class="btn-primary">สมัครฟรี</a>
+      <a href="/login" class="btn-outline">เข้าสู่ระบบ</a>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="lang-grid">
+    <a href="/learn/en" class="lang-card">
+      <div class="lang-flag">🇬🇧</div>
+      <div class="lang-name">English</div>
+      <div class="lang-desc">ภาษาอังกฤษสำหรับคนไทย<br>4 บท · 12 บทเรียน</div>
+      <div class="lang-cta">เริ่มเรียน →</div>
+    </a>
+    <a href="/learn/ja" class="lang-card">
+      <div class="lang-flag">🇯🇵</div>
+      <div class="lang-name">日本語</div>
+      <div class="lang-desc">ภาษาญี่ปุ่นสำหรับคนไทย<br>4 บท · 12 บทเรียน</div>
+      <div class="lang-cta">เริ่มเรียน →</div>
+    </a>
+    <a href="/learn/zh" class="lang-card">
+      <div class="lang-flag">🇨🇳</div>
+      <div class="lang-name">中文</div>
+      <div class="lang-desc">ภาษาจีนสำหรับคนไทย<br>4 บท · 12 บทเรียน</div>
+      <div class="lang-cta">เริ่มเรียน →</div>
+    </a>
+  </div>
+</main>
+</body>
+</html>

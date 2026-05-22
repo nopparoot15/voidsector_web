@@ -3,86 +3,58 @@
 <head><%- include('../partials/head') %></head>
 <body>
 <%- include('../partials/topbar') %>
-<main class="landing">
-  <section class="hero">
-    <div class="hero-content">
-      <h1>เรียนภาษาใหม่<br><span class="accent">ได้จริง ไม่น่าเบื่อ</span></h1>
-      <p class="hero-sub">ฝึกทุกวัน ทีละนิด ด้วยแบบฝึกหัดอินเตอร์แอคทีฟ<br>ภาษาอังกฤษ ภาษาญี่ปุ่น ภาษาจีน</p>
-      <div class="hero-actions">
-        <a href="/register" class="btn-primary btn-lg">เริ่มต้นเรียนฟรี →</a>
-        <a href="/login" class="btn-outline btn-lg">เข้าสู่ระบบ</a>
-      </div>
+<main class="hub-main">
+
+  <section class="hub-hero">
+    <div class="hub-avatar">🧂</div>
+    <h1 class="hub-name">salty</h1>
+    <p class="hub-bio">personal space · เรียนภาษา · code · anime · ดนตรี</p>
+    <% if (!user) { %>
+    <div class="hub-auth">
+      <a href="/register" class="btn-primary">เริ่มใช้งาน</a>
+      <a href="/login" class="btn-outline">เข้าสู่ระบบ</a>
     </div>
+    <% } %>
   </section>
 
-  <section class="lang-preview">
-    <h2 class="section-title">เลือกภาษาที่ต้องการเรียน</h2>
-    <div class="lang-cards">
-      <div class="lang-card">
-        <div class="lang-flag">🇬🇧</div>
-        <h3>English</h3>
-        <p>ภาษาอังกฤษ</p>
-        <div class="lang-meta">4 บท · 12 บทเรียน</div>
-        <div class="lang-tags">
-          <span>คำทักทาย</span>
-          <span>ตัวเลข</span>
-          <span>สัตว์</span>
-          <span>อาหาร</span>
-        </div>
+  <section class="hub-grid">
+    <a href="/languages" class="hub-card hub-card--lang">
+      <div class="hub-card-icon">🌐</div>
+      <div class="hub-card-body">
+        <h2>เรียนภาษา</h2>
+        <p>English · 日本語 · 中文<br>บทเรียน + Flashcard SRS + XP</p>
       </div>
-      <div class="lang-card lang-card--featured">
-        <div class="lang-flag">🇯🇵</div>
-        <h3>日本語</h3>
-        <p>ภาษาญี่ปุ่น</p>
-        <div class="lang-meta">4 บท · 12 บทเรียน</div>
-        <div class="lang-tags">
-          <span>ฮิรางานะ</span>
-          <span>ทักทาย</span>
-          <span>ตัวเลข</span>
-          <span>คำคุณศัพท์</span>
-        </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/coding" class="hub-card hub-card--code">
+      <div class="hub-card-icon">💻</div>
+      <div class="hub-card-body">
+        <h2>Coding</h2>
+        <p>โปรเจกต์ · ภาษาที่ใช้ · สิ่งที่กำลังทำ</p>
       </div>
-      <div class="lang-card">
-        <div class="lang-flag">🇨🇳</div>
-        <h3>中文</h3>
-        <p>ภาษาจีน</p>
-        <div class="lang-meta">4 บท · 12 บทเรียน</div>
-        <div class="lang-tags">
-          <span>อักษรพื้นฐาน</span>
-          <span>ทักทาย</span>
-          <span>ตัวเลข</span>
-          <span>ครอบครัว</span>
-        </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/games" class="hub-card hub-card--games">
+      <div class="hub-card-icon">🎮</div>
+      <div class="hub-card-body">
+        <h2>เกม & Anime</h2>
+        <p>เกมที่เล่น · Anime ที่ดู · รายการโปรด</p>
       </div>
-    </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+
+    <a href="/music" class="hub-card hub-card--music">
+      <div class="hub-card-icon">🎵</div>
+      <div class="hub-card-body">
+        <h2>ดนตรี</h2>
+        <p>เพลงที่ฟัง · เครื่องดนตรี · playlist</p>
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
   </section>
 
-  <section class="features">
-    <h2 class="section-title">ทำไมถึงเรียนได้จริง?</h2>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-icon">🎯</div>
-        <h3>แบบฝึกหัดหลากหลาย</h3>
-        <p>เลือกตอบ เติมคำ เรียงคำ จับคู่ พิมพ์คำแปล — ไม่เบื่อ ไม่ซ้ำซาก</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🧠</div>
-        <h3>Flashcard ระบบ SRS</h3>
-        <p>ท่องจำคำศัพท์ด้วย Spaced Repetition — คำที่จำยากจะถูกทบทวนบ่อยขึ้น</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🔥</div>
-        <h3>Streak & XP</h3>
-        <p>เรียนทุกวัน สะสม streak รับ XP เลื่อนระดับ — สร้างนิสัยดีๆ ทีละวัน</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="cta">
-    <h2>พร้อมเริ่มแล้วใช่ไหม?</h2>
-    <p>เปิดบัญชีฟรี ใช้ได้ทันที ไม่ต้องบัตรเครดิต</p>
-    <a href="/register" class="btn-primary btn-lg">เริ่มเรียนเลย →</a>
-  </section>
 </main>
 </body>
 </html>

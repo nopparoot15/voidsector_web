@@ -3,45 +3,57 @@
 <head><%- include('../partials/head') %></head>
 <body>
 <%- include('../partials/topbar') %>
-<main class="home-main">
+<main class="hub-main">
 
-  <div class="home-greeting">
-    <h1>สวัสดี, <span class="home-username"><%= user.username %></span> 👋</h1>
-    <p class="home-sub">เลือกภาษาที่ต้องการเรียนวันนี้</p>
-  </div>
+  <section class="hub-hero">
+    <div class="hub-avatar">🧂</div>
+    <h1 class="hub-name">salty</h1>
+    <p class="hub-bio">ยินดีต้อนรับกลับ, <strong><%= user.username %></strong> 👋</p>
+    <% const xp = user.xp || 0; const streak = user.streak || 0; const level = Math.floor(Math.sqrt(xp / 100)) + 1; %>
+    <div class="hub-user-stats">
+      <span class="stat-pill">🔥 <%= streak %> วัน</span>
+      <span class="stat-pill">⚡ <%= xp %> XP</span>
+      <span class="stat-pill">🏅 Lv.<%= level %></span>
+    </div>
+  </section>
 
-  <div class="home-stats">
-    <div class="stat-pill">🔥 <strong><%= user.streak || 0 %></strong> วัน Streak</div>
-    <div class="stat-pill">⚡ <strong><%= user.xp || 0 %></strong> XP</div>
-    <div class="stat-pill">🏅 Level <strong><%= Math.floor(Math.sqrt((user.xp || 0) / 100)) + 1 %></strong></div>
-  </div>
-
-  <% const xp = user.xp || 0; const level = Math.floor(Math.sqrt(xp / 100)) + 1; const xpForLevel = Math.pow(level - 1, 2) * 100; const xpForNext = Math.pow(level, 2) * 100; const pct = Math.min(100, Math.round(((xp - xpForLevel) / (xpForNext - xpForLevel)) * 100)); %>
-  <div class="xp-bar-wrap">
-    <div class="xp-bar-fill" style="width:<%= pct %>%"></div>
-  </div>
-  <div class="xp-bar-label">Lv.<%= level %> &nbsp;·&nbsp; <%= xp - xpForLevel %> / <%= xpForNext - xpForLevel %> XP → Lv.<%= level + 1 %></div>
-
-  <div class="lang-grid">
-    <a href="/learn/en" class="lang-card">
-      <div class="lang-flag">🇬🇧</div>
-      <div class="lang-name">English</div>
-      <div class="lang-desc">ภาษาอังกฤษสำหรับคนไทย</div>
-      <div class="lang-cta">เริ่มเรียน →</div>
+  <section class="hub-grid">
+    <a href="/languages" class="hub-card hub-card--lang">
+      <div class="hub-card-icon">🌐</div>
+      <div class="hub-card-body">
+        <h2>เรียนภาษา</h2>
+        <p>English · 日本語 · 中文<br>บทเรียน + Flashcard SRS + XP</p>
+      </div>
+      <div class="hub-card-arrow">→</div>
     </a>
-    <a href="/learn/ja" class="lang-card">
-      <div class="lang-flag">🇯🇵</div>
-      <div class="lang-name">日本語</div>
-      <div class="lang-desc">ภาษาญี่ปุ่นสำหรับคนไทย</div>
-      <div class="lang-cta">เริ่มเรียน →</div>
+
+    <a href="/coding" class="hub-card hub-card--code">
+      <div class="hub-card-icon">💻</div>
+      <div class="hub-card-body">
+        <h2>Coding</h2>
+        <p>โปรเจกต์ · ภาษาที่ใช้ · สิ่งที่กำลังทำ</p>
+      </div>
+      <div class="hub-card-arrow">→</div>
     </a>
-    <a href="/learn/zh" class="lang-card">
-      <div class="lang-flag">🇨🇳</div>
-      <div class="lang-name">中文</div>
-      <div class="lang-desc">ภาษาจีนสำหรับคนไทย</div>
-      <div class="lang-cta">เริ่มเรียน →</div>
+
+    <a href="/games" class="hub-card hub-card--games">
+      <div class="hub-card-icon">🎮</div>
+      <div class="hub-card-body">
+        <h2>เกม & Anime</h2>
+        <p>เกมที่เล่น · Anime ที่ดู · รายการโปรด</p>
+      </div>
+      <div class="hub-card-arrow">→</div>
     </a>
-  </div>
+
+    <a href="/music" class="hub-card hub-card--music">
+      <div class="hub-card-icon">🎵</div>
+      <div class="hub-card-body">
+        <h2>ดนตรี</h2>
+        <p>เพลงที่ฟัง · เครื่องดนตรี · playlist</p>
+      </div>
+      <div class="hub-card-arrow">→</div>
+    </a>
+  </section>
 
 </main>
 </body>
