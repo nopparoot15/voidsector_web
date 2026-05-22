@@ -4,6 +4,8 @@
 <body class="lesson-body">
 
 <div id="lesson-container" data-lesson-id="<%= lessonId %>" data-lang-code="<%= langCode %>">
+
+  <!-- Shared header: progress bar always visible -->
   <div id="lesson-header">
     <button id="exit-btn" class="exit-btn">✕</button>
     <div id="progress-bar-wrap">
@@ -12,23 +14,49 @@
     <span id="progress-text">0 / 0</span>
   </div>
 
-  <div id="exercise-area">
+  <!-- ─── INTRO SCREEN ────────────────────────────────────────────── -->
+  <div id="intro-screen" class="hidden">
+    <div class="intro-card">
+      <div class="intro-icon">📚</div>
+      <h2 id="intro-lesson-title">กำลังโหลด...</h2>
+      <p class="intro-sub">ทบทวนคำศัพท์ด้านล่างก่อนเริ่มทำแบบฝึกหัด</p>
+
+      <div class="vocab-section">
+        <table class="vocab-table">
+          <thead>
+            <tr>
+              <th>คำ / วลี</th>
+              <th>การอ่าน</th>
+              <th>ความหมาย</th>
+            </tr>
+          </thead>
+          <tbody id="vocab-table-body"></tbody>
+        </table>
+      </div>
+
+      <button id="start-exercises-btn" class="btn-primary btn-lg">เริ่มทำแบบฝึกหัด →</button>
+    </div>
+  </div>
+
+  <!-- ─── EXERCISE AREA ────────────────────────────────────────────── -->
+  <div id="exercise-area" class="hidden">
     <div id="exercise-card"></div>
+    <div id="answer-area"></div>
+
+    <div id="check-bar">
+      <button id="check-btn" disabled>ตรวจคำตอบ</button>
+    </div>
+
+    <div id="feedback-panel">
+      <div id="feedback-header"></div>
+      <div id="feedback-answer"></div>
+      <button id="continue-btn">ถัดไป →</button>
+    </div>
   </div>
 
-  <div id="answer-area"></div>
-
-  <div id="check-bar">
-    <button id="check-btn" disabled>ตรวจคำตอบ</button>
-  </div>
-
-  <div id="feedback-panel">
-    <div id="feedback-header"></div>
-    <div id="feedback-answer"></div>
-    <button id="continue-btn">ถัดไป →</button>
-  </div>
 </div>
 
+<!-- ─── COMPLETION SCREEN ─────────────────────────────────────────── -->
 <div id="completion-screen" class="hidden">
   <div class="completion-card">
     <div class="completion-emoji">🎉</div>

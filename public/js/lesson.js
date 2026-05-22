@@ -15,11 +15,16 @@
   let matchPairs = [];
   let matchDone = new Set();
 
-  const exerciseCard = document.getElementById('exercise-card');
-  const answerArea   = document.getElementById('answer-area');
-  const checkBtn     = document.getElementById('check-btn');
-  const progressBar  = document.getElementById('progress-bar');
-  const progressText = document.getElementById('progress-text');
+  const introScreen    = document.getElementById('intro-screen');
+  const exerciseArea   = document.getElementById('exercise-area');
+  const startBtn       = document.getElementById('start-exercises-btn');
+  const lessonTitleEl  = document.getElementById('intro-lesson-title');
+  const vocabTableBody = document.getElementById('vocab-table-body');
+  const exerciseCard   = document.getElementById('exercise-card');
+  const answerArea     = document.getElementById('answer-area');
+  const checkBtn       = document.getElementById('check-btn');
+  const progressBar    = document.getElementById('progress-bar');
+  const progressText   = document.getElementById('progress-text');
   const feedbackPanel  = document.getElementById('feedback-panel');
   const feedbackHeader = document.getElementById('feedback-header');
   const feedbackAnswer = document.getElementById('feedback-answer');
@@ -31,12 +36,85 @@
       const res = await fetch(`/api/lesson/${lessonId}`);
       const data = await res.json();
       exercises = data.exercises || [];
-      renderExercise();
+
+      if (lessonTitleEl && data.lesson) lessonTitleEl.textContent = data.lesson.title;
+
+      buildVocabTable(exercises);
+      showIntro();
     } catch (e) {
+      if (introScreen) introScreen.classList.add('hidden');
+      if (exerciseArea) exerciseArea.classList.remove('hidden');
       exerciseCard.innerHTML = '<p style="color:var(--error)">โหลดบทเรียนไม่ได้ ลองใหม่อีกครั้ง</p>';
     }
   }
 
+  // ── Intro / Vocab table ─────────────────────────────────────────────
+  function buildVocabTable(exs) {
+    if (!vocabTableBody) return;
+    const rows = [];
+    const seen = new Set();
+
+    for (const ex of exs) {
+      const d = ex.data;
+      if (ex.type === 'match_pairs') {
+        const pairs = (d.pairs || []).map(p =>
+          Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
+        );
+        for (const p of pairs) {
+          const key = p.left + '|' + p.right;
+          if (!seen.has(key)) {
+            seen.add(key);
+            rows.push({ word: p.left, reading: '', meaning: p.right });
+          }
+        }
+      } else if (ex.type === 'translate') {
+        const key = d.answer + '|' + (d.prompt || '');
+        if (!seen.has(key)) {
+          seen.add(key);
+          rows.push({ word: d.answer, reading: d.hint || '', meaning: d.prompt || '' });
+        }
+      } else if (ex.type === 'multiple_choice') {
+        const q = d.prompt || d.question || '';
+        const correctOpt = d.options && d.options[d.correct !== undefined ? d.correct : d.correct_index];
+        if (correctOpt && q) {
+          const key = q + '|' + correctOpt;
+          if (!seen.has(key)) {
+            seen.add(key);
+            rows.push({ word: correctOpt, reading: '', meaning: q });
+          }
+        }
+      }
+    }
+
+    if (!rows.length) {
+      vocabTableBody.closest('.vocab-section').classList.add('hidden');
+      return;
+    }
+
+    vocabTableBody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="vocab-word">${esc(r.word)}</td>
+        <td class="vocab-reading">${esc(r.reading)}</td>
+        <td class="vocab-meaning">${esc(r.meaning)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function showIntro() {
+    if (introScreen) introScreen.classList.remove('hidden');
+    if (exerciseArea) exerciseArea.classList.add('hidden');
+    updateProgress();
+  }
+
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
+      if (introScreen) introScreen.classList.add('hidden');
+      if (exerciseArea) exerciseArea.classList.remove('hidden');
+      renderExercise();
+    });
+  }
+
+  // ── Exercise loop ────────────────────────────────────────────────────
   function updateProgress() {
     const pct = exercises.length ? Math.round((current / exercises.length) * 100) : 0;
     if (progressBar) progressBar.style.width = pct + '%';
@@ -65,14 +143,14 @@
     }
   }
 
-  // ── Multiple Choice ──────────────────────────────────────────────
+  // ── Multiple Choice ──────────────────────────────────────────────────
   function renderMC(ex) {
     const d = ex.data;
     const prompt = d.prompt || d.question || '';
     const correctIdx = d.correct_index !== undefined ? d.correct_index : d.correct;
-    exerciseCard.innerHTML = `<div class="ex-prompt">${prompt}</div>`;
+    exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
     answerArea.innerHTML = `<div class="mc-options">${d.options.map((o, i) =>
-      `<button class="mc-option" data-idx="${i}">${o}</button>`
+      `<button class="mc-option" data-idx="${i}">${esc(o)}</button>`
     ).join('')}</div>`;
     answerArea.querySelectorAll('.mc-option').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -82,7 +160,6 @@
         checkBtn.disabled = false;
       });
     });
-    // store correct index on element for check
     checkBtn.dataset.correctIdx = correctIdx;
   }
 
@@ -99,18 +176,15 @@
     });
   }
 
-  // ── Fill Blank (seed format: sentence with options) ───────────────
+  // ── Fill Blank ───────────────────────────────────────────────────────
   function renderFillBlank(ex) {
     const d = ex.data;
-    // Seed has sentence + options + correct (index); support both MC-style and text-style
     if (d.options && d.options.length) {
-      // render as multiple choice with sentence as prompt
       const prompt = d.sentence || d.prompt || '';
-      const translation = d.translation ? `<div class="ex-translation">${d.translation}</div>` : '';
-      exerciseCard.innerHTML = `<div class="ex-prompt">${prompt}</div>${translation}`;
+      exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
       const correctIdx = d.correct_index !== undefined ? d.correct_index : d.correct;
       answerArea.innerHTML = `<div class="mc-options">${d.options.map((o, i) =>
-        `<button class="mc-option" data-idx="${i}">${o}</button>`
+        `<button class="mc-option" data-idx="${i}">${esc(o)}</button>`
       ).join('')}</div>`;
       answerArea.querySelectorAll('.mc-option').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -122,9 +196,8 @@
       });
       checkBtn.dataset.correctIdx = correctIdx;
     } else {
-      // text input style
       const prompt = d.prompt || d.sentence || '';
-      exerciseCard.innerHTML = `<div class="ex-prompt">${prompt}</div>`;
+      exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
       answerArea.innerHTML = `<input id="fill-input" class="translate-input" type="text" placeholder="พิมพ์คำตอบ..." autocomplete="off" />`;
       const inp = document.getElementById('fill-input');
       inp.focus();
@@ -154,16 +227,15 @@
     }
   }
 
-  // ── Word Order ───────────────────────────────────────────────────
+  // ── Word Order ───────────────────────────────────────────────────────
   function renderWordOrder(ex) {
     const d = ex.data;
     const prompt = d.prompt || d.instruction || '';
-    const translation = d.translation ? `<div class="ex-translation">${d.translation}</div>` : '';
-    exerciseCard.innerHTML = `<div class="ex-prompt">${prompt}</div>${translation}`;
+    exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
     answerArea.innerHTML = `
       <div id="answer-slots" class="answer-slots"></div>
       <div id="word-bank" class="word-bank">${d.words.map((w, i) =>
-        `<button class="word-chip" data-word="${w}" data-idx="${i}">${w}</button>`
+        `<button class="word-chip" data-word="${esc(w)}" data-idx="${i}">${esc(w)}</button>`
       ).join('')}</div>`;
     answerArea.querySelectorAll('.word-chip').forEach(btn => {
       btn.addEventListener('click', () => wordChipClick(btn));
@@ -199,12 +271,12 @@
     document.querySelectorAll('.word-chip, .answer-chip').forEach(b => b.disabled = true);
   }
 
-  // ── Translate ────────────────────────────────────────────────────
+  // ── Translate ────────────────────────────────────────────────────────
   function renderTranslate(ex) {
     const d = ex.data;
     const prompt = d.prompt || '';
-    const hint = d.hint ? `<div class="ex-hint">${d.hint}</div>` : '';
-    exerciseCard.innerHTML = `<div class="ex-prompt">${prompt}</div>${hint}`;
+    const hint = d.hint ? `<div class="ex-hint">${esc(d.hint)}</div>` : '';
+    exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>${hint}`;
     answerArea.innerHTML = `<textarea id="translate-input" class="translate-input" rows="3" placeholder="พิมพ์คำแปล..."></textarea>`;
     const inp = document.getElementById('translate-input');
     inp.focus();
@@ -221,28 +293,24 @@
     if (inp) inp.disabled = true;
   }
 
-  // ── Match Pairs ──────────────────────────────────────────────────
+  // ── Match Pairs ──────────────────────────────────────────────────────
   function renderMatchPairs(ex) {
     const d = ex.data;
     const prompt = d.prompt || d.instruction || 'จับคู่คำศัพท์';
-    matchPairs = d.pairs; // [{left,right}] or [[a,b]]
-
-    // Normalize to [{left, right}] format
-    const normalized = matchPairs.map(p =>
+    matchPairs = (d.pairs || []).map(p =>
       Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
     );
-    matchPairs = normalized;
 
-    const lefts = normalized.map((p, i) => ({ text: p.left, idx: i }));
-    const rights = shuffle(normalized.map((p, i) => ({ text: p.right, idx: i })));
+    const lefts = matchPairs.map((p, i) => ({ text: p.left, idx: i }));
+    const rights = shuffle(matchPairs.map((p, i) => ({ text: p.right, idx: i })));
 
-    exerciseCard.innerHTML = `<div class="ex-prompt">${prompt}</div>`;
+    exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
     answerArea.innerHTML = `<div class="match-cols">
       <div class="match-col" id="match-left">${lefts.map(l =>
-        `<button class="match-item" data-side="left" data-idx="${l.idx}">${l.text}</button>`
+        `<button class="match-item" data-side="left" data-idx="${l.idx}">${esc(l.text)}</button>`
       ).join('')}</div>
       <div class="match-col" id="match-right">${rights.map(r =>
-        `<button class="match-item" data-side="right" data-idx="${r.idx}">${r.text}</button>`
+        `<button class="match-item" data-side="right" data-idx="${r.idx}">${esc(r.text)}</button>`
       ).join('')}</div>
     </div>`;
 
@@ -291,7 +359,7 @@
     showFeedback(matchDone.size === matchPairs.length, '');
   }
 
-  // ── Check & Feedback ─────────────────────────────────────────────
+  // ── Check & Feedback ─────────────────────────────────────────────────
   checkBtn.addEventListener('click', doCheck);
 
   function doCheck() {
@@ -321,7 +389,7 @@
     setTimeout(renderExercise, 300);
   });
 
-  // ── Completion ───────────────────────────────────────────────────
+  // ── Completion ───────────────────────────────────────────────────────
   async function showCompletion() {
     updateProgress();
     let xpEarned = 0, totalXp = 0, streak = 0, level = 1;
@@ -349,8 +417,11 @@
     document.getElementById('back-learn-btn').href        = `/learn/${langCode}`;
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────
   function normalize(s) { return String(s).toLowerCase().trim().replace(/\s+/g, ' '); }
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
   function shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {

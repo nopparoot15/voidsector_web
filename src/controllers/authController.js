@@ -58,9 +58,10 @@ async function login(req, res) {
     return res.redirect('/login?error=' + encodeURIComponent('กรอกข้อมูลให้ครบ'));
   }
   try {
+    const identifier = email.trim().toLowerCase();
     const { rows } = await pool.query(
-      'SELECT * FROM users WHERE email=$1',
-      [email.trim().toLowerCase()]
+      'SELECT * FROM users WHERE email=$1 OR LOWER(username)=$1',
+      [identifier]
     );
     if (!rows.length) {
       return res.redirect('/login?error=' + encodeURIComponent('ไม่พบบัญชีผู้ใช้นี้'));
