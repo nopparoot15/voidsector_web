@@ -18,12 +18,14 @@ const io = new Server(server, { cors: { origin: true, credentials: true } });
 
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
-  socket.data.userId = null;
-  socket.data.username = null;
+  // Identity set from handshake auth — no race condition with wb:/wp: events
+  const authUid = Number(socket.handshake.auth?.userId);
+  socket.data.userId = Number.isFinite(authUid) && authUid > 0 ? authUid : null;
+  socket.data.username = String(socket.handshake.auth?.username || '').trim().slice(0, 32);
   socket.data.wbRoomId = null;
   socket.data.wpRoomId = null;
 
-  // Identify (must be called before wb:/wp: events)
+  // Legacy support: allow runtime re-identification
   socket.on('vs:hello', ({ userId, username } = {}) => {
     const uid = Number(userId);
     socket.data.userId = Number.isFinite(uid) && uid > 0 ? uid : null;

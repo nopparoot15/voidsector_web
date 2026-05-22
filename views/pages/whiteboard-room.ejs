@@ -71,14 +71,12 @@
     window.WB_IS_PUBLIC = <%- JSON.stringify(!!isPublic) %>;
     window.WB_JOIN_KEY = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
     window.__USER__ = <%- JSON.stringify(user || null) %>;
-    // Create shared socket and identify before whiteboard.js runs
-    const _sock = window.io();
-    _sock.on('connect', () => {
-      if (window.__USER__) {
-        _sock.emit('vs:hello', { userId: window.__USER__.id, username: window.__USER__.username });
-      }
+    // Pass identity in handshake so server knows who we are before any events arrive
+    window.VS_SOCKET = window.io({
+      auth: window.__USER__
+        ? { userId: window.__USER__.id, username: window.__USER__.username }
+        : {}
     });
-    window.VS_SOCKET = _sock;
   </script>
   <script defer src="/js/whiteboard.js"></script>
 </body>
