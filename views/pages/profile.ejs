@@ -1,27 +1,38 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <title>Profile</title>
-  <%- include('../partials/head') %>
-</head>
+<head><%- include('../partials/head') %></head>
 <body>
-  <div class="background"></div>
-  <%- include('../partials/topbar') %>
+<%- include('../partials/topbar') %>
+<main class="profile-main">
+  <div class="profile-card">
+    <div class="profile-avatar"><%= userData.username.slice(0,1).toUpperCase() %></div>
+    <h1 class="profile-username"><%= userData.username %></h1>
+    <p class="profile-email"><%= userData.email %></p>
+    <div class="profile-level">Level <%= level %></div>
+  </div>
 
-  <div class="container vs-page">
-    <div class="card vs-card" style="max-width:760px;">
-    <h1>👤 โปรไฟล์</h1>
-
-    <img src="<%= profile.avatar_path || '/img/default-avatar.png' %>"
-         style="width:96px;height:96px;border-radius:16px;object-fit:cover;">
-
-    <div><%= profile.username %></div>
-
-    <form action="/profile/avatar" method="post" enctype="multipart/form-data">
-      <input type="file" name="avatar" required>
-      <button>Upload</button>
-    </form>
+  <div class="profile-stats">
+    <div class="stat-card">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-value"><%= userData.xp || 0 %></div>
+      <div class="stat-label">XP ทั้งหมด</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🔥</div>
+      <div class="stat-value"><%= userData.streak || 0 %></div>
+      <div class="stat-label">Streak วัน</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value"><%= completedCount %></div>
+      <div class="stat-label">บทเรียนที่ผ่านแล้ว</div>
     </div>
   </div>
+
+  <div class="profile-actions">
+    <a href="/home" class="btn-primary">กลับหน้าหลัก</a>
+    <a href="/logout" class="btn-outline">ออกจากระบบ</a>
+  </div>
+</main>
 </body>
 </html>

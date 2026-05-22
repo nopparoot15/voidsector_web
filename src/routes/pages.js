@@ -1,81 +1,80 @@
-// src/routes/pages.js
+'use strict';
 const express = require('express');
 const router = express.Router();
+const { requireLogin } = require('../middleware/requireLogin');
+const { pool } = require('../config/db');
 
-const catalog = [
-  { key: 'english', title: 'English Basic Course', desc: 'คอร์สอังกฤษพื้นฐาน + แบบทดสอบ', icon: '🇬🇧' },
-  { key: 'coding', title: 'Python Master Class', desc: 'ทบทวน Python Phase 1-2 พร้อม quiz', icon: '🐍' }
-];
+router.get('/', (req, res) => {
+  if (req.session && req.session.user) return res.redirect('/home');
+  res.render('pages/landing', { title: 'LinguaVoid' });
+});
 
-// Map course -> category (future-proof)
-const courseCategory = {
-  english: 'language',
-  coding: 'coding',
-};
+router.get('/home', requireLogin, (req, res) => {
+  res.render('pages/home', { title: 'หน้าแรก' });
+});
 
-// ------------------------------------------------------
-// Landing gate: must login/register before entering the app
-// ------------------------------------------------------
-router.get('/', async (req, res) => {
-  if (!req.session.user) {
-    return res.render('pages/landing');
+router.get('/login', (req, res) => {
+  if (req.session && req.session.user) return res.redirect('/home');
+  res.render('pages/login', { title: 'เข้าสู่ระบบ', error: req.query.error || null });
+});
+
+router.get('/register', (req, res) => {
+  if (req.session && req.session.user) return res.redirect('/home');
+  res.render('pages/register', { title: 'สมัครสมาชิก', error: req.query.error || null });
+});
+
+router.get('/learn/:langCode', requireLogin, (req, res) => {
+  const { langCode } = req.params;
+  const names = { en: 'English', ja: 'Japanese', zh: 'Chinese' };
+  if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
+  res.render('pages/learn', { title: 'เรียน ' + names[langCode], langCode });
+});
+
+router.get('/lesson/:lessonId', requireLogin, async (req, res) => {
+  try {
+    const lessonId = parseInt(req.params.lessonId);
+    const { rows } = await pool.query(
+      `SELECT l.id, l.title, lang.code as lang_code
+       FROM lessons l
+       JOIN units u ON l.unit_id = u.id
+       JOIN languages lang ON u.language_id = lang.id
+       WHERE l.id = $1`,
+      [lessonId]
+    );
+    if (!rows.length) return res.status(404).render('pages/notfound', { title: '404' });
+    const lesson = rows[0];
+    res.render('pages/lesson', { title: lesson.title, lessonId, langCode: lesson.lang_code });
+  } catch (err) {
+    console.error('lesson page error:', err.message);
+    res.status(500).render('pages/notfound', { title: 'Error' });
   }
-
-  // After login, Home is a Tool Hub (Cyber Portal)
-  res.render('pages/home', { catalog });
 });
 
-// From here on, all pages require login
-router.use((req, res, next) => {
-  if (!req.session.user) return res.redirect('/');
-  next();
+router.get('/flashcards/:langCode', requireLogin, (req, res) => {
+  const { langCode } = req.params;
+  const names = { en: 'English', ja: 'Japanese', zh: 'Chinese' };
+  if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
+  res.render('pages/flashcards', { title: 'Flashcard ' + names[langCode], langCode });
 });
 
-// Learn Hub: choose category before entering /learn
-router.get('/learn/categories', (req, res) => {
-  res.render('pages/learn-categories');
-});
-
-router.get('/learn', (req, res) => {
-  const cat = (req.query.cat || '').toString();
-  const filtered = (cat && cat !== 'all')
-    ? catalog.filter(c => courseCategory[c.key] === cat)
-    : catalog;
-  res.render('pages/learn', { catalog: filtered, selectedCat: cat });
-});
-
-router.get('/python-playground', (req, res) => {
-  // Back-compat: Python Playground moved under /compiler
-  res.redirect('/compiler');
-});
-
-// Compiler (OneCompiler embed)
-router.get('/compiler', (req, res) => {
-  res.render('pages/compiler');
-});
-
-router.get('/terminal', (req, res) => {
-  res.render('pages/terminal');
-});
-
-router.get('/calculator', (req, res) => {
-  res.render('pages/calculator');
-});
-
-// Leaderboard (quiz rankings)
-router.get('/leaderboard', (req, res) => {
-  res.render('pages/leaderboard');
-});
-
-router.get('/course/:category', (req, res) => {
-  const category = req.params.category;
-  const item = catalog.find(c => c.key === category);
-
-  if (!item) {
-    return res.status(404).render('pages/notfound');
+router.get('/profile', requireLogin, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { rows: [userData] } = await pool.query(
+      'SELECT id, username, email, xp, streak, created_at FROM users WHERE id=$1',
+      [userId]
+    );
+    const { rows: [countRow] } = await pool.query(
+      'SELECT COUNT(*) FROM user_lesson_progress WHERE user_id=$1',
+      [userId]
+    );
+    const completedCount = parseInt(countRow.count);
+    const level = Math.floor(Math.sqrt((userData.xp || 0) / 100)) + 1;
+    res.render('pages/profile', { title: 'โปรไฟล์', userData, completedCount, level });
+  } catch (err) {
+    console.error('profile error:', err.message);
+    res.redirect('/home');
   }
-
-  res.render('pages/course', { category, item });
 });
 
 module.exports = router;

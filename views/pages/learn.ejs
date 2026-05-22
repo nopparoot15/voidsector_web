@@ -1,44 +1,21 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <title>Cyber Portal | Learn</title>
-  <%- include('../partials/head') %>
-</head>
+<head><%- include('../partials/head') %></head>
 <body>
-  <div class="background"></div>
-  <%- include('../partials/topbar') %>
-
-  <div class="container vs-page">
-    <div class="card vs-card">
-      <h1 style="color:#0ff; font-family:'Orbitron'; text-shadow:0 0 10px #0ff; text-align:center; margin-top:0;">คอร์สทั้งหมด</h1>
-
-      <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top: 10px;">
-        <a href="/learn/categories" style="text-decoration:none; border-radius:999px; padding:8px 12px; font-size:12px;
-                border:1px solid rgba(0,255,255,0.22); background: rgba(255,255,255,0.02); color:#9ff;">
-          ← เลือกหมวดหมู่
-        </a>
-        <% if (selectedCat) { %>
-          <span style="border-radius:999px; padding:8px 12px; font-size:12px;
-                       border:1px solid rgba(255,0,255,0.22); background: rgba(255,255,255,0.02); color:#ffb3ff;">
-            หมวด: <%= selectedCat %>
-          </span>
-        <% } %>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 18px;">
-        <% catalog.forEach(c => { %>
-          <a href="/course/<%= c.key %>" style="text-decoration:none;">
-            <div style="border:1px solid rgba(0,255,255,0.18); border-radius:12px; padding:18px; background: rgba(255,255,255,0.03); transition: 0.2s;">
-              <div style="font-size: 28px; margin-bottom: 8px;"><%= c.icon %></div>
-              <div style="color:#0ff; font-family:'Orbitron'; font-size: 15px; margin-bottom: 6px;"><%= c.title %></div>
-              <div style="color:#aaa; font-size: 13px; line-height:1.4;"><%= c.desc %></div>
-              <div style="margin-top: 12px; color:#f0f; font-size: 12px;">เปิดคอร์ส →</div>
-            </div>
-          </a>
-        <% }) %>
-      </div>
-
+<%- include('../partials/topbar') %>
+<main class="learn-main">
+  <div id="learn-page" data-lang-code="<%= langCode %>">
+    <div id="lang-header" class="lang-header">
+      <a href="/home" class="back-link">← กลับ</a>
+      <div id="lang-title" class="lang-title-text"></div>
+      <a href="/flashcards/<%= langCode %>" class="btn-outline">🃏 Flashcard</a>
+    </div>
+    <div id="unit-map" class="unit-map">
+      <div class="loading">กำลังโหลด...</div>
     </div>
   </div>
+</main>
+<script>const LANG_CODE = '<%= langCode %>';</script>
+<script src="/js/learn.js"></script>
 </body>
 </html>

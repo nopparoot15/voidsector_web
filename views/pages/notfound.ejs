@@ -1,19 +1,15 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <title>404 | Not Found</title>
-  <%- include('../partials/head') %>
-</head>
+<head><%- include('../partials/head') %></head>
 <body>
-  <div class="background"></div>
-  <%- include('../partials/topbar') %>
-
-  <div class="container vs-page" style="display:flex; flex-direction:column; align-items:center;">
-    <div class="card vs-card" style="max-width:800px; text-align:center;">
-      <h1 style="color:#f0f; font-family:'Orbitron'; margin:0;">404</h1>
-      <p style="color:#ccc; margin: 12px 0 22px;">ไม่พบหน้าที่ต้องการ</p>
-      <a href="/" class="btn-cyber" style="border:2px solid #0ff; color:#0ff; background:transparent; padding:12px 22px; font-weight:bold;">กลับหน้าแรก</a>
-    </div>
+<%- include('../partials/topbar') %>
+<main style="display:flex;align-items:center;justify-content:center;min-height:80vh;text-align:center;">
+  <div>
+    <div style="font-size:80px;">😕</div>
+    <h1 style="font-size:48px;color:var(--primary);margin:16px 0 8px;">404</h1>
+    <p style="color:var(--muted);margin-bottom:24px;">ไม่พบหน้าที่ต้องการ</p>
+    <a href="/" class="btn-primary">กลับหน้าแรก</a>
   </div>
+</main>
 </body>
 </html>

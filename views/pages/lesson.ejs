@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %></head>
+<body class="lesson-body">
+
+<div id="lesson-container" data-lesson-id="<%= lessonId %>" data-lang-code="<%= langCode %>">
+  <div id="lesson-header">
+    <button id="exit-btn" class="exit-btn">✕</button>
+    <div id="progress-bar-wrap">
+      <div id="progress-bar"></div>
+    </div>
+    <span id="progress-text">0 / 0</span>
+  </div>
+
+  <div id="exercise-area">
+    <div id="exercise-card"></div>
+  </div>
+
+  <div id="answer-area"></div>
+
+  <div id="check-bar">
+    <button id="check-btn" disabled>ตรวจคำตอบ</button>
+  </div>
+
+  <div id="feedback-panel">
+    <div id="feedback-header"></div>
+    <div id="feedback-answer"></div>
+    <button id="continue-btn">ถัดไป →</button>
+  </div>
+</div>
+
+<div id="completion-screen" class="hidden">
+  <div class="completion-card">
+    <div class="completion-emoji">🎉</div>
+    <h2>เยี่ยมมาก!</h2>
+    <div class="completion-stat" id="result-score"></div>
+    <div class="completion-stat" id="result-pct"></div>
+    <div class="completion-stat" id="result-xp"></div>
+    <div class="completion-stat" id="result-streak"></div>
+    <div class="completion-stat" id="result-level"></div>
+    <a id="back-learn-btn" href="/learn/<%= langCode %>" class="btn-primary btn-lg">กลับไปเรียน</a>
+  </div>
+</div>
+
+<script src="/js/lesson.js"></script>
+</body>
+</html>

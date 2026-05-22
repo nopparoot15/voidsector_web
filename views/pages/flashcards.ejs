@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %></head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="fc-main">
+  <div id="flashcard-container" data-lang-code="<%= langCode %>">
+    <div id="fc-header">
+      <a href="/learn/<%= langCode %>" class="btn-outline">← กลับ</a>
+      <span id="fc-progress">กำลังโหลด...</span>
+    </div>
+
+    <div id="card-area">
+      <div id="flashcard">
+        <div id="card-front">
+          <div class="card-word"></div>
+          <div class="card-lang"></div>
+          <div class="card-flip-hint">แตะเพื่อพลิก</div>
+        </div>
+        <div id="card-back" class="hidden">
+          <div class="card-reading"></div>
+          <div class="card-translation"></div>
+          <div class="card-example"></div>
+        </div>
+      </div>
+      <button id="flip-btn" class="btn-outline">พลิกการ์ด 🔄</button>
+    </div>
+
+    <div id="rating-area" class="hidden">
+      <p class="rating-label">คุณรู้จักคำนี้แค่ไหน?</p>
+      <div class="rating-buttons">
+        <button class="btn-again" data-q="0">ไม่รู้เลย<br><small>ลองใหม่</small></button>
+        <button class="btn-hard" data-q="3">ยากมาก<br><small>1 วัน</small></button>
+        <button class="btn-good" data-q="4">พอรู้<br><small>6 วัน</small></button>
+        <button class="btn-easy" data-q="5">รู้ดี<br><small>นานกว่า</small></button>
+      </div>
+    </div>
+
+    <div id="done-screen" class="hidden">
+      <div class="done-card">
+        <div class="done-emoji">🎉</div>
+        <h2>ทบทวนครบแล้ว!</h2>
+        <p>วันนี้ทำได้ดีมาก เจอกันใหม่พรุ่งนี้</p>
+        <a href="/learn/<%= langCode %>" class="btn-primary">กลับไปเรียน</a>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="/js/flashcard.js"></script>
+</body>
+</html>
