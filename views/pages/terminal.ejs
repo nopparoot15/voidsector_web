@@ -1,52 +1,30 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <meta charset="utf-8" />
-  <title>Cyber Portal | Terminal</title>
-  <%- include('../partials/head') %>
-
-  <link rel="stylesheet" href="/css/terminal.css">
-
-  <script>
-    window.__USER__ = <%- JSON.stringify(user || null) %>;
-  </script>
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/terminal.css">
+<script>window.__USER__ = <%- JSON.stringify(user || null) %>;</script>
 </head>
 <body>
-  <div class="background"></div>
-  <%- include('../partials/topbar') %>
-
-  <div class="container terminal-page">
-    <div class="terminal-card">
-      <div class="terminal-topbar">
-        <div class="terminal-title">🖥 TERMINAL SIMULATOR</div>
-        <div class="terminal-hint">พิมพ์ <span class="kbd">help</span> เพื่อดูคำสั่ง</div>
-      </div>
-
-      <div id="fake-terminal" class="ft">
-        <div id="ft-output" class="ft-output" aria-live="polite"></div>
-
-        <div class="ft-inputline">
-          <span id="ft-prompt" class="ft-prompt"></span>
-          <input
-            id="ft-input"
-            class="ft-input"
-            type="text"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="พิมพ์คำสั่งแล้วกด Enter..."
-          />
-        </div>
-      </div>
-
-      <div class="terminal-footer">
-        <span class="muted">Tip:</span>
-        ลองพิมพ์ <span class="kbd">ls</span>, <span class="kbd">cd projects</span>,
-        <span class="kbd">cat readme.txt</span>, <span class="kbd">hack</span>
+<%- include('../partials/topbar') %>
+<div class="terminal-page">
+  <div class="terminal-card">
+    <div class="terminal-topbar">
+      <div class="terminal-title">🖥 TERMINAL SIMULATOR</div>
+      <div class="terminal-hint">พิมพ์ <span class="kbd">help</span> เพื่อดูคำสั่ง &nbsp;|&nbsp; <span class="kbd">Ctrl+L</span> clear</div>
+    </div>
+    <div id="fake-terminal" class="ft">
+      <div id="ft-output" class="ft-output" aria-live="polite"></div>
+      <div class="ft-inputline">
+        <span id="ft-prompt" class="ft-prompt"></span>
+        <input id="ft-input" class="ft-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์คำสั่งแล้วกด Enter..." />
       </div>
     </div>
+    <div class="terminal-footer">
+      <span class="muted">ลองพิมพ์:</span>
+      <span class="kbd">ls</span> <span class="kbd">cd projects</span> <span class="kbd">cat readme.txt</span> <span class="kbd">whoami</span> <span class="kbd">hack</span>
+    </div>
   </div>
-
-  <script src="/js/terminal.js"></script>
+</div>
+<script src="/js/terminal.js"></script>
 </body>
 </html>

@@ -10,3 +10,4 @@
 .vs-calc__item{padding:10px 12px;border-radius:12px;border:1px solid rgba(0,255,255,.12);background:rgba(255,255,255,.02)}
 .vs-calc__item .q{color:#9ff;font-size:12px}
 .vs-calc__item .a{color:#eaffff;margin-top:4px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.vs-calc__hint{margin-top:10px;font-size:12px;color:rgba(180,220,220,.65)}

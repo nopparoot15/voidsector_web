@@ -293,6 +293,17 @@ main { padding-top: var(--topbar-h); }
 .skills-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
 .skills-grid { display: flex; flex-wrap: wrap; gap: 10px; }
 .skill-chip { padding: 8px 18px; border: 1px solid var(--border); border-radius: 999px; font-size: 14px; font-weight: 500; background: var(--card); }
+.portfolio-section { margin-bottom: 40px; }
+.portfolio-card { display: flex; align-items: center; gap: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px 24px; }
+.portfolio-avatar { font-size: 56px; flex-shrink: 0; }
+.portfolio-info { flex: 1; }
+.portfolio-name { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+.portfolio-bio { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+.portfolio-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.portfolio-link { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); font-size: 14px; font-weight: 500; transition: all 0.2s; }
+.portfolio-link:hover { border-color: var(--primary); color: var(--primary); background: rgba(108,99,255,0.08); }
+.portfolio-link--discord:hover { border-color: #7289da; color: #7289da; background: rgba(114,137,218,0.08); }
+@media (max-width: 560px) { .portfolio-card { flex-direction: column; text-align: center; } .portfolio-links { justify-content: center; } }
 
 /* ===== LANDING (old) ===== */
 .landing { padding: 0; }

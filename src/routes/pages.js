@@ -72,6 +72,14 @@ router.get('/flashcards/:langCode', requireLogin, (req, res) => {
   res.render('pages/flashcards', { title: 'Flashcard ' + names[langCode], langCode });
 });
 
+router.get('/tools/terminal', requireLogin, (req, res) => {
+  res.render('pages/terminal', { title: 'Terminal' });
+});
+
+router.get('/tools/calculator', requireLogin, (req, res) => {
+  res.render('pages/calculator', { title: 'Calculator' });
+});
+
 router.get('/profile', requireLogin, async (req, res) => {
   try {
     const userId = req.session.user.id;

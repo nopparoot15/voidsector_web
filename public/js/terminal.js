@@ -7,81 +7,98 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!root || !out || !input || !promptEl) return;
 
-  // focus when clicking anywhere
   root.addEventListener('pointerdown', () => input.focus());
 
-  // identity
   const me = window.__USER__ || null;
   const username = (me?.username || 'guest').trim() || 'guest';
 
-  // virtual FS
   const FS = {
-    '/': { type: 'dir', children: ['projects', 'readme.txt', 'about.txt'] },
-    '/projects': { type: 'dir', children: ['readme.txt', 'portal-plan.txt'] },
+    '/': { type: 'dir', children: ['projects', 'skills.txt', 'contact.txt', 'readme.txt'] },
     '/readme.txt': {
       type: 'file',
       content: [
-        'Welcome to CYBER PORTAL',
-        'This is a SAFE fake terminal (no real shell).',
+        '⬡ Welcome to VoidSector Terminal',
+        'Fake terminal — no real shell, safe to use.',
         '',
-        'Try:',
-        '  help',
-        '  ls',
-        '  cd projects',
-        '  cat readme.txt',
-        '  whoami',
-        '  clear',
-        '  hack',
-      ].join('\n'),
-    },
-    '/about.txt': {
-      type: 'file',
-      content: [
-        'CYBER.PORTAL — Tools, Courses, Projects.',
-        'Terminal Simulator: pure JS (no external libs).',
-      ].join('\n'),
-    },
-    '/projects/readme.txt': {
-      type: 'file',
-      content: [
-        'Projects folder',
-        '- discord-bot-salty (moderation/verification)',
-        '- cyber-learning-portal (this site)',
+        'Commands:',
+        '  help         show all commands',
+        '  ls           list directory',
+        '  cd <dir>     change directory',
+        '  cat <file>   read file',
+        '  whoami       current user',
+        '  clear        clear screen   (Ctrl+L)',
+        '  neofetch     system info',
+        '  hack         try it',
         '',
-        'Hint: cat portal-plan.txt',
+        'Tip: cd projects && ls',
       ].join('\n'),
     },
-    '/projects/portal-plan.txt': {
+    '/skills.txt': {
       type: 'file',
       content: [
-        'Roadmap:',
-        '  [ ] Regex Puzzle',
-        '  [ ] JWT Decoder',
-        '  [ ] Log Forensics mini-game',
-        '  [ ] Daily challenge + streak',
+        'Languages & Tools:',
+        '  Python · JavaScript · Node.js',
+        '  HTML/CSS · PostgreSQL · Git',
+        '',
+        'Frameworks:',
+        '  Express · discord.py',
+        '',
+        'Currently learning: Japanese 🇯🇵',
+      ].join('\n'),
+    },
+    '/contact.txt': {
+      type: 'file',
+      content: [
+        'Contact:',
+        '  GitHub   https://github.com/nopparoot15',
+        '  Discord  https://discord.gg/MXH9fSwEve',
+      ].join('\n'),
+    },
+    '/projects': { type: 'dir', children: ['voidsector.txt', 'discord-bot.txt'] },
+    '/projects/voidsector.txt': {
+      type: 'file',
+      content: [
+        'Project: VoidSector',
+        'Status:  🟢 Live — https://voidsector.up.railway.app',
+        'Stack:   Node.js · Express · PostgreSQL · EJS',
+        '',
+        'Features:',
+        '  - Language learning (EN / JA / ZH)',
+        '  - Spaced repetition flashcards (SM-2)',
+        '  - 5 exercise types per lesson',
+        '  - XP & streak system',
+        '  - Tools: Terminal, Calculator',
+      ].join('\n'),
+    },
+    '/projects/discord-bot.txt': {
+      type: 'file',
+      content: [
+        'Project: Discord Bot (salty)',
+        'Status:  🔨 WIP',
+        'Stack:   Python · discord.py',
+        '',
+        'Features planned:',
+        '  - Moderation & auto-verification',
+        '  - Role assignment dashboard',
+        '  - Member activity tracking',
       ].join('\n'),
     },
   };
 
   let cwd = '/';
-
-  // history
   const history = [];
   let histIndex = -1;
 
   function setPrompt() {
     promptEl.innerHTML =
-      `<span class="c-cyan">${escapeHtml(username)}</span>` +
-      `:<span class="c-mag">${escapeHtml(cwd)}</span>$`;
+      `<span class="c-cyan">${esc(username)}</span>` +
+      `:<span class="c-mag">${esc(cwd)}</span>$ `;
   }
 
-  function escapeHtml(s) {
+  function esc(s) {
     return String(s)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
   function line(text, cls = '') {
@@ -92,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     out.scrollTop = out.scrollHeight;
   }
 
-  function htmlLine(html, cls = '') {
+  function hline(html, cls = '') {
     const div = document.createElement('div');
     div.className = `ft-line ${cls}`.trim();
     div.innerHTML = html;
@@ -100,14 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
     out.scrollTop = out.scrollHeight;
   }
 
-  function clearScreen() {
-    out.innerHTML = '';
-  }
+  function clearScreen() { out.innerHTML = ''; }
 
   function normalize(p) {
-    const parts = p.split('/').filter(Boolean);
     const stack = [];
-    for (const part of parts) {
+    for (const part of p.split('/').filter(Boolean)) {
       if (part === '.') continue;
       if (part === '..') stack.pop();
       else stack.push(part);
@@ -115,190 +129,159 @@ document.addEventListener('DOMContentLoaded', () => {
     return '/' + stack.join('/');
   }
 
-  function resolvePath(p) {
+  function resolve(p) {
     if (!p || p === '~') return '/';
     if (p.startsWith('/')) return normalize(p);
-    if (cwd === '/') return normalize('/' + p);
-    return normalize(cwd + '/' + p);
+    return normalize((cwd === '/' ? '' : cwd) + '/' + p);
   }
 
-  function getNode(p) {
-    return FS[p] || null;
-  }
+  function node(p) { return FS[p] || null; }
 
-  function ls() {
-    const n = getNode(cwd);
-    if (!n || n.type !== 'dir') {
-      line('ls: not a directory', 'dim');
-      return;
-    }
-    const items = n.children || [];
-    const rendered = items.map(name => {
+  function cmdLs() {
+    const n = node(cwd);
+    if (!n || n.type !== 'dir') { line('ls: not a directory', 'dim'); return; }
+    const html = (n.children || []).map(name => {
       const p = normalize((cwd === '/' ? '' : cwd) + '/' + name);
-      const node = getNode(p);
-      if (node?.type === 'dir') return `\x00DIR\x00${name}`;
-      return `\x00FILE\x00${name}`;
-    });
-
-    // render with colors (without ANSI)
-    const html = rendered.map(x => {
-      if (x.startsWith('\x00DIR\x00')) {
-        const name = escapeHtml(x.slice(5));
-        return `<span class="c-cyan">${name}</span>`;
-      }
-      const name = escapeHtml(x.slice(6));
-      return `<span class="c-mag">${name}</span>`;
+      const isDir = node(p)?.type === 'dir';
+      return isDir
+        ? `<span class="c-cyan">${esc(name)}/</span>`
+        : `<span class="c-mag">${esc(name)}</span>`;
     }).join('  ');
-    htmlLine(html);
+    hline(html || '(empty)');
   }
 
-  function cd(arg) {
-    const target = (arg || '').trim();
-    if (!target) {
-      cwd = '/';
-      setPrompt();
-      return;
-    }
-    const p = resolvePath(target);
-    const n = getNode(p);
-    if (!n) return line(`cd: no such file or directory: ${target}`, 'dim');
-    if (n.type !== 'dir') return line(`cd: not a directory: ${target}`, 'dim');
+  function cmdCd(arg) {
+    if (!arg) { cwd = '/'; setPrompt(); return; }
+    const p = resolve(arg);
+    const n = node(p);
+    if (!n) { line(`cd: no such directory: ${arg}`, 'dim'); return; }
+    if (n.type !== 'dir') { line(`cd: not a directory: ${arg}`, 'dim'); return; }
     cwd = p;
     setPrompt();
   }
 
-  function cat(arg) {
-    const target = (arg || '').trim();
-    if (!target) return line('cat: missing file operand', 'dim');
-    const p = resolvePath(target);
-    const n = getNode(p);
-    if (!n) return line(`cat: ${target}: No such file`, 'dim');
-    if (n.type !== 'file') return line(`cat: ${target}: Is a directory`, 'dim');
+  function cmdCat(arg) {
+    if (!arg) { line('cat: missing operand', 'dim'); return; }
+    const p = resolve(arg);
+    const n = node(p);
+    if (!n) { line(`cat: ${arg}: No such file`, 'dim'); return; }
+    if (n.type !== 'file') { line(`cat: ${arg}: Is a directory`, 'dim'); return; }
     line(n.content);
   }
 
-  function whoami() {
-    line(username);
+  function cmdWhoami() { line(username); }
+
+  function cmdNeofetch() {
+    const xp = me?.xp ?? 0;
+    const streak = me?.streak ?? 0;
+    hline([
+      `<span class="c-cyan">         ⬡</span>`,
+      `<span class="c-cyan">        ⬡ ⬡</span>  <span class="c-mag">${esc(username)}</span>@voidsector`,
+      `<span class="c-cyan">       ⬡   ⬡</span>  ─────────────────────`,
+      `<span class="c-cyan">      ⬡     ⬡</span>  <span class="c-cyan">XP:</span>      ${xp}`,
+      `<span class="c-cyan">       ⬡   ⬡</span>  <span class="c-cyan">Streak:</span>  🔥 ${streak} days`,
+      `<span class="c-cyan">        ⬡ ⬡</span>  <span class="c-cyan">Stack:</span>   Node / Express / PG`,
+      `<span class="c-cyan">         ⬡</span>  <span class="c-cyan">Lang:</span>    EN / JA / ZH`,
+    ].join('\n'));
   }
 
-  async function hack() {
-    line('Initializing exploit...', 'dim');
-    await progress('Probing ports', 22);
-    await progress('Bypassing firewall', 18);
-    await progress('Escalating privileges', 20);
-    htmlLine(`<span class="c-red">ACCESS DENIED ❌</span>`);
-    htmlLine(`<span class="c-cyan">Tip:</span> <span class="c-gray">This is a safe simulator 😉</span>`);
+  function cmdHelp() {
+    line('Commands:');
+    line('  help       แสดงคำสั่งทั้งหมด');
+    line('  ls         แสดงไฟล์ในโฟลเดอร์');
+    line('  cd <dir>   เข้าโฟลเดอร์');
+    line('  cat <file> อ่านไฟล์');
+    line('  whoami     ชื่อผู้ใช้ปัจจุบัน');
+    line('  neofetch   ข้อมูลระบบ');
+    line('  clear      ล้างหน้าจอ  (Ctrl+L)');
+    line('  hack       ลองดู');
   }
 
-  function help() {
-    line('Available commands:');
-    line('  help');
-    line('  ls');
-    line('  cd <dir>');
-    line('  cat <file>');
-    line('  whoami');
-    line('  clear');
-    line('  hack');
-    line('');
-    line('Tips: try "cd projects" then "ls" and "cat readme.txt"');
-  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-  function unknown(cmd) {
-    line(`${cmd}: command not found. Try "help"`, 'dim');
-  }
-
-  function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
+  async function cmdHack() {
+    line('Initializing exploit sequence...', 'dim');
+    await progress('Scanning targets', 16);
+    await progress('Bypassing firewall', 22);
+    await progress('Escalating privileges', 18);
+    hline(`<span class="c-red">ACCESS DENIED ❌</span>`);
+    hline(`<span class="c-cyan">Tip:</span> <span class="c-gray">This is a safe simulator 😉</span>`);
   }
 
   async function progress(label, steps) {
-    const barLine = document.createElement('div');
-    barLine.className = 'ft-line dim';
-    out.appendChild(barLine);
-
+    const el = document.createElement('div');
+    el.className = 'ft-line dim';
+    out.appendChild(el);
     for (let i = 0; i <= steps; i++) {
       const pct = Math.floor((i / steps) * 100);
-      const filled = Math.floor((i / steps) * 18);
-      const bar = '█'.repeat(filled) + '░'.repeat(18 - filled);
-      barLine.textContent = `${label}: [${bar}] ${pct}%`;
+      const f = Math.floor((i / steps) * 20);
+      el.textContent = `${label}: [${'█'.repeat(f)}${'░'.repeat(20 - f)}] ${pct}%`;
       out.scrollTop = out.scrollHeight;
-      await sleep(35 + Math.random() * 65);
+      await sleep(30 + Math.random() * 55);
     }
   }
 
-  function run(raw) {
+  async function run(raw) {
     const inputCmd = raw.trim();
     if (!inputCmd) return;
-
     const [cmd, ...rest] = inputCmd.split(/\s+/);
-    const args = rest.join(' ');
-
+    const arg = rest.join(' ');
     switch (cmd) {
-      case 'help': return help();
-      case 'ls': return ls();
-      case 'cd': return cd(args);
-      case 'cat': return cat(args);
-      case 'whoami': return whoami();
-      case 'clear': return clearScreen();
-      case 'hack': return hack();
-      default: return unknown(cmd);
+      case 'help':     return cmdHelp();
+      case 'ls':       return cmdLs();
+      case 'cd':       return cmdCd(arg);
+      case 'cat':      return cmdCat(arg);
+      case 'whoami':   return cmdWhoami();
+      case 'neofetch': return cmdNeofetch();
+      case 'clear':    return clearScreen();
+      case 'hack':     return cmdHack();
+      default: line(`${esc(cmd)}: command not found — try "help"`, 'dim');
     }
   }
 
-  function printPromptLine(command) {
-    // show prompt + typed command as a line in output
-    htmlLine(
-      `<span class="c-cyan">${escapeHtml(username)}</span>` +
-      `:<span class="c-mag">${escapeHtml(cwd)}</span>$ ` +
-      `${escapeHtml(command)}`
+  function printPrompt(cmd) {
+    hline(
+      `<span class="c-cyan">${esc(username)}</span>` +
+      `:<span class="c-mag">${esc(cwd)}</span>$ ${esc(cmd)}`
     );
   }
 
   // boot
   setPrompt();
-  htmlLine(`<span class="c-cyan">CYBER PORTAL TERMINAL</span> <span class="c-mag">(fake)</span>`, 'dim');
+  hline(`<span class="c-cyan">⬡ VoidSector Terminal</span> <span class="c-gray">(simulator)</span>`, 'dim');
   line('Type "help" to see available commands.', 'dim');
   input.focus();
 
-  // input handling
   input.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       const cmd = input.value;
       input.value = '';
       if (!cmd.trim()) return;
-
       history.push(cmd);
       histIndex = history.length;
-
-      printPromptLine(cmd);
+      printPrompt(cmd);
       await run(cmd);
       out.scrollTop = out.scrollHeight;
       return;
     }
-
     if (e.key === 'ArrowUp') {
-      if (!history.length) return;
       e.preventDefault();
-      histIndex = Math.max(0, histIndex <= 0 ? 0 : histIndex - 1);
+      if (!history.length) return;
+      histIndex = Math.max(0, histIndex - 1);
       input.value = history[histIndex] ?? '';
-      // move cursor to end
       requestAnimationFrame(() => input.setSelectionRange(input.value.length, input.value.length));
       return;
     }
-
     if (e.key === 'ArrowDown') {
-      if (!history.length) return;
       e.preventDefault();
       histIndex = Math.min(history.length, histIndex + 1);
       input.value = history[histIndex] ?? '';
       requestAnimationFrame(() => input.setSelectionRange(input.value.length, input.value.length));
       return;
     }
-
     if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
       e.preventDefault();
       clearScreen();
-      return;
     }
   });
 });
