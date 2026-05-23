@@ -531,16 +531,25 @@ main { padding-top: var(--topbar-h); }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+/* exercise mode: lock to viewport so check-bar stays fixed at bottom */
+.lesson-body.exercise-mode {
   overflow: hidden;
+  height: 100vh;
 }
 #lesson-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   max-width: 680px;
   margin: 0 auto;
   width: 100%;
   padding: 0 20px;
+}
+.exercise-mode #lesson-container {
+  height: 100vh;
+  min-height: unset;
+  overflow: hidden;
 }
 #lesson-header {
   display: flex;
@@ -586,7 +595,7 @@ main { padding-top: var(--topbar-h); }
 /* Intro Screen */
 #intro-screen {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: visible;
   padding: 12px 0 24px;
 }
 .intro-card {

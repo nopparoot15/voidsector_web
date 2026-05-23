@@ -125,6 +125,8 @@
     startBtn.addEventListener('click', () => {
       if (introScreen) introScreen.classList.add('hidden');
       if (exerciseArea) exerciseArea.classList.remove('hidden');
+      document.body.classList.add('exercise-mode');
+      window.scrollTo(0, 0);
       renderExercise();
     });
   }
