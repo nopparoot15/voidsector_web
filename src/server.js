@@ -234,15 +234,18 @@ io.on('connection', (socket) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 8080;
 
-(async () => {
-  try {
-    await pool.query('SELECT 1');
-    console.log('✅ PostgreSQL connected');
-    await initDb();
-    await seedAll(pool);
-  } catch (e) {
-    console.error('❌ DB init failed:', e.message);
-    process.exit(1);
-  }
-  server.listen(PORT, () => console.log(`✅ VoidSector running on http://localhost:${PORT}`));
-})();
+// Listen immediately so Railway health checks pass, then init DB in background
+server.listen(PORT, () => {
+  console.log(`✅ VoidSector listening on port ${PORT}`);
+  (async () => {
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ PostgreSQL connected');
+      await initDb();
+      await seedAll(pool);
+      console.log('✅ DB ready');
+    } catch (e) {
+      console.error('❌ DB init failed:', e.message);
+    }
+  })();
+});
