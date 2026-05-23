@@ -55,6 +55,10 @@
       const lesson = data.lesson || {};
 
       if (lessonTitleEl) lessonTitleEl.textContent = lesson.title || '';
+      if (langCode === 'math') {
+        const sub = document.querySelector('.intro-sub');
+        if (sub) sub.textContent = 'ศึกษาสูตรและหลักการก่อนเริ่มทำแบบฝึกหัด';
+      }
 
       // Grammar note — render as structured HTML
       if (lesson.grammar_note) {
@@ -310,6 +314,11 @@
   // ── Intro / Vocab table ─────────────────────────────────────────────
   function buildVocabTable(exs) {
     if (!vocabTableBody) return;
+    if (langCode === 'math') {
+      vocabTableBody.closest('.vocab-section').classList.add('hidden');
+      if (startBtn) startBtn.textContent = 'เริ่มทำแบบทดสอบ →';
+      return;
+    }
     const rows = [];
     const seenWords = new Set();
     // U+0E00-U+0E7F = Thai block
@@ -762,7 +771,8 @@
     });
 
     const correctAnswer = wrongPairs.length > 0 ? wrongPairs.join(' | ') : '';
-    showFeedback(allCorrect, correctAnswer, 'จับคู่คำศัพท์');
+    const matchPrompt = (exercises[current] && exercises[current].data && exercises[current].data.prompt) || 'จับคู่';
+    showFeedback(allCorrect, correctAnswer, matchPrompt);
   }
 
   // ── Check & Feedback ─────────────────────────────────────────────────
@@ -804,8 +814,9 @@
 
     let bodyHtml = '';
     if (!correct && correctAnswer) {
-      bodyHtml += `<div class="fb-answer">คำตอบที่ถูก: <strong>${esc(correctAnswer)}</strong><button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button></div>`;
-      if (langCode !== 'en') {
+      const ttsBtn = langCode !== 'math' ? `<button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button>` : '';
+      bodyHtml += `<div class="fb-answer">คำตอบที่ถูก: <strong>${esc(correctAnswer)}</strong>${ttsBtn}</div>`;
+      if (langCode !== 'en' && langCode !== 'math') {
         const reading = globalReadingMap[correctAnswer];
         if (reading) bodyHtml += `<div class="fb-reading">${esc(reading)}</div>`;
       }
@@ -876,7 +887,7 @@
               <div class="wr-answer">
                 <span class="wr-correct-label">✓</span>
                 <strong>${esc(wa.correctAnswer)}</strong>
-                <button class="speak-btn" data-word="${esc(wa.correctAnswer)}" title="ฟังเสียง">🔊</button>
+                ${langCode !== 'math' ? `<button class="speak-btn" data-word="${esc(wa.correctAnswer)}" title="ฟังเสียง">🔊</button>` : ''}
               </div>
             </div>
           `).join('')}
