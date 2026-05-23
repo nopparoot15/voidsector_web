@@ -138,20 +138,20 @@ function showCat(cat) {
   document.getElementById('cat-hub').classList.add('hidden');
   document.querySelectorAll('.cat-content').forEach(function(el) { el.classList.add('hidden'); });
   document.getElementById('cat-' + cat).classList.remove('hidden');
-  history.pushState({ cat: cat }, '', '/languages/' + cat);
+  history.pushState({ cat: cat }, '', '/learning/' + cat);
 }
 function showHub() {
   document.getElementById('cat-hub').classList.remove('hidden');
   document.querySelectorAll('.cat-content').forEach(function(el) { el.classList.add('hidden'); });
-  history.pushState({}, '', '/languages');
+  history.pushState({}, '', '/learning');
 }
 window.addEventListener('popstate', function(e) {
   var cat = e.state && e.state.cat;
-  if (cat) { showCat(cat); history.replaceState({ cat: cat }, '', '/languages/' + cat); }
+  if (cat) { showCat(cat); history.replaceState({ cat: cat }, '', '/learning/' + cat); }
   else showHub();
 });
 (function() {
-  var m = location.pathname.match(/\/languages\/(\w+)/);
+  var m = location.pathname.match(/\/learning\/(\w+)/);
   if (m) showCat(m[1]);
 })();
 </script>

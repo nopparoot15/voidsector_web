@@ -12,13 +12,16 @@ router.get('/home', requireLogin, (req, res) => {
   res.render('pages/home', { title: 'VoidSector' });
 });
 
-router.get('/languages', (req, res) => {
+router.get('/learning', (req, res) => {
   res.render('pages/languages', { title: 'Learning' });
 });
 
-router.get('/languages/:cat', (req, res) => {
+router.get('/learning/:cat', (req, res) => {
   res.render('pages/languages', { title: 'Learning' });
 });
+
+router.get('/languages', (req, res) => res.redirect(301, '/learning'));
+router.get('/languages/:cat', (req, res) => res.redirect(301, '/learning/' + req.params.cat));
 
 router.get('/coding', (req, res) => {
   res.render('pages/coding', { title: 'Coding' });
