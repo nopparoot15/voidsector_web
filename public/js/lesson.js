@@ -83,20 +83,15 @@
           }
         }
       } else if (ex.type === 'translate') {
-        const key = d.answer + '|' + (d.prompt || '');
+        const word = String(d.answer || '').trim();
+        const meaning = String(d.prompt || '').trim();
+        const reading = String(d.hint || '').trim();
+        // skip if word or meaning looks like a sentence (too long or has punctuation)
+        if (!word || word.length > 60 || meaning.length > 80) continue;
+        const key = word + '|' + meaning;
         if (!seen.has(key)) {
           seen.add(key);
-          rows.push({ word: d.answer, reading: d.hint || '', meaning: d.prompt || '' });
-        }
-      } else if (ex.type === 'multiple_choice') {
-        const q = d.prompt || d.question || '';
-        const correctOpt = d.options && d.options[d.correct !== undefined ? d.correct : d.correct_index];
-        if (correctOpt && q) {
-          const key = q + '|' + correctOpt;
-          if (!seen.has(key)) {
-            seen.add(key);
-            rows.push({ word: correctOpt, reading: '', meaning: q });
-          }
+          rows.push({ word, reading, meaning });
         }
       }
     }
