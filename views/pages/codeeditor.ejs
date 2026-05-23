@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/codeeditor.css">
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="ce-page">
+
+  <div class="ce-header">
+    <div class="ce-lang-tabs">
+      <button class="ce-lang-tab active" data-lang="python" data-label="Python">🐍 Python</button>
+      <button class="ce-lang-tab" data-lang="javascript" data-label="JavaScript">🌐 JavaScript</button>
+      <button class="ce-lang-tab" data-lang="csharp" data-label="C#">⚙️ C#</button>
+    </div>
+    <div class="ce-header-actions">
+      <button id="ce-clear-btn" class="ce-btn ce-btn-ghost" title="ล้าง output">Clear</button>
+      <button id="ce-run-btn" class="ce-btn ce-btn-run">▶ Run</button>
+    </div>
+  </div>
+
+  <div class="ce-body">
+    <div class="ce-editor-wrap">
+      <div id="ce-editor"></div>
+    </div>
+    <div class="ce-output-wrap">
+      <div class="ce-output-topbar">
+        <span class="ce-output-label">Output</span>
+        <span id="ce-status" class="ce-status"></span>
+      </div>
+      <pre id="ce-output" class="ce-output">// กด ▶ Run เพื่อรันโค้ด</pre>
+    </div>
+  </div>
+
+</div>
+
+<script>window.__USER__ = <%- JSON.stringify(user || null) %>;</script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script src="/js/codeeditor.js"></script>
+</body>
+</html>

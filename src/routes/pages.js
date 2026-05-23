@@ -100,6 +100,10 @@ router.get('/tools/calculator', requireLogin, (req, res) => {
   res.render('pages/calculator', { title: 'Calculator' });
 });
 
+router.get('/tools/codeeditor', requireLogin, (req, res) => {
+  res.render('pages/codeeditor', { title: 'Code Editor' });
+});
+
 router.get('/leaderboard', requireLogin, (req, res) => {
   res.render('pages/leaderboard', { title: 'Leaderboard' });
 });
