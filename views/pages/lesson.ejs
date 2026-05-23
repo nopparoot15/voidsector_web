@@ -5,7 +5,6 @@
 
 <div id="lesson-container" data-lesson-id="<%= lessonId %>" data-lang-code="<%= langCode %>">
 
-  <!-- Shared header: progress bar always visible -->
   <div id="lesson-header">
     <button id="exit-btn" class="exit-btn">✕</button>
     <div id="progress-bar-wrap">
@@ -17,18 +16,17 @@
   <!-- ─── INTRO SCREEN ────────────────────────────────────────────── -->
   <div id="intro-screen" class="hidden">
     <div class="intro-card">
-      <div class="intro-icon"></div>
       <h2 id="intro-lesson-title">กำลังโหลด...</h2>
-      <p class="intro-sub">ทบทวนคำศัพท์ด้านล่างก่อนเริ่มทำแบบฝึกหัด</p>
+      <p class="intro-sub">ศึกษาไวยากรณ์และคำศัพท์ก่อนเริ่มทำแบบฝึกหัด</p>
 
       <div id="grammar-note-section" class="intro-note-section hidden">
         <div class="intro-note-header">ไวยากรณ์สำคัญ</div>
-        <pre id="grammar-note-text" class="intro-note-text"></pre>
+        <div id="grammar-note-text" class="intro-note-body"></div>
       </div>
 
       <div id="cultural-note-section" class="intro-note-section hidden">
         <div class="intro-note-header">Cultural Note</div>
-        <p id="cultural-note-text" class="intro-note-text"></p>
+        <div id="cultural-note-text" class="intro-note-body intro-note-cultural"></div>
       </div>
 
       <div class="vocab-section">
@@ -37,7 +35,7 @@
           <thead>
             <tr>
               <th>คำ / วลี</th>
-              <th>การอ่าน</th>
+              <th id="reading-th">การอ่าน</th>
               <th>ความหมาย</th>
             </tr>
           </thead>
@@ -45,7 +43,33 @@
         </table>
       </div>
 
-      <button id="start-exercises-btn" class="btn-primary btn-lg">เริ่มทำแบบฝึกหัด →</button>
+      <button id="start-exercises-btn" class="btn-primary btn-lg">เริ่มเลย →</button>
+    </div>
+  </div>
+
+  <!-- ─── FLASHCARD SCREEN ─────────────────────────────────────────── -->
+  <div id="flashcard-screen" class="hidden">
+    <div class="fc-topbar">
+      <button id="fc-skip-btn" class="fc-skip">ข้ามไปทำแบบฝึกหัด</button>
+    </div>
+    <div class="fc-main">
+      <div class="fc-meta">
+        <span id="fc-counter" class="fc-counter"></span>
+        <div class="fc-prog-wrap"><div class="fc-prog-bar" id="fc-prog-bar"></div></div>
+      </div>
+      <div class="fc-card" id="fc-card">
+        <div class="fc-lang" id="fc-lang-label"></div>
+        <div class="fc-word" id="fc-word"></div>
+        <div class="fc-reading" id="fc-reading"></div>
+        <div class="fc-divider hidden" id="fc-divider"></div>
+        <div class="fc-meaning hidden" id="fc-meaning"></div>
+      </div>
+      <div class="fc-actions">
+        <button id="fc-reveal-btn" class="btn-outline fc-btn">ดูความหมาย</button>
+        <button id="fc-next-btn" class="btn-primary fc-btn hidden">ถัดไป →</button>
+        <button id="fc-done-btn" class="btn-primary fc-btn hidden">เริ่มทำแบบฝึกหัด →</button>
+      </div>
+      <div class="fc-tip" id="fc-tip"></div>
     </div>
   </div>
 
@@ -60,7 +84,7 @@
 
     <div id="feedback-panel">
       <div id="feedback-header"></div>
-      <div id="feedback-answer"></div>
+      <div id="feedback-body"></div>
       <button id="continue-btn">ถัดไป →</button>
     </div>
   </div>
@@ -70,13 +94,15 @@
 <!-- ─── COMPLETION SCREEN ─────────────────────────────────────────── -->
 <div id="completion-screen" class="hidden">
   <div class="completion-card">
-    <div class="completion-emoji">★</div>
+    <div class="completion-star">★</div>
     <h2>เยี่ยมมาก!</h2>
-    <div class="completion-stat" id="result-score"></div>
-    <div class="completion-stat" id="result-pct"></div>
-    <div class="completion-stat" id="result-xp"></div>
-    <div class="completion-stat" id="result-streak"></div>
-    <div class="completion-stat" id="result-level"></div>
+    <div class="completion-stats">
+      <div class="completion-stat" id="result-score"></div>
+      <div class="completion-stat" id="result-pct"></div>
+      <div class="completion-stat highlight" id="result-xp"></div>
+      <div class="completion-stat" id="result-streak"></div>
+      <div class="completion-stat" id="result-level"></div>
+    </div>
     <a id="back-learn-btn" href="/learn/<%= langCode %>" class="btn-primary btn-lg">กลับไปเรียน</a>
   </div>
 </div>

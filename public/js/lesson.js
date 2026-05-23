@@ -15,7 +15,15 @@
   let matchPairs = [];
   let matchDone = new Set();
 
+  // Vocab rows and reading map exposed for flashcards and feedback
+  let vocabRows = [];
+  let globalReadingMap = {};
+
+  // Flashcard state
+  let fcIdx = 0;
+
   const introScreen    = document.getElementById('intro-screen');
+  const fcScreen       = document.getElementById('flashcard-screen');
   const exerciseArea   = document.getElementById('exercise-area');
   const startBtn       = document.getElementById('start-exercises-btn');
   const lessonTitleEl  = document.getElementById('intro-lesson-title');
@@ -27,7 +35,7 @@
   const progressText   = document.getElementById('progress-text');
   const feedbackPanel  = document.getElementById('feedback-panel');
   const feedbackHeader = document.getElementById('feedback-header');
-  const feedbackAnswer = document.getElementById('feedback-answer');
+  const feedbackBody   = document.getElementById('feedback-body');
   const continueBtn    = document.getElementById('continue-btn');
   const completionScreen = document.getElementById('completion-screen');
 
@@ -40,11 +48,11 @@
 
       if (lessonTitleEl) lessonTitleEl.textContent = lesson.title || '';
 
-      // Grammar note
+      // Grammar note — render as structured HTML
       if (lesson.grammar_note) {
         const sec = document.getElementById('grammar-note-section');
         const txt = document.getElementById('grammar-note-text');
-        if (sec && txt) { txt.textContent = lesson.grammar_note; sec.classList.remove('hidden'); }
+        if (sec && txt) { txt.innerHTML = renderGrammarNote(lesson.grammar_note); sec.classList.remove('hidden'); }
       }
 
       // Cultural note
@@ -236,12 +244,16 @@
       }
     }
 
+    // Expose for flashcards and feedback
+    vocabRows = rows;
+    globalReadingMap = readingMap;
+
     if (!rows.length) {
       vocabTableBody.closest('.vocab-section').classList.add('hidden');
       return;
     }
 
-    const readingTh = vocabTableBody.closest('table').querySelector('thead th:nth-child(2)');
+    const readingTh = document.getElementById('reading-th');
     if (readingTh) readingTh.style.display = langCode === 'en' ? 'none' : '';
 
     vocabTableBody.innerHTML = rows.map(r => `
@@ -251,21 +263,91 @@
         <td class="vocab-meaning">${esc(r.meaning)}</td>
       </tr>
     `).join('');
+
+    // Update start button label based on whether flashcards are available
+    if (startBtn) startBtn.textContent = 'ศึกษาคำศัพท์ก่อนเริ่ม →';
   }
 
   function showIntro() {
     if (introScreen) introScreen.classList.remove('hidden');
+    if (fcScreen) fcScreen.classList.add('hidden');
     if (exerciseArea) exerciseArea.classList.add('hidden');
     updateProgress();
   }
 
+  // ── Flashcard Phase ──────────────────────────────────────────────────
+  function startFlashcards() {
+    if (!vocabRows.length) { startExercises(); return; }
+    if (introScreen) introScreen.classList.add('hidden');
+    if (fcScreen) fcScreen.classList.remove('hidden');
+    fcIdx = 0;
+    renderFlashcard();
+  }
+
+  function renderFlashcard() {
+    const card = vocabRows[fcIdx];
+    const isLast = fcIdx === vocabRows.length - 1;
+
+    document.getElementById('fc-word').textContent = card.word;
+    document.getElementById('fc-reading').textContent = card.reading || '';
+
+    const meaningEl = document.getElementById('fc-meaning');
+    const dividerEl = document.getElementById('fc-divider');
+    meaningEl.textContent = card.meaning;
+    meaningEl.classList.add('hidden');
+    dividerEl.classList.add('hidden');
+
+    document.getElementById('fc-reveal-btn').classList.remove('hidden');
+    document.getElementById('fc-next-btn').classList.add('hidden');
+    document.getElementById('fc-done-btn').classList.add('hidden');
+
+    const total = vocabRows.length;
+    document.getElementById('fc-counter').textContent = `${fcIdx + 1} / ${total}`;
+    document.getElementById('fc-prog-bar').style.width = `${(fcIdx / total) * 100}%`;
+
+    const labels = { en: 'English', ja: '日本語', zh: '中文' };
+    document.getElementById('fc-lang-label').textContent = labels[langCode] || langCode.toUpperCase();
+
+    const tipEl = document.getElementById('fc-tip');
+    if (card.reading && langCode === 'zh') tipEl.textContent = `พินอิน: ${card.reading}`;
+    else if (card.reading && langCode === 'ja') tipEl.textContent = `โรมาจิ: ${card.reading}`;
+    else tipEl.textContent = '';
+  }
+
+  document.getElementById('fc-reveal-btn')?.addEventListener('click', () => {
+    document.getElementById('fc-meaning').classList.remove('hidden');
+    document.getElementById('fc-divider').classList.remove('hidden');
+    document.getElementById('fc-reveal-btn').classList.add('hidden');
+    const isLast = fcIdx === vocabRows.length - 1;
+    if (isLast) {
+      document.getElementById('fc-done-btn').classList.remove('hidden');
+    } else {
+      document.getElementById('fc-next-btn').classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('fc-next-btn')?.addEventListener('click', () => {
+    fcIdx++;
+    if (fcIdx < vocabRows.length) renderFlashcard();
+    else startExercises();
+  });
+
+  document.getElementById('fc-done-btn')?.addEventListener('click', startExercises);
+  document.getElementById('fc-skip-btn')?.addEventListener('click', startExercises);
+
+  function startExercises() {
+    if (introScreen) introScreen.classList.add('hidden');
+    if (fcScreen) fcScreen.classList.add('hidden');
+    if (exerciseArea) exerciseArea.classList.remove('hidden');
+    document.body.classList.add('exercise-mode');
+    window.scrollTo(0, 0);
+    renderExercise();
+  }
+
   if (startBtn) {
     startBtn.addEventListener('click', () => {
-      if (introScreen) introScreen.classList.add('hidden');
-      if (exerciseArea) exerciseArea.classList.remove('hidden');
-      document.body.classList.add('exercise-mode');
-      window.scrollTo(0, 0);
-      renderExercise();
+      if (vocabRows.length > 0) startFlashcards();
+      else startExercises();
     });
   }
 
@@ -533,8 +615,16 @@
 
   function showFeedback(correct, correctAnswer) {
     feedbackPanel.className = 'show ' + (correct ? 'correct' : 'wrong');
-    feedbackHeader.textContent = correct ? '✓ ถูกต้อง!' : '✗ ยังไม่ถูก';
-    feedbackAnswer.textContent = (!correct && correctAnswer) ? `คำตอบ: ${correctAnswer}` : '';
+    feedbackHeader.innerHTML = `<span id="feedback-icon">${correct ? '✓' : '✗'}</span><span id="feedback-text">${correct ? 'ถูกต้อง!' : 'ยังไม่ถูก'}</span>`;
+    let bodyHtml = '';
+    if (!correct && correctAnswer) {
+      bodyHtml += `<div class="fb-answer">คำตอบ: <strong>${esc(correctAnswer)}</strong></div>`;
+      if (langCode !== 'en') {
+        const reading = globalReadingMap[correctAnswer];
+        if (reading) bodyHtml += `<div class="fb-reading">${esc(reading)}</div>`;
+      }
+    }
+    if (feedbackBody) feedbackBody.innerHTML = bodyHtml;
     continueBtn.textContent = current + 1 >= exercises.length ? 'ดูผลลัพธ์' : 'ถัดไป →';
   }
 
@@ -566,8 +656,8 @@
     completionScreen.classList.remove('hidden');
     document.getElementById('result-score').textContent   = `คะแนน: ${score} / ${exercises.length}`;
     document.getElementById('result-pct').textContent     = `ความแม่นยำ: ${pct}%`;
-    document.getElementById('result-xp').textContent      = `XP ที่ได้: +${xpEarned}`;
-    document.getElementById('result-streak').textContent  = `Streak: ${streak} วัน 🔥`;
+    document.getElementById('result-xp').textContent      = `XP ที่ได้: +${xpEarned} (รวม ${totalXp} XP)`;
+    document.getElementById('result-streak').textContent  = `Streak: ${streak} วัน`;
     document.getElementById('result-level').textContent   = `Level: ${level}`;
     document.getElementById('back-learn-btn').href        = `/learn/${langCode}`;
   }
@@ -576,6 +666,25 @@
   function normalize(s) { return String(s).toLowerCase().trim().replace(/\s+/g, ' '); }
   function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Convert raw grammar note text (bullet `•`, `①②③` sections) to structured HTML
+  function renderGrammarNote(text) {
+    if (!text) return '';
+    const lines = text.split('\n');
+    let html = '';
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) { html += '<div class="gn-spacer"></div>'; continue; }
+      if (t.startsWith('•')) {
+        html += `<div class="gn-item"><span class="gn-dot">▸</span><span class="gn-item-text">${esc(t.slice(1).trim())}</span></div>`;
+      } else if (/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(t) || (t.endsWith(':') && t.length < 60 && !t.startsWith(' '))) {
+        html += `<div class="gn-header">${esc(t)}</div>`;
+      } else {
+        html += `<div class="gn-text">${esc(t)}</div>`;
+      }
+    }
+    return html;
   }
   function shuffle(arr) {
     const a = [...arr];
