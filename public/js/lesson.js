@@ -68,6 +68,7 @@
     if (!vocabTableBody) return;
     const rows = [];
     const seen = new Set();
+    const hasThai = s => /[฀-๿]/.test(s);
 
     for (const ex of exs) {
       const d = ex.data;
@@ -76,6 +77,8 @@
           Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
         );
         for (const p of pairs) {
+          // skip antonym/English-only pairs — only include if meaning contains Thai
+          if (!hasThai(p.right)) continue;
           const key = p.left + '|' + p.right;
           if (!seen.has(key)) {
             seen.add(key);
@@ -85,9 +88,13 @@
       } else if (ex.type === 'translate') {
         const word = String(d.answer || '').trim();
         const meaning = String(d.prompt || '').trim();
-        const reading = String(d.hint || '').trim();
-        // skip if word or meaning looks like a sentence (too long or has punctuation)
+        const rawHint = String(d.hint || '').trim();
+        // skip if word or meaning looks like a sentence (too long)
         if (!word || word.length > 60 || meaning.length > 80) continue;
+        // meaning must contain Thai to be a real translation
+        if (!hasThai(meaning)) continue;
+        // reading only makes sense for JA/ZH; for EN hints are Thai category descriptions
+        const reading = (langCode === 'en') ? '' : rawHint;
         const key = word + '|' + meaning;
         if (!seen.has(key)) {
           seen.add(key);
