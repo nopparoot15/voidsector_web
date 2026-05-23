@@ -21,7 +21,7 @@ router.get('/learning/:cat', (req, res) => {
 router.get('/languages', (req, res) => res.redirect(301, '/learning'));
 router.get('/languages/:cat', (req, res) => res.redirect(301, '/learning/' + req.params.cat));
 
-const PORTFOLIO_CODE = 'salty6ix';
+const PORTFOLIO_CODE = process.env.PORTFOLIO_CODE || 'salty6ix';
 
 router.get('/portfolio', (req, res) => {
   if (req.session.portfolioUnlocked) return res.render('pages/coding', { title: 'Portfolio' });

@@ -26,6 +26,7 @@ io.on('connection', (socket) => {
   socket.data.username = String(socket.handshake.auth?.username || '').trim().slice(0, 32);
   socket.data.wbRoomId = null;
   socket.data.wpRoomId = null;
+  socket.data.gameRoomId = null;
 
   // Legacy support: allow runtime re-identification
   socket.on('vs:hello', ({ userId, username } = {}) => {
@@ -230,6 +231,185 @@ io.on('connection', (socket) => {
       const room = watchPartyStore.get(wpRid);
       io.to(`wp:${wpRid}`).emit('wp:presence', { membersOnline: room?.presence?.size || 0 });
     }
+    const gmRid = socket.data.gameRoomId;
+    if (gmRid) {
+      const userId = Number(socket.data.userId);
+      if (gameStore.get(gmRid)?.status === 'waiting') {
+        const remaining = gameStore.removePlayer(gmRid, userId);
+        if (remaining) {
+          io.to(`gm:${gmRid}`).emit('gm:players', { players: remaining.players.map(p => ({ userId: p.userId, username: p.username })) });
+        }
+      }
+    }
+  });
+
+  // ── GAME ROOM ──────────────────────────────────────────────────────────────
+  socket.on('gm:join', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const username = socket.data.username;
+    if (!rid || !userId) return socket.emit('gm:error', { msg: 'Not identified' });
+
+    const room = gameStore.addPlayer(rid, userId, username);
+    if (!room) return socket.emit('gm:error', { msg: 'ไม่พบห้อง' });
+    if (room.status === 'playing' && !room.players.find(p => p.userId === userId))
+      return socket.emit('gm:error', { msg: 'เกมเริ่มไปแล้ว' });
+
+    if (socket.data.gameRoomId && socket.data.gameRoomId !== rid) {
+      socket.leave(`gm:${socket.data.gameRoomId}`);
+    }
+    socket.data.gameRoomId = rid;
+    socket.join(`gm:${rid}`);
+
+    const pub = { id: room.id, gameType: room.gameType, host: room.host, status: room.status,
+      players: room.players.map(p => ({ userId: p.userId, username: p.username })) };
+    socket.emit('gm:joined', { room: pub, state: room.state });
+    socket.to(`gm:${rid}`).emit('gm:players', { players: pub.players });
+  });
+
+  socket.on('gm:start', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.host !== userId || room.status !== 'waiting') return;
+    if (room.gameType === 'xo' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมี 2 คน' });
+    if ((room.gameType === 'wordbomb' || room.gameType === 'trivia') && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
+
+    room.status = 'playing';
+
+    if (room.gameType === 'xo') {
+      room.state = { board: Array(9).fill(0), turn: 0, winner: null, winLine: null,
+        x: room.players[0].userId, o: room.players[1].userId };
+      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
+
+    } else if (room.gameType === 'wordbomb') {
+      room.state = {
+        players: room.players.map(p => ({ userId: p.userId, username: p.username, lives: 3, alive: true })),
+        currentIdx: 0,
+        usedWords: [],
+        lastLetter: '',
+        phase: 'turn',
+        timerEndsAt: Date.now() + 12000,
+        roundNum: 0,
+      };
+      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
+      startWBTimer(rid);
+
+    } else if (room.gameType === 'trivia') {
+      const qs = shuffle(TRIVIA_QUESTIONS).slice(0, 10);
+      room.state = {
+        questions: qs,
+        questionIdx: 0,
+        scores: Object.fromEntries(room.players.map(p => [p.userId, 0])),
+        answers: {},
+        phase: 'question',
+        timerEndsAt: Date.now() + 15000,
+        totalQuestions: qs.length,
+      };
+      const pub = publicTriviaState(room.state);
+      io.to(`gm:${rid}`).emit('gm:started', { state: pub });
+      startTriviaTimer(rid);
+    }
+  });
+
+  socket.on('xo:move', ({ roomId, cell } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'xo' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.winner) return;
+    const currentPlayer = st.turn === 0 ? st.x : st.o;
+    if (userId !== currentPlayer) return;
+    const c = Number(cell);
+    if (c < 0 || c > 8 || st.board[c] !== 0) return;
+
+    st.board[c] = st.turn === 0 ? 1 : 2;
+    const winner = checkXOWin(st.board);
+    if (winner) {
+      st.winner = winner === 1 ? st.x : st.o;
+      st.winLine = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
+        .find(([a,b,c2]) => st.board[a] === winner && st.board[b] === winner && st.board[c2] === winner);
+      room.status = 'ended';
+    } else if (st.board.every(v => v !== 0)) {
+      st.winner = 'draw';
+      room.status = 'ended';
+    } else {
+      st.turn = 1 - st.turn;
+    }
+    io.to(`gm:${rid}`).emit('xo:state', st);
+  });
+
+  socket.on('xo:restart', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'xo') return;
+    if (!room.players.find(p => p.userId === Number(socket.data.userId))) return;
+    room.status = 'playing';
+    room.state = { board: Array(9).fill(0), turn: 0, winner: null, winLine: null,
+      x: room.state.x, o: room.state.o };
+    io.to(`gm:${rid}`).emit('xo:state', room.state);
+  });
+
+  socket.on('wb:word', async ({ roomId, word } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'wordbomb' || room.status !== 'playing') return;
+    const st = room.state;
+    const curPlayer = st.players[st.currentIdx];
+    if (!curPlayer || curPlayer.userId !== userId || !curPlayer.alive) return;
+
+    const w = String(word || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+    if (!w) return;
+
+    if (st.lastLetter && !w.startsWith(st.lastLetter)) {
+      socket.emit('wb:invalid', { reason: `คำต้องขึ้นต้นด้วย "${st.lastLetter.toUpperCase()}"` });
+      return;
+    }
+    if (st.usedWords.includes(w)) {
+      socket.emit('wb:invalid', { reason: 'คำนี้ถูกใช้ไปแล้ว' });
+      return;
+    }
+
+    const isReal = await checkEnglishWord(w);
+    if (!isReal) {
+      socket.emit('wb:invalid', { reason: `"${w}" ไม่ใช่คำภาษาอังกฤษที่ถูกต้อง` });
+      return;
+    }
+
+    gameStore.clearTimer(rid, 'wbturn');
+    st.usedWords.push(w);
+    st.lastLetter = w[w.length - 1];
+    st.lastWord = w;
+    advanceWBTurn(rid);
+  });
+
+  socket.on('tq:answer', ({ roomId, idx } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'trivia' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'question') return;
+    if (st.answers[userId] !== undefined) return;
+
+    const opt = Number(idx);
+    if (opt < 0 || opt > 3) return;
+    const q = st.questions[st.questionIdx];
+    const correct = opt === q.ans;
+    const elapsed = 15000 - Math.max(0, st.timerEndsAt - Date.now());
+    const points = correct ? Math.max(100, Math.round(1000 * (1 - elapsed / 15000))) : 0;
+    st.answers[userId] = { idx: opt, correct, points };
+    if (correct) st.scores[userId] = (st.scores[userId] || 0) + points;
+
+    socket.emit('tq:answered', { correct, points });
+
+    const alive = room.players.map(p => p.userId);
+    if (alive.every(uid => st.answers[uid] !== undefined)) {
+      gameStore.clearTimer(rid, 'tqturn');
+      revealTriviaResult(rid);
+    }
   });
 });
 
@@ -382,206 +562,6 @@ function checkXOWin(board) {
   }
   return null;
 }
-
-io.on('connection', (socket) => {
-  // Identity (same pattern as whiteboard)
-  const authUid = Number(socket.handshake.auth?.userId);
-  if (!socket.data.userId) {
-    socket.data.userId = Number.isFinite(authUid) && authUid > 0 ? authUid : null;
-    socket.data.username = String(socket.handshake.auth?.username || '').trim().slice(0, 32);
-  }
-  socket.data.gameRoomId = null;
-
-  // ── JOIN GAME ROOM ─────────────────────────────────────────────────────────
-  socket.on('gm:join', ({ roomId } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const userId = Number(socket.data.userId);
-    const username = socket.data.username;
-    if (!rid || !userId) return socket.emit('gm:error', { msg: 'Not identified' });
-
-    const room = gameStore.addPlayer(rid, userId, username);
-    if (!room) return socket.emit('gm:error', { msg: 'ไม่พบห้อง' });
-    if (room.status === 'playing' && !room.players.find(p => p.userId === userId))
-      return socket.emit('gm:error', { msg: 'เกมเริ่มไปแล้ว' });
-
-    if (socket.data.gameRoomId && socket.data.gameRoomId !== rid) {
-      socket.leave(`gm:${socket.data.gameRoomId}`);
-    }
-    socket.data.gameRoomId = rid;
-    socket.join(`gm:${rid}`);
-
-    const pub = { id: room.id, gameType: room.gameType, host: room.host, status: room.status,
-      players: room.players.map(p => ({ userId: p.userId, username: p.username })) };
-    socket.emit('gm:joined', { room: pub, state: room.state });
-    socket.to(`gm:${rid}`).emit('gm:players', { players: pub.players });
-  });
-
-  // ── START ──────────────────────────────────────────────────────────────────
-  socket.on('gm:start', ({ roomId } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const userId = Number(socket.data.userId);
-    const room = gameStore.get(rid);
-    if (!room || room.host !== userId || room.status !== 'waiting') return;
-    if (room.gameType === 'xo' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมี 2 คน' });
-    if ((room.gameType === 'wordbomb' || room.gameType === 'trivia') && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
-
-    room.status = 'playing';
-
-    if (room.gameType === 'xo') {
-      room.state = { board: Array(9).fill(0), turn: 0, winner: null, winLine: null,
-        x: room.players[0].userId, o: room.players[1].userId };
-      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
-
-    } else if (room.gameType === 'wordbomb') {
-      room.state = {
-        players: room.players.map(p => ({ userId: p.userId, username: p.username, lives: 3, alive: true })),
-        currentIdx: 0,
-        usedWords: [],
-        lastLetter: '',
-        phase: 'turn',
-        timerEndsAt: Date.now() + 12000,
-        roundNum: 0,
-      };
-      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
-      startWBTimer(rid);
-
-    } else if (room.gameType === 'trivia') {
-      const qs = shuffle(TRIVIA_QUESTIONS).slice(0, 10);
-      room.state = {
-        questions: qs,
-        questionIdx: 0,
-        scores: Object.fromEntries(room.players.map(p => [p.userId, 0])),
-        answers: {},
-        phase: 'question',
-        timerEndsAt: Date.now() + 15000,
-        totalQuestions: qs.length,
-      };
-      const pub = publicTriviaState(room.state);
-      io.to(`gm:${rid}`).emit('gm:started', { state: pub });
-      startTriviaTimer(rid);
-    }
-  });
-
-  // ── XO MOVE ───────────────────────────────────────────────────────────────
-  socket.on('xo:move', ({ roomId, cell } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const userId = Number(socket.data.userId);
-    const room = gameStore.get(rid);
-    if (!room || room.gameType !== 'xo' || room.status !== 'playing') return;
-    const st = room.state;
-    if (st.winner) return;
-    const currentPlayer = st.turn === 0 ? st.x : st.o;
-    if (userId !== currentPlayer) return;
-    const c = Number(cell);
-    if (c < 0 || c > 8 || st.board[c] !== 0) return;
-
-    st.board[c] = st.turn === 0 ? 1 : 2;
-    const winner = checkXOWin(st.board);
-    if (winner) {
-      st.winner = winner === 1 ? st.x : st.o;
-      st.winLine = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
-        .find(([a,b,c2]) => st.board[a] === winner && st.board[b] === winner && st.board[c2] === winner);
-      room.status = 'ended';
-    } else if (st.board.every(v => v !== 0)) {
-      st.winner = 'draw';
-      room.status = 'ended';
-    } else {
-      st.turn = 1 - st.turn;
-    }
-    io.to(`gm:${rid}`).emit('xo:state', st);
-  });
-
-  socket.on('xo:restart', ({ roomId } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const room = gameStore.get(rid);
-    if (!room || room.gameType !== 'xo') return;
-    if (!room.players.find(p => p.userId === Number(socket.data.userId))) return;
-    room.status = 'playing';
-    room.state = { board: Array(9).fill(0), turn: 0, winner: null, winLine: null,
-      x: room.state.x, o: room.state.o };
-    io.to(`gm:${rid}`).emit('xo:state', room.state);
-  });
-
-  // ── WORD BOMB ─────────────────────────────────────────────────────────────
-  socket.on('wb:word', async ({ roomId, word } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const userId = Number(socket.data.userId);
-    const room = gameStore.get(rid);
-    if (!room || room.gameType !== 'wordbomb' || room.status !== 'playing') return;
-    const st = room.state;
-    const curPlayer = st.players[st.currentIdx];
-    if (!curPlayer || curPlayer.userId !== userId || !curPlayer.alive) return;
-
-    const w = String(word || '').trim().toLowerCase().replace(/[^a-z]/g, '');
-    if (!w) return;
-
-    if (st.lastLetter && !w.startsWith(st.lastLetter)) {
-      socket.emit('wb:invalid', { reason: `คำต้องขึ้นต้นด้วย "${st.lastLetter.toUpperCase()}"` });
-      return;
-    }
-    if (st.usedWords.includes(w)) {
-      socket.emit('wb:invalid', { reason: 'คำนี้ถูกใช้ไปแล้ว' });
-      return;
-    }
-
-    // Dictionary check via Free Dictionary API
-    const isReal = await checkEnglishWord(w);
-    if (!isReal) {
-      socket.emit('wb:invalid', { reason: `"${w}" ไม่ใช่คำภาษาอังกฤษที่ถูกต้อง` });
-      return;
-    }
-
-    gameStore.clearTimer(rid, 'wbturn');
-    st.usedWords.push(w);
-    st.lastLetter = w[w.length - 1];
-    st.lastWord = w;
-    advanceWBTurn(rid);
-  });
-
-  // ── TRIVIA ANSWER ─────────────────────────────────────────────────────────
-  socket.on('tq:answer', ({ roomId, idx } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const userId = Number(socket.data.userId);
-    const room = gameStore.get(rid);
-    if (!room || room.gameType !== 'trivia' || room.status !== 'playing') return;
-    const st = room.state;
-    if (st.phase !== 'question') return;
-    if (st.answers[userId] !== undefined) return; // already answered
-
-    const opt = Number(idx);
-    if (opt < 0 || opt > 3) return;
-    const q = st.questions[st.questionIdx];
-    const correct = opt === q.ans;
-    const elapsed = 15000 - Math.max(0, st.timerEndsAt - Date.now());
-    const points = correct ? Math.max(100, Math.round(1000 * (1 - elapsed / 15000))) : 0;
-    st.answers[userId] = { idx: opt, correct, points };
-    if (correct) st.scores[userId] = (st.scores[userId] || 0) + points;
-
-    socket.emit('tq:answered', { correct, points });
-
-    // All alive players answered?
-    const alive = room.players.map(p => p.userId);
-    if (alive.every(uid => st.answers[uid] !== undefined)) {
-      gameStore.clearTimer(rid, 'tqturn');
-      revealTriviaResult(rid);
-    }
-  });
-
-  // ── DISCONNECT ─────────────────────────────────────────────────────────────
-  const origDisconnect = socket.listeners('disconnect')[0];
-  socket.on('disconnect', () => {
-    const rid = socket.data.gameRoomId;
-    if (rid) {
-      const userId = Number(socket.data.userId);
-      const room = gameStore.get(rid);
-      if (room) {
-        // Mark as disconnected but keep in room for reconnect
-        const pub = room.players.map(p => ({ userId: p.userId, username: p.username }));
-        io.to(`gm:${rid}`).emit('gm:players', { players: pub });
-      }
-    }
-  });
-});
 
 // ── Word Bomb helpers ──────────────────────────────────────────────────────
 function startWBTimer(rid) {

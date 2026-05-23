@@ -2,6 +2,8 @@
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 
 const pageRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
@@ -36,10 +38,15 @@ function createApp() {
     },
   }));
 
+  app.use(compression());
   app.use(viewLocals);
-  app.use(express.static(path.join(__dirname, '../public')));
+  app.use(express.static(path.join(__dirname, '../public'), { maxAge: '7d' }));
 
   app.get('/__health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+  app.use('/login', authLimiter);
+  app.use('/register', authLimiter);
 
   app.use('/api', learnApiRoutes);
   app.use('/api', flashcardsApiRoutes);
