@@ -23,9 +23,11 @@ router.get('/learning/:cat', (req, res) => {
 router.get('/languages', (req, res) => res.redirect(301, '/learning'));
 router.get('/languages/:cat', (req, res) => res.redirect(301, '/learning/' + req.params.cat));
 
-router.get('/coding', (req, res) => {
-  res.render('pages/coding', { title: 'Coding' });
+router.get('/portfolio', (req, res) => {
+  res.render('pages/coding', { title: 'Portfolio' });
 });
+
+router.get('/coding', (req, res) => res.redirect(301, '/portfolio'));
 
 router.get('/games', (req, res) => {
   res.render('pages/games', { title: 'เกม & Anime' });
