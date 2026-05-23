@@ -133,13 +133,14 @@ module.exports = {
           xp_reward: 10,
           exercises: [
             { type: 'multiple_choice', data: { question: 'いち (ichi) แปลว่าอะไร?', options: ['สาม', 'หนึ่ง', 'สอง', 'สี่'], correct: 1 } },
-            { type: 'multiple_choice', data: { question: 'に (ni) แปลว่าอะไร?', options: ['หนึ่ง', 'สาม', 'สอง', 'สี่'], correct: 2 } },
-            { type: 'multiple_choice', data: { question: 'เลข 3 ภาษาญี่ปุ่นคือ?', options: ['いち', 'に', 'さん', 'し'], correct: 2 } },
-            { type: 'multiple_choice', data: { question: 'เลข 4 ภาษาญี่ปุ่นคือ?', options: ['さん', 'よん/し', 'ご', 'に'], correct: 1 } },
-            { type: 'multiple_choice', data: { question: 'ご (go) แปลว่าอะไร?', options: ['สี่', 'สาม', 'ห้า', 'หก'], correct: 2 } },
+            { type: 'multiple_choice', data: { question: 'ご (go) แปลว่าอะไร?', options: ['สี่', 'สาม', 'ห้า', 'สอง'], correct: 2 } },
+            { type: 'multiple_choice', data: { question: 'เลข 4 ภาษาญี่ปุ่นคือ?', options: ['さん', 'よん', 'ご', 'に'], correct: 1 } },
             { type: 'translate', data: { prompt: 'หนึ่ง (ญี่ปุ่น)', hint: 'ichi', answer: 'いち', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'สอง (ญี่ปุ่น)', hint: 'ni', answer: 'に', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'สาม (ญี่ปุ่น)', hint: 'san', answer: 'さん', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'สี่ (ญี่ปุ่น)', hint: 'yon', answer: 'よん', alternatives: ['し'] } },
             { type: 'translate', data: { prompt: 'ห้า (ญี่ปุ่น)', hint: 'go', answer: 'ご', alternatives: [] } },
-            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขญี่ปุ่นกับความหมาย', pairs: [{ left: 'いち', right: '1' }, { left: 'に', right: '2' }, { left: 'さん', right: '3' }, { left: 'ご', right: '5' }] } }
+            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขกับความหมาย', pairs: [{ left: 'いち', right: 'หนึ่ง' }, { left: 'に', right: 'สอง' }, { left: 'さん', right: 'สาม' }, { left: 'ご', right: 'ห้า' }] } }
           ]
         },
         {
@@ -148,13 +149,14 @@ module.exports = {
           xp_reward: 10,
           exercises: [
             { type: 'multiple_choice', data: { question: 'ろく (roku) แปลว่าอะไร?', options: ['เจ็ด', 'แปด', 'หก', 'เก้า'], correct: 2 } },
-            { type: 'multiple_choice', data: { question: 'なな (nana) แปลว่าอะไร?', options: ['หก', 'เจ็ด', 'แปด', 'เก้า'], correct: 1 } },
-            { type: 'multiple_choice', data: { question: 'เลข 8 ภาษาญี่ปุ่นคือ?', options: ['なな', 'はち', 'きゅう', 'ろく'], correct: 1 } },
-            { type: 'multiple_choice', data: { question: 'เลข 10 ภาษาญี่ปุ่นคือ?', options: ['きゅう', 'じゅう', 'はち', 'なな'], correct: 1 } },
-            { type: 'multiple_choice', data: { question: 'きゅう (kyuu) แปลว่าอะไร?', options: ['เจ็ด', 'แปด', 'เก้า', 'สิบ'], correct: 2 } },
+            { type: 'multiple_choice', data: { question: 'じゅう (juu) แปลว่าอะไร?', options: ['เก้า', 'สิบ', 'แปด', 'เจ็ด'], correct: 1 } },
+            { type: 'multiple_choice', data: { question: 'เลข 9 ภาษาญี่ปุ่นคือ?', options: ['はち', 'きゅう', 'じゅう', 'なな'], correct: 1 } },
+            { type: 'translate', data: { prompt: 'หก (ญี่ปุ่น)', hint: 'roku', answer: 'ろく', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'เจ็ด (ญี่ปุ่น)', hint: 'nana', answer: 'なな', alternatives: ['しち'] } },
             { type: 'translate', data: { prompt: 'แปด (ญี่ปุ่น)', hint: 'hachi', answer: 'はち', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'เก้า (ญี่ปุ่น)', hint: 'kyuu', answer: 'きゅう', alternatives: ['く'] } },
             { type: 'translate', data: { prompt: 'สิบ (ญี่ปุ่น)', hint: 'juu', answer: 'じゅう', alternatives: [] } },
-            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขญี่ปุ่นกับความหมาย', pairs: [{ left: 'ろく', right: '6' }, { left: 'なな', right: '7' }, { left: 'はち', right: '8' }, { left: 'じゅう', right: '10' }] } }
+            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขกับความหมาย', pairs: [{ left: 'ろく', right: 'หก' }, { left: 'なな', right: 'เจ็ด' }, { left: 'はち', right: 'แปด' }, { left: 'じゅう', right: 'สิบ' }] } }
           ]
         },
         {
@@ -163,13 +165,13 @@ module.exports = {
           xp_reward: 15,
           exercises: [
             { type: 'multiple_choice', data: { question: 'ねこが さん ひき います。 แปลว่า?', options: ['มีแมวหนึ่งตัว', 'มีแมวสองตัว', 'มีแมวสามตัว', 'มีแมวสี่ตัว'], correct: 2 } },
-            { type: 'multiple_choice', data: { question: 'เลข "9" ภาษาญี่ปุ่นเขียนอย่างไร?', options: ['はち', 'きゅう', 'じゅう', 'なな'], correct: 1 } },
             { type: 'multiple_choice', data: { question: 'いち + いち = ?', options: ['いち', 'に', 'さん', 'し'], correct: 1 } },
             { type: 'multiple_choice', data: { question: 'ご + ご = ?', options: ['ろく', 'なな', 'はち', 'じゅう'], correct: 3 } },
+            { type: 'multiple_choice', data: { question: 'じゅう - さん = ?', options: ['なな', 'はち', 'ろく', 'ご'], correct: 0 } },
+            { type: 'translate', data: { prompt: 'สี่ (ญี่ปุ่น)', hint: 'yon', answer: 'よん', alternatives: ['し'] } },
             { type: 'translate', data: { prompt: 'เก้า (ญี่ปุ่น)', hint: 'kyuu', answer: 'きゅう', alternatives: [] } },
-            { type: 'translate', data: { prompt: 'หก (ญี่ปุ่น)', hint: 'roku', answer: 'ろく', alternatives: [] } },
-            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขทั้งหมด', pairs: [{ left: 'よん', right: '4' }, { left: 'きゅう', right: '9' }, { left: 'ろく', right: '6' }, { left: 'はち', right: '8' }] } },
-            { type: 'multiple_choice', data: { question: 'じゅう - さん = ?', options: ['なな', 'はち', 'ろく', 'ご'], correct: 0 } }
+            { type: 'word_order', data: { instruction: 'เรียงคำให้ถูกต้อง', translation: 'ฉันมีแมวสี่ตัว', words: ['ねこが', 'よん', 'ひき', 'います'], answer: 'ねこが よん ひき います' } },
+            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขกับความหมาย', pairs: [{ left: 'よん', right: 'สี่' }, { left: 'きゅう', right: 'เก้า' }, { left: 'ろく', right: 'หก' }, { left: 'はち', right: 'แปด' }] } }
           ]
         }
       ]

@@ -38,7 +38,7 @@ module.exports = [
           { type: 'translate', data: { prompt: 'เป็นมิตร', hint: 'personality', answer: 'friendly', alternatives: ['kind'] } },
           { type: 'fill_blank', data: { sentence: 'She is very ___ and always helps others.', translation: 'เธอใจดีมากและคอยช่วยเหลือคนอื่นเสมอ', options: ['rude', 'selfish', 'kind', 'lazy'], correct: 2 } },
           { type: 'word_order', data: { instruction: 'เรียงประโยคให้ถูกต้อง', translation: 'เพื่อนของฉันตัวสูง ผมสีดำ และมีตาสีน้ำตาล', words: ['My', 'friend', 'is', 'tall', 'with', 'black', 'hair'], answer: 'My friend is tall with black hair' } },
-          { type: 'match_pairs', data: { instruction: 'จับคู่คำตรงข้าม', pairs: [{ left: 'tall', right: 'short' }, { left: 'young', right: 'old' }, { left: 'smart', right: 'stupid' }, { left: 'kind', right: 'rude' }] } }
+          { type: 'match_pairs', data: { instruction: 'จับคู่คำกับความหมาย', pairs: [{ left: 'tall', right: 'สูง' }, { left: 'young', right: 'อ่อน / เด็ก' }, { left: 'smart', right: 'ฉลาด' }, { left: 'kind', right: 'ใจดี' }] } }
         ]
       },
       {

@@ -42,10 +42,41 @@ async function seedAll(pool) {
         [language.id, unit.order_num]
       );
       if (existing.rows.length > 0) {
+        const unitId = existing.rows[0].id;
         await pool.query(
           'UPDATE units SET level=$1, grammar_note=$2, cultural_note=$3 WHERE id=$4',
-          [unit.level || null, unit.grammar_note || null, unit.cultural_note || null, existing.rows[0].id]
+          [unit.level || null, unit.grammar_note || null, unit.cultural_note || null, unitId]
         );
+        // Also refresh exercises for existing lessons (keeps lesson IDs stable, user progress safe)
+        for (const lesson of unit.lessons) {
+          const existingLesson = await pool.query(
+            'SELECT id FROM lessons WHERE unit_id=$1 AND order_num=$2',
+            [unitId, lesson.order_num]
+          );
+          if (existingLesson.rows.length > 0) {
+            const lessonId = existingLesson.rows[0].id;
+            await pool.query('DELETE FROM exercises WHERE lesson_id=$1', [lessonId]);
+            for (let i = 0; i < lesson.exercises.length; i++) {
+              const ex = lesson.exercises[i];
+              await pool.query(
+                'INSERT INTO exercises (lesson_id, order_num, type, data) VALUES ($1,$2,$3,$4)',
+                [lessonId, i + 1, ex.type, JSON.stringify(ex.data)]
+              );
+            }
+          } else {
+            const { rows: [l] } = await pool.query(
+              'INSERT INTO lessons (unit_id, order_num, title, xp_reward) VALUES ($1,$2,$3,$4) RETURNING id',
+              [unitId, lesson.order_num, lesson.title, lesson.xp_reward || 10]
+            );
+            for (let i = 0; i < lesson.exercises.length; i++) {
+              const ex = lesson.exercises[i];
+              await pool.query(
+                'INSERT INTO exercises (lesson_id, order_num, type, data) VALUES ($1,$2,$3,$4)',
+                [l.id, i + 1, ex.type, JSON.stringify(ex.data)]
+              );
+            }
+          }
+        }
         continue;
       }
 

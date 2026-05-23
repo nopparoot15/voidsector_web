@@ -22,7 +22,7 @@ module.exports = [
           { type: 'multiple_choice', data: { question: '"I\'ve told you a million times!" — คือ?', options: ['Metaphor', 'Simile', 'Hyperbole', 'Irony'], correct: 2 } },
           { type: 'translate', data: { prompt: 'การพูดน้อยกว่าความเป็นจริงเพื่อเน้น', hint: 'underst...', answer: 'understatement', alternatives: [] } },
           { type: 'translate', data: { prompt: 'การพูดตรงข้ามความหมายที่แท้จริง', hint: 'iron...', answer: 'irony', alternatives: ['sarcasm'] } },
-          { type: 'match_pairs', data: { instruction: 'จับคู่ device กับตัวอย่าง', pairs: [{ left: 'metaphor', right: '"Life is a journey"' }, { left: 'hyperbole', right: '"I\'m starving to death"' }, { left: 'simile', right: '"Fast as lightning"' }, { left: 'irony', right: '"Oh, perfect timing!"' }] } },
+          { type: 'match_pairs', data: { instruction: 'จับคู่ device กับความหมาย', pairs: [{ left: 'metaphor', right: 'เปรียบเปรยโดยตรง' }, { left: 'hyperbole', right: 'เน้นเกินความจริง' }, { left: 'simile', right: 'เปรียบเหมือน (as/like)' }, { left: 'irony', right: 'พูดตรงข้าม/เหน็บแนม' }] } },
           { type: 'fill_blank', data: { sentence: '"She has a heart of gold." — "heart of gold" คือ ___ ที่หมายถึงคนใจดี', translation: 'metaphor — เปรียบเทียบโดยตรง', options: ['simile', 'metaphor', 'irony', 'hyperbole'], correct: 1 } },
         ]
       },
@@ -36,7 +36,7 @@ module.exports = [
           { type: 'multiple_choice', data: { question: 'Academic writing ควรหลีกเลี่ยงอะไร?', options: ['Passive voice', 'Contractions (it\'s, don\'t)', 'Complex sentences', 'Technical terms'], correct: 1 } },
           { type: 'multiple_choice', data: { question: '"The results suggest that..." เป็นโครงสร้าง?', options: ['Colloquial hedging', 'Academic hedging', 'Informal opinion', 'Direct claim'], correct: 1 } },
           { type: 'translate', data: { prompt: 'ระดับภาษา (formal/informal)', hint: 'reg...', answer: 'register', alternatives: [] } },
-          { type: 'match_pairs', data: { instruction: 'จับคู่ formal กับ informal', pairs: [{ left: 'commence', right: 'start' }, { left: 'terminate', right: 'end' }, { left: 'facilitate', right: 'help' }, { left: 'obtain', right: 'get' }] } },
+          { type: 'match_pairs', data: { instruction: 'จับคู่คำ formal กับความหมาย', pairs: [{ left: 'commence', right: 'เริ่มต้น (formal)' }, { left: 'terminate', right: 'สิ้นสุด (formal)' }, { left: 'facilitate', right: 'อำนวยความสะดวก' }, { left: 'obtain', right: 'ได้รับ / หามาได้' }] } },
           { type: 'fill_blank', data: { sentence: 'In academic writing: "The study ___ that sleep deprivation affects cognition."', translation: 'ใช้ hedging verb เพื่อไม่ยืนยันแน่ชัด', options: ['proves', 'suggests', 'knows', 'says'], correct: 1 } },
           { type: 'word_order', data: { instruction: 'เรียงประโยค formal', translation: 'ฉันจะขอบคุณมากหากคุณตอบกลับโดยเร็ว', words: ['I', 'would', 'appreciate', 'a', 'prompt', 'response'], answer: 'I would appreciate a prompt response' } },
         ]
@@ -51,7 +51,7 @@ module.exports = [
           { type: 'multiple_choice', data: { question: '"I wish I ___ taller." — Subjunctive?', options: ['was', 'were', 'am', 'be'], correct: 1 } },
           { type: 'multiple_choice', data: { question: '"If I ___ you, I would apologize." — Subjunctive?', options: ['was', 'am', 'were', 'be'], correct: 2 } },
           { type: 'translate', data: { prompt: 'คำที่มักใช้คู่กัน (เช่น strong coffee)', hint: 'coll...', answer: 'collocation', alternatives: [] } },
-          { type: 'match_pairs', data: { instruction: 'จับคู่ collocations', pairs: [{ left: 'heavy', right: 'traffic / rain / smoker' }, { left: 'strong', right: 'coffee / tea / wind' }, { left: 'make', right: 'a mistake / a decision / an effort' }, { left: 'do', right: 'homework / damage / business' }] } },
+          { type: 'match_pairs', data: { instruction: 'จับคู่ collocations กับความหมาย', pairs: [{ left: 'heavy traffic', right: 'รถติด / จราจรหนาแน่น' }, { left: 'strong coffee', right: 'กาแฟเข้มข้น' }, { left: 'make a decision', right: 'ตัดสินใจ' }, { left: 'do homework', right: 'ทำการบ้าน' }] } },
           { type: 'fill_blank', data: { sentence: '"She ___ a living as a freelance writer." — ใช้ make หรือ do?', translation: 'earn a living — make a living', options: ['does', 'makes', 'takes', 'gets'], correct: 1 } },
           { type: 'fill_blank', data: { sentence: '"The report ___ that the policy had unintended consequences." — hedging', translation: 'แสดงผลการวิจัยอย่างระมัดระวัง', options: ['knows', 'proves', 'indicates', 'says definitely'], correct: 2 } },
         ]

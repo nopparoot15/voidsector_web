@@ -138,8 +138,11 @@ module.exports = {
             { type: 'multiple_choice', data: { question: 'เลข 4 ภาษาจีนคือ?', options: ['三', '四', '五', '二'], correct: 1 } },
             { type: 'multiple_choice', data: { question: '五 (wǔ) แปลว่าอะไร?', options: ['สี่', 'สาม', 'ห้า', 'สอง'], correct: 2 } },
             { type: 'translate', data: { prompt: 'หนึ่ง (จีน)', hint: 'yī', answer: '一', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'สอง (จีน)', hint: 'èr', answer: '二', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'สาม (จีน)', hint: 'sān', answer: '三', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'สี่ (จีน)', hint: 'sì', answer: '四', alternatives: [] } },
             { type: 'translate', data: { prompt: 'ห้า (จีน)', hint: 'wǔ', answer: '五', alternatives: [] } },
-            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขจีนกับความหมาย', pairs: [{ left: '一', right: '1' }, { left: '二', right: '2' }, { left: '三', right: '3' }, { left: '五', right: '5' }] } }
+            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขจีนกับความหมาย', pairs: [{ left: '一', right: 'หนึ่ง' }, { left: '二', right: 'สอง' }, { left: '三', right: 'สาม' }, { left: '五', right: 'ห้า' }] } }
           ]
         },
         {
@@ -152,9 +155,12 @@ module.exports = {
             { type: 'multiple_choice', data: { question: 'เลข 8 ภาษาจีนคือ?', options: ['七', '八', '九', '六'], correct: 1 } },
             { type: 'multiple_choice', data: { question: 'เลข 10 ภาษาจีนคือ?', options: ['九', '十', '八', '七'], correct: 1 } },
             { type: 'multiple_choice', data: { question: '九 (jiǔ) แปลว่าอะไร?', options: ['เจ็ด', 'แปด', 'เก้า', 'สิบ'], correct: 2 } },
+            { type: 'translate', data: { prompt: 'หก (จีน)', hint: 'liù', answer: '六', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'เจ็ด (จีน)', hint: 'qī', answer: '七', alternatives: [] } },
             { type: 'translate', data: { prompt: 'แปด (จีน)', hint: 'bā', answer: '八', alternatives: [] } },
+            { type: 'translate', data: { prompt: 'เก้า (จีน)', hint: 'jiǔ', answer: '九', alternatives: [] } },
             { type: 'translate', data: { prompt: 'สิบ (จีน)', hint: 'shí', answer: '十', alternatives: [] } },
-            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขจีนกับความหมาย', pairs: [{ left: '六', right: '6' }, { left: '七', right: '7' }, { left: '八', right: '8' }, { left: '十', right: '10' }] } }
+            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขจีนกับความหมาย', pairs: [{ left: '六', right: 'หก' }, { left: '七', right: 'เจ็ด' }, { left: '八', right: 'แปด' }, { left: '十', right: 'สิบ' }] } }
           ]
         },
         {
@@ -168,7 +174,7 @@ module.exports = {
             { type: 'multiple_choice', data: { question: 'ตัวเลข "9" ภาษาจีนเขียนอย่างไร?', options: ['八', '九', '十', '七'], correct: 1 } },
             { type: 'translate', data: { prompt: 'เก้า (จีน)', hint: 'jiǔ', answer: '九', alternatives: [] } },
             { type: 'translate', data: { prompt: 'หก (จีน)', hint: 'liù', answer: '六', alternatives: [] } },
-            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขจีนทั้งหมด', pairs: [{ left: '四', right: '4' }, { left: '九', right: '9' }, { left: '六', right: '6' }, { left: '八', right: '8' }] } },
+            { type: 'match_pairs', data: { instruction: 'จับคู่ตัวเลขจีนทั้งหมด', pairs: [{ left: '四', right: 'สี่' }, { left: '九', right: 'เก้า' }, { left: '六', right: 'หก' }, { left: '八', right: 'แปด' }] } },
             { type: 'multiple_choice', data: { question: '五 + 五 = ?', options: ['八', '九', '十', '七'], correct: 2 } }
           ]
         }
