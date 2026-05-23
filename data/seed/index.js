@@ -8,6 +8,9 @@ const zhExtra = require('./zh_extra');
 const enExtra2 = require('./en_extra2');
 const jaExtra2 = require('./ja_extra2');
 const zhExtra2 = require('./zh_extra2');
+const enExtra3 = require('./en_extra3');
+const jaExtra3 = require('./ja_extra3');
+const zhExtra3 = require('./zh_extra3');
 
 // Merge base units with extra units by combining arrays
 function mergedUnits(base, extra) {
@@ -18,9 +21,9 @@ function mergedUnits(base, extra) {
 }
 
 const langs = [
-  { ...en, units: mergedUnits(en, [...enExtra, ...enExtra2]) },
-  { ...ja, units: mergedUnits(ja, [...jaExtra, ...jaExtra2]) },
-  { ...zh, units: mergedUnits(zh, [...zhExtra, ...zhExtra2]) },
+  { ...en, units: mergedUnits(en, [...enExtra, ...enExtra2, ...enExtra3]) },
+  { ...ja, units: mergedUnits(ja, [...jaExtra, ...jaExtra2, ...jaExtra3]) },
+  { ...zh, units: mergedUnits(zh, [...zhExtra, ...zhExtra2, ...zhExtra3]) },
 ];
 
 async function seedAll(pool) {
