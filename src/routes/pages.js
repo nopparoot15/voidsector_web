@@ -79,6 +79,10 @@ router.get('/flashcards/:langCode', requireLogin, (req, res) => {
   res.render('pages/flashcards', { title: 'Flashcard ' + names[langCode], langCode });
 });
 
+router.get('/tools', requireLogin, (req, res) => {
+  res.render('pages/tools', { title: 'Tools' });
+});
+
 router.get('/tools/terminal', requireLogin, (req, res) => {
   res.render('pages/terminal', { title: 'Terminal' });
 });
