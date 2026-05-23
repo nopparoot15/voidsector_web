@@ -714,27 +714,13 @@
   }
 
   // ── Text-to-Speech ────────────────────────────────────────────────────
+  var currentAudio = null;
   function speak(text, lang) {
-    const synth = window.speechSynthesis;
-    if (!synth || !text) return;
-
-    // Chrome can get stuck in paused state
-    if (synth.paused) synth.resume();
-
-    const doSpeak = () => {
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = lang === 'ja' ? 'ja-JP' : lang === 'zh' ? 'zh-CN' : 'en-US';
-      utter.rate = 0.85;
-      synth.speak(utter);
-    };
-
-    // Chrome bug: cancel() + immediate speak() = silent. Wait 100ms after cancel.
-    if (synth.speaking) {
-      synth.cancel();
-      setTimeout(doSpeak, 100);
-    } else {
-      doSpeak();
-    }
+    if (!text) return;
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    const audio = new Audio('/api/tts?text=' + encodeURIComponent(text) + '&lang=' + encodeURIComponent(lang));
+    currentAudio = audio;
+    audio.play().catch(() => {});
   }
 
   // Delegated TTS click handler for vocab table and feedback panel

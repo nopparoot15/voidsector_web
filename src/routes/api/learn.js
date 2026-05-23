@@ -1,9 +1,38 @@
 'use strict';
 const express = require('express');
+const https = require('https');
 const router = express.Router();
 const { pool } = require('../../config/db');
 const { requireLogin } = require('../../middleware/requireLogin');
 const { updateStreak } = require('../../controllers/authController');
+
+// TTS proxy — streams Google Translate TTS audio to client
+router.get('/tts', (req, res) => {
+  const text = String(req.query.text || '').trim();
+  const lang = String(req.query.lang || 'en');
+  if (!text || text.length > 200) return res.status(400).end();
+
+  const langMap = { ja: 'ja', zh: 'zh-CN', en: 'en' };
+  const tl = langMap[lang] || 'en';
+  const qs = 'ie=UTF-8&client=tw-ob&ttsspeed=0.9&tl=' + encodeURIComponent(tl) + '&q=' + encodeURIComponent(text);
+
+  const options = {
+    hostname: 'translate.google.com',
+    path: '/translate_tts?' + qs,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Referer': 'https://translate.google.com/',
+      'Accept': 'audio/webm,audio/ogg,audio/*;q=0.9,*/*;q=0.8'
+    }
+  };
+
+  https.get(options, (upstream) => {
+    if (upstream.statusCode !== 200) return res.status(502).end();
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+    upstream.pipe(res);
+  }).on('error', () => res.status(500).end());
+});
 
 router.get('/languages', async (req, res) => {
   try {
