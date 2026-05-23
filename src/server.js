@@ -268,6 +268,7 @@ app.post('/api/run-code', (req, res) => {
 // ─── GAMES ────────────────────────────────────────────────────────────────────
 
 const TRIVIA_QUESTIONS = [
+  // ── IT & Programming ──────────────────────────────────────────────────────
   { q: 'Python ถูกสร้างโดยใคร?', opts: ['Guido van Rossum','James Gosling','Brendan Eich','Linus Torvalds'], ans: 0 },
   { q: 'HTML ย่อมาจากอะไร?', opts: ['HyperText Markup Language','HyperText Machine Language','HighText Markup Language','HyperTool Markup Language'], ans: 0 },
   { q: 'Git ถูกสร้างโดยใคร?', opts: ['Bill Gates','Linus Torvalds','Dennis Ritchie','Steve Jobs'], ans: 1 },
@@ -286,9 +287,83 @@ const TRIVIA_QUESTIONS = [
   { q: 'IPv4 address มีกี่ bit?', opts: ['16','32','64','128'], ans: 1 },
   { q: 'ภาษา Python ชื่อมาจาก?', opts: ['งู Python','Monty Python คณะตลก','Greek god','ไม่มีที่มา'], ans: 1 },
   { q: 'CSS ย่อมาจากอะไร?', opts: ['Cascading Style Sheets','Creative Style Sheets','Computer Style Syntax','Cascading Script System'], ans: 0 },
+  { q: 'HTTP status 200 หมายความว่า?', opts: ['Not Found','Redirect','OK','Server Error'], ans: 2 },
+  { q: 'HTTP status 500 หมายความว่า?', opts: ['Not Found','Unauthorized','Redirect','Internal Server Error'], ans: 3 },
+  { q: 'DNS ย่อมาจากอะไร?', opts: ['Domain Name System','Data Network Service','Dynamic Name Server','Digital Network Sync'], ans: 0 },
+  { q: 'URL ย่อมาจากอะไร?', opts: ['Universal Resource Locator','Uniform Resource Locator','Unified Reference Link','Universal Record Locator'], ans: 1 },
+  { q: 'Linux kernel เขียนด้วยภาษาอะไร?', opts: ['Python','Java','C','Assembly'], ans: 2 },
+  { q: 'Docker ใช้สำหรับ?', opts: ['Database management','Containerization','Version control','CI/CD pipeline only'], ans: 1 },
+  { q: 'JSON ย่อมาจากอะไร?', opts: ['JavaScript Object Notation','Java Serialized Object Notation','JavaScript Online Node','Java Object Network'], ans: 0 },
+  { q: 'ภาษาใดที่ใช้สร้าง Android app เป็นหลักในปัจจุบัน?', opts: ['Swift','Kotlin','C++','Ruby'], ans: 1 },
+  { q: 'ภาษาใดที่ใช้สร้าง iOS app เป็นหลัก?', opts: ['Kotlin','Java','Swift','Go'], ans: 2 },
+  { q: 'TCP/IP มี layer กี่ชั้น?', opts: ['3','4','5','7'], ans: 1 },
+  { q: 'SSH ใช้ port หมายเลขใดเป็นค่าตั้งต้น?', opts: ['21','22','23','80'], ans: 1 },
+  { q: 'HTTPS ใช้ port หมายเลขใดเป็นค่าตั้งต้น?', opts: ['80','443','8080','3000'], ans: 1 },
+  { q: 'Git branch หลักมักชื่อว่าอะไร?', opts: ['root','dev','master / main','trunk'], ans: 2 },
+  { q: '"printf" ในภาษา C ย่อมาจากอะไร?', opts: ['print formatted','print function','process read','pure format'], ans: 0 },
+  { q: 'ข้อใดคือ NoSQL database?', opts: ['MySQL','PostgreSQL','MongoDB','SQLite'], ans: 2 },
+  { q: 'WebSocket แตกต่างจาก HTTP อย่างไร?', opts: ['เร็วกว่าเสมอ','เชื่อมต่อแบบ full-duplex ต่อเนื่อง','ปลอดภัยกว่า','ใช้ UDP'], ans: 1 },
+  { q: 'ใน Python ฟังก์ชัน len("hello") คืนค่าเท่าไร?', opts: ['4','5','6','error'], ans: 1 },
+  { q: 'Recursion คืออะไร?', opts: ['Loop ชนิดหนึ่ง','ฟังก์ชันเรียกตัวเอง','Array nested','Pointer arithmetic'], ans: 1 },
+  { q: 'ข้อใดไม่ใช่ version control system?', opts: ['Git','SVN','Mercurial','Docker'], ans: 3 },
+  { q: 'IDE ย่อมาจากอะไร?', opts: ['Integrated Development Environment','Internet Development Engine','Internal Design Editor','Integrated Debug Extension'], ans: 0 },
+  { q: 'ใน CSS selector #id กับ .class ต่างกันอย่างไร?', opts: ['# ใช้สีได้อย่างเดียว','# คือ id (unique) . คือ class (ซ้ำได้)','ไม่ต่างกัน','# ใช้กับ JS เท่านั้น'], ans: 1 },
+  { q: 'REST API ใช้ HTTP method ใดในการสร้างข้อมูลใหม่?', opts: ['GET','PUT','POST','DELETE'], ans: 2 },
+  { q: 'ใน JavaScript === ต่างจาก == อย่างไร?', opts: ['ไม่ต่างกัน','=== เช็ค value และ type','== เช็ค type ด้วย','=== ช้ากว่า'], ans: 1 },
+  // ── วิทยาศาสตร์ ───────────────────────────────────────────────────────────
   { q: 'ดาวเคราะห์ที่ใหญ่ที่สุดในระบบสุริยะคือ?', opts: ['Saturn','Neptune','Jupiter','Uranus'], ans: 2 },
+  { q: 'ธาตุที่เบาที่สุดในตารางธาตุคือ?', opts: ['Helium','Oxygen','Hydrogen','Carbon'], ans: 2 },
+  { q: 'แสงเดินทางด้วยความเร็วเท่าไรในสุญญากาศ?', opts: ['150,000 km/s','300,000 km/s','450,000 km/s','600,000 km/s'], ans: 1 },
+  { q: 'DNA ย่อมาจากอะไร?', opts: ['Deoxyribonucleic Acid','Dinucleic Acid','Deoxyribose Nucleotide Array','Double Nucleic Acid'], ans: 0 },
+  { q: 'สัตว์ที่มีขาหลายขาที่สุดในโลกคือ?', opts: ['ตะขาบ','กิ้งกือ (Millipede)','แมงมุม','แมลง'], ans: 1 },
+  { q: 'น้ำเดือดที่อุณหภูมิกี่องศาเซลเซียส (ที่ระดับน้ำทะเล)?', opts: ['90','95','100','105'], ans: 2 },
+  { q: 'ดวงอาทิตย์อยู่ห่างจากโลกประมาณเท่าไร?', opts: ['50 ล้าน km','150 ล้าน km','300 ล้าน km','500 ล้าน km'], ans: 1 },
+  { q: 'กระดูกที่เล็กที่สุดในร่างกายมนุษย์อยู่ที่ไหน?', opts: ['นิ้วมือ','หู','เท้า','ฟัน'], ans: 1 },
+  { q: 'กราวิตี้บนโลก มีค่าประมาณ?', opts: ['6.7 m/s²','9.8 m/s²','11.2 m/s²','1.6 m/s²'], ans: 1 },
+  { q: 'ออกซิเจนมีสัญลักษณ์ธาตุว่า?', opts: ['Ox','O','Og','Or'], ans: 1 },
+  // ── ภูมิศาสตร์ & ทั่วไป ───────────────────────────────────────────────────
   { q: 'ประเทศไทยมีกี่จังหวัด?', opts: ['73','75','77','80'], ans: 2 },
+  { q: 'เมืองหลวงของญี่ปุ่นคือ?', opts: ['Osaka','Kyoto','Nagoya','Tokyo'], ans: 3 },
+  { q: 'แม่น้ำที่ยาวที่สุดในโลกคือ?', opts: ['Amazon','Yangtze','Nile','Mississippi'], ans: 2 },
+  { q: 'ประเทศใดมีประชากรมากที่สุดในโลก?', opts: ['USA','India','China','Indonesia'], ans: 1 },
+  { q: 'ภูเขาที่สูงที่สุดในโลกคือ?', opts: ['K2','Mont Blanc','Everest','Kilimanjaro'], ans: 2 },
+  { q: 'ทวีปที่ใหญ่ที่สุดในโลกคือ?', opts: ['Africa','North America','Asia','Europe'], ans: 2 },
+  { q: 'มหาสมุทรที่ใหญ่ที่สุดในโลกคือ?', opts: ['Atlantic','Indian','Arctic','Pacific'], ans: 3 },
+  { q: 'เมืองหลวงของฝรั่งเศสคือ?', opts: ['Lyon','Marseille','Paris','Nice'], ans: 2 },
+  { q: 'ประเทศใดที่มีพื้นที่ใหญ่ที่สุดในโลก?', opts: ['Canada','USA','China','Russia'], ans: 3 },
+  { q: 'กำแพงเมืองจีนยาวประมาณเท่าไร?', opts: ['5,000 km','10,000 km','21,000 km','30,000 km'], ans: 2 },
+  // ── ประวัติศาสตร์ & วัฒนธรรม ─────────────────────────────────────────────
+  { q: 'ใครเป็นผู้คิดค้นโทรศัพท์?', opts: ['Thomas Edison','Nikola Tesla','Alexander Graham Bell','Guglielmo Marconi'], ans: 2 },
+  { q: 'Internet ถูกพัฒนาครั้งแรกในยุค?', opts: ['1950s','1960s','1970s','1980s'], ans: 1 },
+  { q: 'World Wide Web ถูกสร้างโดยใคร?', opts: ['Bill Gates','Tim Berners-Lee','Steve Jobs','Vint Cerf'], ans: 1 },
+  { q: 'Apple ก่อตั้งโดยใครในปี 1976?', opts: ['Bill Gates','Steve Jobs และ Steve Wozniak','Elon Musk','Larry Page'], ans: 1 },
+  { q: 'บริษัทใดสร้าง Windows?', opts: ['Apple','IBM','Microsoft','Google'], ans: 2 },
+  { q: 'Google ก่อตั้งโดยใคร?', opts: ['Bill Gates & Paul Allen','Larry Page & Sergey Brin','Mark Zuckerberg','Jeff Bezos'], ans: 1 },
+  // ── คณิตศาสตร์ ────────────────────────────────────────────────────────────
+  { q: 'π (pi) มีค่าประมาณ?', opts: ['2.718','3.141','1.618','4.012'], ans: 1 },
+  { q: 'จำนวนเฉพาะ (prime) ในข้อต่อไปนี้คือ?', opts: ['9','15','17','21'], ans: 2 },
+  { q: '2^10 มีค่าเท่าไร?', opts: ['512','1000','1024','2048'], ans: 2 },
+  { q: 'ราก√144 มีค่าเท่าไร?', opts: ['10','11','12','13'], ans: 2 },
+  { q: 'Fibonacci sequence ลำดับที่ 7 คือ?', opts: ['8','11','13','15'], ans: 2 },
+  { q: '16 ในเลขฐาน 16 (hex) คือ?', opts: ['F','10','11','1F'], ans: 1 },
+  // ── Pop Culture ──────────────────────────────────────────────────────────
+  { q: 'Minecraft พัฒนาโดยใคร?', opts: ['Valve','Mojang','Ubisoft','EA'], ans: 1 },
+  { q: 'เกม Fortnite พัฒนาโดยบริษัทใด?', opts: ['Activision','Epic Games','Riot Games','Valve'], ans: 1 },
+  { q: 'LoL ย่อมาจากอะไร?', opts: ['League of Legends','Lords of Legends','Legacy of Lore','Legends of Land'], ans: 0 },
+  { q: 'YouTube ก่อตั้งในปีใด?', opts: ['2003','2004','2005','2006'], ans: 2 },
+  { q: 'ภาษาโปรแกรมใดใช้สร้างเกม Unity เป็นหลัก?', opts: ['Java','Python','C#','C++'], ans: 2 },
 ];
+
+async function checkEnglishWord(word) {
+  return new Promise(resolve => {
+    const req = https.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, res => {
+      resolve(res.statusCode === 200);
+      res.resume();
+    });
+    req.on('error', () => resolve(true)); // fail open on network error
+    req.setTimeout(3000, () => { req.destroy(); resolve(true); });
+  });
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -428,7 +503,7 @@ io.on('connection', (socket) => {
   });
 
   // ── WORD BOMB ─────────────────────────────────────────────────────────────
-  socket.on('wb:word', ({ roomId, word } = {}) => {
+  socket.on('wb:word', async ({ roomId, word } = {}) => {
     const rid = String(roomId || '').toUpperCase();
     const userId = Number(socket.data.userId);
     const room = gameStore.get(rid);
@@ -437,16 +512,22 @@ io.on('connection', (socket) => {
     const curPlayer = st.players[st.currentIdx];
     if (!curPlayer || curPlayer.userId !== userId || !curPlayer.alive) return;
 
-    const w = String(word || '').trim().toLowerCase().replace(/[^a-z฀-๿]/g, '');
+    const w = String(word || '').trim().toLowerCase().replace(/[^a-z]/g, '');
     if (!w) return;
 
-    // Validate: correct starting letter (if any) + not already used
     if (st.lastLetter && !w.startsWith(st.lastLetter)) {
       socket.emit('wb:invalid', { reason: `คำต้องขึ้นต้นด้วย "${st.lastLetter.toUpperCase()}"` });
       return;
     }
     if (st.usedWords.includes(w)) {
       socket.emit('wb:invalid', { reason: 'คำนี้ถูกใช้ไปแล้ว' });
+      return;
+    }
+
+    // Dictionary check via Free Dictionary API
+    const isReal = await checkEnglishWord(w);
+    if (!isReal) {
+      socket.emit('wb:invalid', { reason: `"${w}" ไม่ใช่คำภาษาอังกฤษที่ถูกต้อง` });
       return;
     }
 
