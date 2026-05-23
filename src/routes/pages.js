@@ -8,9 +8,7 @@ router.get('/', (req, res) => {
   res.render('pages/landing', { title: 'VoidSector' });
 });
 
-router.get('/home', requireLogin, (req, res) => {
-  res.render('pages/home', { title: 'VoidSector' });
-});
+router.get('/home', (req, res) => res.redirect(301, '/'));
 
 router.get('/learning', (req, res) => {
   res.render('pages/languages', { title: 'Learning' });

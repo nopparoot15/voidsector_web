@@ -6,15 +6,51 @@
 <main class="hub-main">
 
   <section class="hub-hero">
+  <% if (user) { %>
+    <%
+      const xp = user.xp || 0;
+      const streak = user.streak || 0;
+      const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+      const xpForLevel = Math.pow(level - 1, 2) * 100;
+      const xpForNext  = Math.pow(level, 2) * 100;
+      const xpProgress = xp - xpForLevel;
+      const xpNeeded   = xpForNext - xpForLevel;
+      const xpPct      = Math.min(100, Math.round((xpProgress / xpNeeded) * 100));
+    %>
+    <p class="hub-welcome">ยินดีต้อนรับกลับ</p>
+    <h1 class="hub-name"><%= user.username %></h1>
+    <div class="hub-user-stats">
+      <span class="stat-pill">
+        <span class="stat-pill-label">🔥 Streak</span>
+        <strong><%= streak %> วัน</strong>
+      </span>
+      <span class="stat-pill">
+        <span class="stat-pill-label">⚡ XP</span>
+        <strong><%= xp.toLocaleString() %></strong>
+      </span>
+      <span class="stat-pill">
+        <span class="stat-pill-label">⭐ Level</span>
+        <strong><%= level %></strong>
+      </span>
+    </div>
+    <div class="xp-progress-wrap">
+      <div class="xp-progress-bar">
+        <div class="xp-progress-fill" style="width:<%= xpPct %>%"></div>
+      </div>
+      <div class="xp-progress-label">
+        <span>Lv.<%= level %></span>
+        <span><%= xpProgress.toLocaleString() %> / <%= xpNeeded.toLocaleString() %> XP → Lv.<%= level + 1 %></span>
+      </div>
+    </div>
+  <% } else { %>
     <div class="hub-hero-tag">Personal Space</div>
     <h1 class="hub-name">salty</h1>
     <p class="hub-bio">เรียนภาษา · code · tools</p>
-    <% if (!user) { %>
     <div class="hub-auth">
       <a href="/register" class="btn-primary">เริ่มใช้งาน</a>
       <a href="/login" class="btn-outline">เข้าสู่ระบบ</a>
     </div>
-    <% } %>
+  <% } %>
   </section>
 
   <section class="hub-grid">
