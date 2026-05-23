@@ -4,9 +4,10 @@
 <body>
 <%- include('../partials/topbar') %>
 <main class="hub-main">
+
   <div class="section-header">
     <h1>🎓 Learning</h1>
-    <p class="section-sub">เรียนภาษา · คณิตศาสตร์ · ภาษาคอมพิวเตอร์</p>
+    <p class="section-sub">เลือกหมวดที่ต้องการเรียน</p>
   </div>
 
   <% if (!user) { %>
@@ -19,11 +20,33 @@
   </div>
   <% } %>
 
-  <!-- ภาษา -->
-  <div class="learning-category">
-    <div class="learning-cat-header">
-      <span class="learning-cat-icon">🌐</span>
-      <h2>ภาษา</h2>
+  <!-- Category cards -->
+  <div id="cat-hub" class="learn-cat-grid">
+    <button class="learn-cat-card learn-cat-card--lang" onclick="showCat('lang')">
+      <div class="learn-cat-icon">🌐</div>
+      <div class="learn-cat-name">ภาษา</div>
+      <div class="learn-cat-desc">English · 日本語 · 中文</div>
+      <div class="learn-cat-cta">เรียนเลย →</div>
+    </button>
+    <button class="learn-cat-card learn-cat-card--math" onclick="showCat('math')">
+      <div class="learn-cat-icon">➕</div>
+      <div class="learn-cat-name">คณิตศาสตร์</div>
+      <div class="learn-cat-desc">พีชคณิต · เรขาคณิต · แคลคูลัส</div>
+      <div class="learn-cat-cta learn-cat-cta--soon">เร็วๆ นี้</div>
+    </button>
+    <button class="learn-cat-card learn-cat-card--code" onclick="showCat('code')">
+      <div class="learn-cat-icon">💻</div>
+      <div class="learn-cat-name">Coding</div>
+      <div class="learn-cat-desc">Python · C# · JavaScript</div>
+      <div class="learn-cat-cta learn-cat-cta--soon">เร็วๆ นี้</div>
+    </button>
+  </div>
+
+  <!-- ภาษา content -->
+  <div id="cat-lang" class="cat-content hidden">
+    <div class="cat-content-header">
+      <button class="cat-back-btn" onclick="showHub()">← กลับ</button>
+      <h2>🌐 ภาษา</h2>
     </div>
 
     <% if (user) { %>
@@ -82,67 +105,44 @@
     </div>
   </div>
 
-  <!-- คณิตศาสตร์ -->
-  <div class="learning-category">
-    <div class="learning-cat-header">
-      <span class="learning-cat-icon">➕</span>
-      <h2>คณิตศาสตร์</h2>
+  <!-- Math content -->
+  <div id="cat-math" class="cat-content hidden">
+    <div class="cat-content-header">
+      <button class="cat-back-btn" onclick="showHub()">← กลับ</button>
+      <h2>➕ คณิตศาสตร์</h2>
     </div>
-    <div class="lang-grid">
-      <div class="lang-card lang-card--soon">
-        <div class="lang-flag" style="font-size:2.5rem;line-height:1">➕</div>
-        <div class="lang-name">คณิตศาสตร์พื้นฐาน</div>
-        <div class="lang-desc">จำนวน · สมการ · เรขาคณิต</div>
-        <div class="lang-levels">
-          <span class="lang-level-chip" style="color:#6b7280">ม.ต้น</span>
-          <span class="lang-level-chip" style="color:#6b7280">ม.ปลาย</span>
-        </div>
-        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
-      </div>
-      <div class="lang-card lang-card--soon">
-        <div class="lang-flag" style="font-size:2.5rem;line-height:1">📐</div>
-        <div class="lang-name">แคลคูลัส</div>
-        <div class="lang-desc">Limit · Derivative · Integral</div>
-        <div class="lang-levels">
-          <span class="lang-level-chip" style="color:#6b7280">ม.6 / มหาวิทยาลัย</span>
-        </div>
-        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
-      </div>
+    <div class="coming-soon-block">
+      <div class="coming-soon-icon">🚧</div>
+      <div class="coming-soon-title">กำลังพัฒนา</div>
+      <div class="coming-soon-desc">หมวดคณิตศาสตร์จะมีเร็วๆ นี้ — พีชคณิต · เรขาคณิต · แคลคูลัส</div>
     </div>
   </div>
 
-  <!-- ภาษาคอมพิวเตอร์ -->
-  <div class="learning-category">
-    <div class="learning-cat-header">
-      <span class="learning-cat-icon">💻</span>
-      <h2>ภาษาคอมพิวเตอร์</h2>
+  <!-- Coding content -->
+  <div id="cat-code" class="cat-content hidden">
+    <div class="cat-content-header">
+      <button class="cat-back-btn" onclick="showHub()">← กลับ</button>
+      <h2>💻 Coding</h2>
     </div>
-    <div class="lang-grid">
-      <div class="lang-card lang-card--soon">
-        <div class="lang-flag" style="font-size:2.5rem;line-height:1">🐍</div>
-        <div class="lang-name">Python</div>
-        <div class="lang-desc">ตัวแปร · ฟังก์ชัน · OOP · Data Structures</div>
-        <div class="lang-levels">
-          <span class="lang-level-chip" style="color:#10b981">Beginner</span>
-          <span class="lang-level-chip" style="color:#f59e0b">Intermediate</span>
-          <span class="lang-level-chip" style="color:#ef4444">Advanced</span>
-        </div>
-        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
-      </div>
-      <div class="lang-card lang-card--soon">
-        <div class="lang-flag" style="font-size:2.5rem;line-height:1">🎯</div>
-        <div class="lang-name">C#</div>
-        <div class="lang-desc">Syntax · OOP · .NET · Game Dev (Unity)</div>
-        <div class="lang-levels">
-          <span class="lang-level-chip" style="color:#10b981">Beginner</span>
-          <span class="lang-level-chip" style="color:#f59e0b">Intermediate</span>
-          <span class="lang-level-chip" style="color:#ef4444">Advanced</span>
-        </div>
-        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
-      </div>
+    <div class="coming-soon-block">
+      <div class="coming-soon-icon">🚧</div>
+      <div class="coming-soon-title">กำลังพัฒนา</div>
+      <div class="coming-soon-desc">หมวด Coding จะมีเร็วๆ นี้ — Python · C# · JavaScript</div>
     </div>
   </div>
 
 </main>
+
+<script>
+function showCat(cat) {
+  document.getElementById('cat-hub').classList.add('hidden');
+  document.querySelectorAll('.cat-content').forEach(function(el) { el.classList.add('hidden'); });
+  document.getElementById('cat-' + cat).classList.remove('hidden');
+}
+function showHub() {
+  document.getElementById('cat-hub').classList.remove('hidden');
+  document.querySelectorAll('.cat-content').forEach(function(el) { el.classList.add('hidden'); });
+}
+</script>
 </body>
 </html>
