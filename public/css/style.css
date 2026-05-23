@@ -284,14 +284,16 @@ main { padding-top: var(--topbar-h); }
   width: 3px; border-radius: 0 2px 2px 0;
   transition: opacity 0.2s; opacity: 0.6;
 }
-.hub-card--lang::before   { background: #6366f1; }
-.hub-card--code::before   { background: #22c55e; }
-.hub-card--tools::before  { background: #f59e0b; }
+.hub-card--lang::before    { background: #6366f1; }
+.hub-card--code::before    { background: #22c55e; }
+.hub-card--tools::before   { background: #f59e0b; }
+.hub-card--arcade::before  { background: #f87171; }
 .hub-card:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.12); transform: translateX(3px); }
 .hub-card:hover::before { opacity: 1; }
-.hub-card--lang:hover   { box-shadow: 4px 0 20px rgba(99,102,241,0.15); }
-.hub-card--code:hover   { box-shadow: 4px 0 20px rgba(34,197,94,0.15); }
-.hub-card--tools:hover  { box-shadow: 4px 0 20px rgba(245,158,11,0.15); }
+.hub-card--lang:hover    { box-shadow: 4px 0 20px rgba(99,102,241,0.15); }
+.hub-card--code:hover    { box-shadow: 4px 0 20px rgba(34,197,94,0.15); }
+.hub-card--tools:hover   { box-shadow: 4px 0 20px rgba(245,158,11,0.15); }
+.hub-card--arcade:hover  { box-shadow: 4px 0 20px rgba(248,113,113,0.15); }
 .hub-card-body { flex: 1; }
 .hub-card-body h2 { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
 .hub-card-body p { font-size: 13px; color: var(--muted); line-height: 1.5; }
