@@ -299,6 +299,9 @@ main { padding-top: var(--topbar-h); }
 .hub-card-body p { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .hub-card-arrow { color: var(--muted); flex-shrink: 0; font-size: 18px; transition: color 0.2s; }
 .hub-card:hover .hub-card-arrow { color: var(--text); }
+.hub-footer-links { text-align: right; padding: 0 4px 8px; }
+.hub-footer-link { font-size: 12px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.hub-footer-link:hover { color: var(--text); }
 
 /* Section pages */
 .section-header { margin-bottom: 32px; }
