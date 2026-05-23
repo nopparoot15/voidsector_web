@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id" id="room-id-display"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn" title="คัดลอกลิงก์">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="xo-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">⭕</div>
+      <h2>XO — ห้อง <span><%- roomId %></span></h2>
+      <p id="lobby-status">รอผู้เล่นเข้าร่วม…</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="xo-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="xo-game" class="hidden">
+    <div class="xo-wrap">
+      <div class="xo-status-bar">
+        <div class="xo-player-info" id="xo-p1-info"></div>
+        <div class="xo-turn-label" id="xo-turn-label">รอเริ่ม</div>
+        <div class="xo-player-info" id="xo-p2-info"></div>
+      </div>
+      <div class="xo-board" id="xo-board">
+        <% for(let i=0;i<9;i++) { %><button class="xo-cell" data-cell="<%=i%>"></button><% } %>
+      </div>
+      <div id="xo-result" class="xo-result hidden"></div>
+      <div id="xo-actions" class="xo-actions hidden">
+        <button id="xo-restart-btn" class="btn-primary">เล่นใหม่ 🔄</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-xo.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="hub-main">
+  <div class="section-header">
+    <h1>🕹 Arcade</h1>
+    <p class="section-sub">สร้างห้อง — แชร์ลิงก์ — เล่นกับเพื่อน</p>
+  </div>
+
+  <div class="arcade-grid">
+
+    <div class="arcade-card arcade-card--xo">
+      <div class="arcade-card-icon">⭕</div>
+      <div class="arcade-card-body">
+        <h3>XO</h3>
+        <p>Tic-Tac-Toe 2 คน แบบ realtime</p>
+        <div class="arcade-badge">2 ผู้เล่น</div>
+      </div>
+      <button class="arcade-play-btn" data-game="xo">สร้างห้อง →</button>
+    </div>
+
+    <div class="arcade-card arcade-card--wb">
+      <div class="arcade-card-icon">💣</div>
+      <div class="arcade-card-body">
+        <h3>Word Bomb</h3>
+        <p>ต่อคำให้ต่อเนื่อง — ใครหมดชีวิตก่อนแพ้</p>
+        <div class="arcade-badge">2–6 ผู้เล่น</div>
+      </div>
+      <button class="arcade-play-btn" data-game="wordbomb">สร้างห้อง →</button>
+    </div>
+
+    <div class="arcade-card arcade-card--tq">
+      <div class="arcade-card-icon">❓</div>
+      <div class="arcade-card-body">
+        <h3>Trivia Quiz</h3>
+        <p>แข่งตอบคำถาม 10 ข้อ — เร็วและถูกได้คะแนนเยอะ</p>
+        <div class="arcade-badge">2–8 ผู้เล่น</div>
+      </div>
+      <button class="arcade-play-btn" data-game="trivia">สร้างห้อง →</button>
+    </div>
+
+  </div>
+
+  <div id="arcade-creating" class="arcade-creating hidden">
+    <span class="arcade-spinner"></span> กำลังสร้างห้อง…
+  </div>
+</main>
+
+<script>
+document.querySelectorAll('.arcade-play-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const game = btn.dataset.game;
+    document.getElementById('arcade-creating').classList.remove('hidden');
+    btn.disabled = true;
+    try {
+      const r = await fetch(`/arcade/${game}/create`, { method: 'POST' });
+      const { roomId } = await r.json();
+      window.location.href = `/arcade/${game}/${roomId}`;
+    } catch {
+      btn.disabled = false;
+      document.getElementById('arcade-creating').classList.add('hidden');
+    }
+  });
+});
+</script>
+</body>
+</html>

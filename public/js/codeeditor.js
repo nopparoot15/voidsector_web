@@ -1,6 +1,4 @@
 (() => {
-  const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
-
   const LANGS = {
     python: {
       monaco: 'python',
@@ -147,29 +145,29 @@ class Program {
     const code = editor.getValue();
     if (!code.trim()) return;
 
+    if (currentLang === 'csharp') {
+      setOutput('C# ยังไม่รองรับการรันบน Code Editor นี้', 'err', 'unsupported');
+      return;
+    }
+
     runBtn.disabled = true;
     runBtn.textContent = '⏳ Running…';
     setOutput('', 'run', 'กำลังรัน…');
 
     try {
       const cfg = LANGS[currentLang];
-      const resp = await fetch(PISTON_URL, {
+      const resp = await fetch('/api/run-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          language: cfg.piston,
-          version: cfg.version,
-          files: [{ content: code }],
-        }),
+        body: JSON.stringify({ language: cfg.piston, code }),
       });
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      const run = data.run || {};
 
-      const stdout = run.stdout || '';
-      const stderr = run.stderr || '';
-      const exitCode = run.code ?? 0;
+      const stdout = data.output || '';
+      const stderr = data.error || '';
+      const exitCode = data.exitCode ?? 0;
 
       const combined = [stdout, stderr].filter(Boolean).join('\n');
 
@@ -179,7 +177,7 @@ class Program {
         setOutput(stdout || '(no output)', 'ok', `exit 0`);
       }
     } catch (e) {
-      setOutput(`ไม่สามารถเชื่อมต่อ Piston API ได้\n${e.message}`, 'err', 'error');
+      setOutput(`เกิดข้อผิดพลาด\n${e.message}`, 'err', 'error');
     } finally {
       runBtn.disabled = false;
       runBtn.textContent = '▶ Run';

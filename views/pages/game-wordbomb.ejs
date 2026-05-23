@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="wb-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">💣</div>
+      <h2>Word Bomb — ห้อง <span><%- roomId %></span></h2>
+      <p class="gm-lobby-rules">ต่อคำ — คำถัดไปต้องขึ้นต้นด้วยตัวสุดท้ายของคำก่อน<br>มี 3 ชีวิต หมดเวลาหรือคำซ้ำ = เสียชีวิต</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="wb-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="wb-game" class="hidden">
+    <div class="wb-wrap">
+      <!-- Players row -->
+      <div class="wb-players-row" id="wb-players-row"></div>
+
+      <!-- Center arena -->
+      <div class="wb-arena">
+        <div class="wb-letter-display">
+          <span class="wb-letter-label">เริ่มด้วยตัว</span>
+          <span class="wb-letter" id="wb-letter">?</span>
+        </div>
+        <div class="wb-last-word" id="wb-last-word"></div>
+        <div class="wb-timer-bar-wrap">
+          <div class="wb-timer-bar" id="wb-timer-bar"></div>
+        </div>
+        <div class="wb-turn-label" id="wb-turn-label"></div>
+        <div class="wb-input-row" id="wb-input-row">
+          <input id="wb-input" class="wb-input" type="text" placeholder="พิมพ์คำ…" autocomplete="off" maxlength="40" />
+          <button id="wb-submit-btn" class="wb-submit-btn">ส่ง</button>
+        </div>
+        <div id="wb-invalid" class="wb-invalid hidden"></div>
+      </div>
+
+      <!-- Used words -->
+      <div class="wb-used-words" id="wb-used-words"></div>
+    </div>
+
+    <div id="wb-result" class="gm-result hidden"></div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-wordbomb.js"></script>
+</body>
+</html>

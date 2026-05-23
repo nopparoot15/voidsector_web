@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="tq-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">❓</div>
+      <h2>Trivia Quiz — ห้อง <span><%- roomId %></span></h2>
+      <p class="gm-lobby-rules">10 คำถาม · 15 วินาทีต่อข้อ<br>ตอบเร็วและถูกได้คะแนนเยอะกว่า</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="tq-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="tq-game" class="hidden">
+    <div class="tq-wrap">
+
+      <div class="tq-scoreboard" id="tq-scoreboard"></div>
+
+      <div class="tq-main">
+        <div class="tq-progress">
+          <div class="tq-progress-bar" id="tq-progress-bar"></div>
+        </div>
+        <div class="tq-qnum" id="tq-qnum"></div>
+        <div class="tq-question" id="tq-question"></div>
+        <div class="tq-options" id="tq-options"></div>
+        <div class="tq-timer-bar-wrap">
+          <div class="tq-timer-bar" id="tq-timer-bar"></div>
+        </div>
+        <div class="tq-answered-count" id="tq-answered-count"></div>
+      </div>
+
+    </div>
+
+    <div id="tq-result" class="gm-result hidden"></div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-trivia.js"></script>
+</body>
+</html>
