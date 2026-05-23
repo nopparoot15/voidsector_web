@@ -82,9 +82,10 @@
 }
 
 .pf-name {
-  font-size: clamp(32px, 6vw, 52px);
+  font-size: clamp(24px, 4vw, 36px);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.4;
+  padding-top: 0.2em;
   margin: 0 0 8px;
   background: linear-gradient(135deg, #f4f4f5 30%, #a1a1aa 100%);
   -webkit-background-clip: text;
