@@ -22,6 +22,12 @@
   // Flashcard state
   let fcIdx = 0;
 
+  // Lives / combo / wrong-answer review
+  let lives = 3;
+  let combo = 0;
+  let maxCombo = 0;
+  let wrongAnswers = [];
+
   const introScreen    = document.getElementById('intro-screen');
   const fcScreen       = document.getElementById('flashcard-screen');
   const exerciseArea   = document.getElementById('exercise-area');
@@ -457,6 +463,11 @@
     if (exerciseArea) exerciseArea.classList.remove('hidden');
     document.body.classList.add('exercise-mode');
     window.scrollTo(0, 0);
+    // Reset game state
+    lives = 3; combo = 0; maxCombo = 0; wrongAnswers = [];
+    const heartsEl = document.getElementById('hearts-display');
+    if (heartsEl) heartsEl.classList.remove('hidden');
+    updateHeartsDisplay();
     renderExercise();
   }
 
@@ -500,11 +511,17 @@
   function renderMC(ex) {
     const d = ex.data;
     const prompt = d.prompt || d.question || '';
-    const correctIdx = d.correct_index !== undefined ? d.correct_index : d.correct;
+    const origCorrectIdx = parseInt(d.correct_index !== undefined ? d.correct_index : d.correct);
+    const correctText = d.options[origCorrectIdx];
+    const shuffledOpts = shuffle([...d.options]);
+    const newCorrectIdx = shuffledOpts.indexOf(correctText);
     exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
-    answerArea.innerHTML = `<div class="mc-options">${d.options.map((o, i) =>
-      `<button class="mc-option" data-idx="${i}">${esc(o)}</button>`
+    answerArea.innerHTML = `<div class="mc-options">${shuffledOpts.map((o, i) =>
+      `<button class="mc-option" data-idx="${i}"><span class="mc-num">${i+1}</span>${esc(o)}</button>`
     ).join('')}</div>`;
+    answerArea.dataset.correctIdx = newCorrectIdx;
+    answerArea.dataset.correctText = correctText;
+    answerArea.dataset.prompt = prompt;
     answerArea.querySelectorAll('.mc-option').forEach(btn => {
       btn.addEventListener('click', () => {
         answerArea.querySelectorAll('.mc-option').forEach(b => b.classList.remove('selected'));
@@ -513,18 +530,18 @@
         checkBtn.disabled = false;
       });
     });
-    checkBtn.dataset.correctIdx = correctIdx;
   }
 
   function checkMC(ex) {
-    const d = ex.data;
-    const correctIdx = d.correct_index !== undefined ? d.correct_index : d.correct;
-    const correct = parseInt(userAnswer) === parseInt(correctIdx);
+    const correctIdx = parseInt(answerArea.dataset.correctIdx);
+    const correctText = answerArea.dataset.correctText;
+    const prompt = answerArea.dataset.prompt || '';
+    const correct = parseInt(userAnswer) === correctIdx;
     if (correct) score++;
-    showFeedback(correct, d.options[correctIdx]);
+    showFeedback(correct, correctText, prompt);
     answerArea.querySelectorAll('.mc-option').forEach((btn, i) => {
       btn.disabled = true;
-      if (i === parseInt(correctIdx)) btn.classList.add('correct');
+      if (i === correctIdx) btn.classList.add('correct');
       else if (String(i) === String(userAnswer)) btn.classList.add('wrong');
     });
   }
@@ -535,10 +552,16 @@
     if (d.options && d.options.length) {
       const prompt = d.sentence || d.prompt || '';
       exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
-      const correctIdx = d.correct_index !== undefined ? d.correct_index : d.correct;
-      answerArea.innerHTML = `<div class="mc-options">${d.options.map((o, i) =>
-        `<button class="mc-option" data-idx="${i}">${esc(o)}</button>`
+      const origCorrectIdx = parseInt(d.correct_index !== undefined ? d.correct_index : d.correct);
+      const correctText = d.options[origCorrectIdx];
+      const shuffledOpts = shuffle([...d.options]);
+      const newCorrectIdx = shuffledOpts.indexOf(correctText);
+      answerArea.innerHTML = `<div class="mc-options">${shuffledOpts.map((o, i) =>
+        `<button class="mc-option" data-idx="${i}"><span class="mc-num">${i+1}</span>${esc(o)}</button>`
       ).join('')}</div>`;
+      answerArea.dataset.correctIdx = newCorrectIdx;
+      answerArea.dataset.correctText = correctText;
+      answerArea.dataset.prompt = prompt;
       answerArea.querySelectorAll('.mc-option').forEach(btn => {
         btn.addEventListener('click', () => {
           answerArea.querySelectorAll('.mc-option').forEach(b => b.classList.remove('selected'));
@@ -547,11 +570,10 @@
           checkBtn.disabled = false;
         });
       });
-      checkBtn.dataset.correctIdx = correctIdx;
     } else {
       const prompt = d.prompt || d.sentence || '';
       exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
-      answerArea.innerHTML = `<input id="fill-input" class="translate-input" type="text" placeholder="พิมพ์คำตอบ..." autocomplete="off" />`;
+      answerArea.innerHTML = `<input id="fill-input" class="translate-input" type="text" placeholder="พิมพ์คำตอบ... (Enter เพื่อตรวจ)" autocomplete="off" />`;
       const inp = document.getElementById('fill-input');
       inp.focus();
       inp.addEventListener('input', () => { userAnswer = inp.value.trim(); checkBtn.disabled = !userAnswer; });
@@ -562,19 +584,22 @@
   function checkFillBlank(ex) {
     const d = ex.data;
     if (d.options && d.options.length) {
-      const correctIdx = d.correct_index !== undefined ? d.correct_index : d.correct;
-      const correct = parseInt(userAnswer) === parseInt(correctIdx);
+      const correctIdx = parseInt(answerArea.dataset.correctIdx);
+      const correctText = answerArea.dataset.correctText;
+      const prompt = answerArea.dataset.prompt || '';
+      const correct = parseInt(userAnswer) === correctIdx;
       if (correct) score++;
-      showFeedback(correct, d.options[correctIdx]);
+      showFeedback(correct, correctText, prompt);
       answerArea.querySelectorAll('.mc-option').forEach((btn, i) => {
         btn.disabled = true;
-        if (i === parseInt(correctIdx)) btn.classList.add('correct');
+        if (i === correctIdx) btn.classList.add('correct');
         else if (String(i) === String(userAnswer)) btn.classList.add('wrong');
       });
     } else {
       const correct = normalize(userAnswer) === normalize(d.answer);
       if (correct) score++;
-      showFeedback(correct, d.answer);
+      const prompt = d.prompt || d.sentence || '';
+      showFeedback(correct, d.answer, prompt);
       const inp = document.getElementById('fill-input');
       if (inp) inp.disabled = true;
     }
@@ -621,7 +646,8 @@
   function checkWordOrder(ex) {
     const correct = normalize(userAnswer) === normalize(ex.data.answer);
     if (correct) score++;
-    showFeedback(correct, ex.data.answer);
+    const prompt = ex.data.translation || ex.data.instruction || '';
+    showFeedback(correct, ex.data.answer, prompt);
     document.querySelectorAll('.word-chip, .answer-chip').forEach(b => b.disabled = true);
   }
 
@@ -631,10 +657,13 @@
     const prompt = d.prompt || '';
     const hint = d.hint ? `<div class="ex-hint">${esc(d.hint)}</div>` : '';
     exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>${hint}`;
-    answerArea.innerHTML = `<textarea id="translate-input" class="translate-input" rows="3" placeholder="พิมพ์คำแปล..."></textarea>`;
+    answerArea.innerHTML = `<textarea id="translate-input" class="translate-input" rows="2" placeholder="พิมพ์คำแปล... (Enter เพื่อตรวจ)"></textarea>`;
     const inp = document.getElementById('translate-input');
     inp.focus();
     inp.addEventListener('input', () => { userAnswer = inp.value.trim(); checkBtn.disabled = !userAnswer; });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey && !checkBtn.disabled && !checked) { e.preventDefault(); doCheck(); }
+    });
   }
 
   function checkTranslate(ex) {
@@ -642,7 +671,7 @@
     const answers = [d.answer, ...(d.alternatives || [])].filter(Boolean);
     const correct = answers.some(a => normalize(userAnswer) === normalize(a));
     if (correct) score++;
-    showFeedback(correct, d.answer);
+    showFeedback(correct, d.answer, d.prompt || '');
     const inp = document.getElementById('translate-input');
     if (inp) inp.disabled = true;
   }
@@ -730,12 +759,29 @@
     }
   }
 
-  function showFeedback(correct, correctAnswer) {
+  const correctMessages = ['ถูกต้อง! 🎉', 'เยี่ยมมาก! ✨', 'ใช่เลย! 🔥', 'สุดยอด! 💪', 'Perfect! ⭐'];
+  const wrongMessages  = ['ยังไม่ถูก', 'ลองใหม่นะ', 'เกือบแล้ว!', 'จำไว้เลย!'];
+
+  function showFeedback(correct, correctAnswer, promptText) {
+    // Update lives & combo
+    if (!correct) {
+      lives = Math.max(0, lives - 1);
+      updateHeartsDisplay();
+      if (promptText && correctAnswer) {
+        wrongAnswers.push({ prompt: promptText, correctAnswer });
+      }
+    }
+    updateComboDisplay(correct);
+
     feedbackPanel.className = 'show ' + (correct ? 'correct' : 'wrong');
-    feedbackHeader.innerHTML = `<span id="feedback-icon">${correct ? '✓' : '✗'}</span><span id="feedback-text">${correct ? 'ถูกต้อง!' : 'ยังไม่ถูก'}</span>`;
+    const msg = correct
+      ? correctMessages[Math.floor(Math.random() * correctMessages.length)]
+      : wrongMessages[Math.floor(Math.random() * wrongMessages.length)];
+    feedbackHeader.innerHTML = `<span id="feedback-icon">${correct ? '✓' : '✗'}</span><span id="feedback-text">${msg}</span>`;
+
     let bodyHtml = '';
     if (!correct && correctAnswer) {
-      bodyHtml += `<div class="fb-answer">คำตอบ: <strong>${esc(correctAnswer)}</strong><button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button></div>`;
+      bodyHtml += `<div class="fb-answer">คำตอบที่ถูก: <strong>${esc(correctAnswer)}</strong><button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button></div>`;
       if (langCode !== 'en') {
         const reading = globalReadingMap[correctAnswer];
         if (reading) bodyHtml += `<div class="fb-reading">${esc(reading)}</div>`;
@@ -769,14 +815,49 @@
     } catch (e) { /* ignore */ }
 
     const pct = exercises.length ? Math.round((score / exercises.length) * 100) : 0;
+    const stars = pct >= 90 ? 3 : pct >= 60 ? 2 : 1;
+    const titles = ['ฝึกต่อนะ 💙', 'ทำได้ดี! 👍', 'เยี่ยมมาก! 🎉'];
+
     container.classList.add('hidden');
     completionScreen.classList.remove('hidden');
+
+    document.getElementById('result-stars').innerHTML = Array.from({length: 3}, (_, i) =>
+      `<span class="comp-star ${i < stars ? 'comp-star-on' : 'comp-star-off'}">★</span>`
+    ).join('');
+    document.getElementById('result-title').textContent   = titles[stars - 1];
     document.getElementById('result-score').textContent   = `คะแนน: ${score} / ${exercises.length}`;
     document.getElementById('result-pct').textContent     = `ความแม่นยำ: ${pct}%`;
-    document.getElementById('result-xp').textContent      = `XP ที่ได้: +${xpEarned} (รวม ${totalXp} XP)`;
-    document.getElementById('result-streak').textContent  = `Streak: ${streak} วัน`;
+    document.getElementById('result-xp').textContent      = `XP ที่ได้: +${xpEarned} (รวม ${totalXp.toLocaleString()} XP)`;
+    if (maxCombo >= 3) {
+      document.getElementById('result-streak').textContent = `Combo สูงสุด: 🔥 ${maxCombo}x  |  Streak: ${streak} วัน`;
+    } else {
+      document.getElementById('result-streak').textContent  = `Streak: ${streak} วัน`;
+    }
     document.getElementById('result-level').textContent   = `Level: ${level}`;
     document.getElementById('back-learn-btn').href        = `/learn/${langCode}`;
+
+    // Wrong answers review
+    const reviewSection = document.getElementById('wrong-review-section');
+    if (reviewSection && wrongAnswers.length > 0) {
+      reviewSection.innerHTML = `
+        <div class="wrong-review">
+          <div class="wrong-review-title">📝 ทบทวนข้อที่ตอบผิด (${wrongAnswers.length} ข้อ)</div>
+          ${wrongAnswers.map(wa => `
+            <div class="wrong-review-item">
+              <div class="wr-prompt">${esc(wa.prompt)}</div>
+              <div class="wr-answer">
+                <span class="wr-correct-label">✓</span>
+                <strong>${esc(wa.correctAnswer)}</strong>
+                <button class="speak-btn" data-word="${esc(wa.correctAnswer)}" title="ฟังเสียง">🔊</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+      reviewSection.addEventListener('click', e => {
+        const btn = e.target.closest('.speak-btn');
+        if (btn) speak(btn.dataset.word, langCode);
+      });
+    }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────
@@ -839,6 +920,75 @@
   document.getElementById('exit-btn')?.addEventListener('click', () => {
     if (confirm('ออกจากบทเรียน? ความคืบหน้าจะไม่ถูกบันทึก')) {
       window.location.href = `/learn/${langCode}`;
+    }
+  });
+
+  document.getElementById('retry-btn')?.addEventListener('click', () => {
+    window.location.reload();
+  });
+
+  // ── Hearts & Combo helpers ───────────────────────────────────────────
+  function updateHeartsDisplay() {
+    const el = document.getElementById('hearts-display');
+    if (!el) return;
+    el.innerHTML = Array.from({length: 3}, (_, i) =>
+      `<span class="heart ${i < lives ? 'heart-alive' : 'heart-dead'}">♥</span>`
+    ).join('');
+  }
+
+  function updateComboDisplay(correct) {
+    if (correct) { combo++; if (combo > maxCombo) maxCombo = combo; }
+    else { combo = 0; }
+    const el = document.getElementById('combo-display');
+    if (!el) return;
+    if (combo >= 3) {
+      el.textContent = '🔥 ' + combo + 'x combo!';
+      el.className = 'combo-display combo-active';
+    } else {
+      el.textContent = '';
+      el.className = 'combo-display';
+    }
+  }
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    const tag = (e.target.tagName || '').toUpperCase();
+    const inInput = tag === 'TEXTAREA';
+
+    // Enter / Space in flashcard (not in inputs)
+    if (!inInput && (e.key === ' ' || (e.key === 'Enter' && tag !== 'BUTTON'))) {
+      if (fcScreen && !fcScreen.classList.contains('hidden')) {
+        e.preventDefault();
+        const reveal = document.getElementById('fc-reveal-btn');
+        const next   = document.getElementById('fc-next-btn');
+        const done   = document.getElementById('fc-done-btn');
+        if (reveal && !reveal.classList.contains('hidden')) reveal.click();
+        else if (next && !next.classList.contains('hidden')) next.click();
+        else if (done && !done.classList.contains('hidden')) done.click();
+        return;
+      }
+    }
+
+    // Enter = check or continue (anywhere)
+    if (e.key === 'Enter' && tag !== 'BUTTON') {
+      if (feedbackPanel.classList.contains('show')) {
+        e.preventDefault(); continueBtn.click(); return;
+      }
+      if (!inInput && exerciseArea && !exerciseArea.classList.contains('hidden') && !checkBtn.disabled && !checked) {
+        e.preventDefault(); doCheck(); return;
+      }
+    }
+
+    // Escape = exit
+    if (e.key === 'Escape') {
+      document.getElementById('exit-btn')?.click();
+    }
+
+    // 1-4 for MC options
+    if (['1','2','3','4'].includes(e.key) && !feedbackPanel.classList.contains('show') && !inInput) {
+      const opts = answerArea.querySelectorAll('.mc-option:not([disabled])');
+      const idx = parseInt(e.key) - 1;
+      if (opts[idx]) opts[idx].click();
     }
   });
 

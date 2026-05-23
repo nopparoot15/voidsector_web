@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // English units 13-16: Health B1, Jobs B1, Opinions B2, Conditionals B2
 module.exports = [
@@ -6,7 +6,7 @@ module.exports = [
     title: 'Health & Body',
     description: 'Body Parts · Illnesses · At the Doctor — สุขภาพและร่างกาย',
     icon: '🏥',
-    order_num: 13,
+    order_num: 100,
     level: 'B1',
     grammar_note: 'ภาษาสุขภาพที่ต้องรู้ B1:\n\nSymptoms — อาการ:\n• I have a headache / stomachache / sore throat.\n• I feel dizzy / nauseous / exhausted.\n• My arm hurts. / I\'ve hurt my back.\n\nAt the doctor:\n• "What seems to be the problem?" → อาการเป็นอย่างไร?\n• "How long have you had these symptoms?" → มีอาการมานานแค่ไหน?\n• "Take this twice a day." → กินยานี้วันละสองครั้ง\n\nPresent Perfect for symptoms:\n• "I\'ve been feeling tired all week." — ใช้ have been + -ing',
     cultural_note: 'ในอังกฤษ ระบบสาธารณสุข NHS เป็นของรัฐและฟรีสำหรับประชาชน — แต่ต้องนัด GP (General Practitioner = แพทย์ประจำตัว) ก่อน ไม่สามารถเดินเข้าโรงพยาบาลโดยตรงได้ยกเว้น emergency ซึ่งต่างจากไทยมาก',
@@ -62,7 +62,7 @@ module.exports = [
     title: 'Jobs & Work',
     description: 'Professions · Workplace · Job Interviews — อาชีพและการทำงาน',
     icon: '💼',
-    order_num: 14,
+    order_num: 110,
     level: 'B1',
     grammar_note: 'ภาษาการทำงาน B1:\n\nJob descriptions:\n• "She works as a teacher." (as + อาชีพ)\n• "He is in charge of marketing." (in charge of = รับผิดชอบ)\n• "I\'m responsible for client accounts."\n\nJob interview phrases:\n• "I have 5 years of experience in..."\n• "My greatest strength is..."\n• "I\'m looking for a challenging role."\n\nWorkplace language:\n• deadline = วันกำหนดส่งงาน\n• meeting = การประชุม\n• overtime = ทำงานล่วงเวลา\n• resign / quit = ลาออก',
     cultural_note: 'การสัมภาษณ์งานในตะวันตก มักถามแบบ "Tell me about a time when..." (Behavioural Interview) ซึ่งต้องตอบด้วย STAR method: Situation → Task → Action → Result ต่างจากไทยที่มักถามตรงๆ เกี่ยวกับความสามารถ',
@@ -118,7 +118,7 @@ module.exports = [
     title: 'Opinions & Society',
     description: 'Expressing Views · News · Social Issues — ความคิดเห็นและสังคม',
     icon: '🗣️',
-    order_num: 15,
+    order_num: 130,
     level: 'B2',
     grammar_note: 'การแสดงความคิดเห็น B2:\n\nHedging — พูดอย่างระมัดระวัง:\n• "I believe / I think / I feel that..."\n• "It seems to me that..."\n• "As far as I know..."\n• "In my opinion / From my perspective..."\n\nContrasting:\n• "Although X, Y..." / "Despite X, Y..."\n• "On the one hand... On the other hand..."\n• "However / Nevertheless / Nonetheless"\n\nAgreeing / Disagreeing:\n• "I\'d have to agree with..." / "I\'m not sure I agree..."\n• "That\'s a fair point, but..." / "I see where you\'re coming from, however..."',
     cultural_note: 'การถกเถียงแบบตะวันตกเน้น "argue your point" อย่างตรงๆ และมีข้อมูลรองรับ ต่างจากวัฒนธรรมไทยที่เน้นการรักษาหน้า — ในห้องเรียนหรือการประชุมตะวันตก การโต้แย้งด้วยเหตุผลถือว่าเป็น critical thinking ที่ดี ไม่ใช่ความไม่สุภาพ',
@@ -174,7 +174,7 @@ module.exports = [
     title: 'Conditionals & Hypotheticals',
     description: 'Zero & First · Second & Third · Mixed Conditionals — ประโยคเงื่อนไข',
     icon: '🔀',
-    order_num: 16,
+    order_num: 135,
     level: 'B2',
     grammar_note: 'Conditional sentences — ประโยคเงื่อนไข:\n\nZero: If + Present, Present (ความจริงทั่วไป)\n• "If you heat water to 100°C, it boils."\n\nFirst: If + Present, will + V (ความเป็นไปได้จริง)\n• "If it rains, I will stay home."\n\nSecond: If + Past, would + V (สมมติ — ไม่น่าเกิดขึ้น)\n• "If I won the lottery, I would travel the world."\n• NOTE: "If I were you..." (ไม่ใช่ was)\n\nThird: If + Past Perfect, would have + V3 (เสียใจกับอดีต)\n• "If I had studied harder, I would have passed."\n\nMixed: ผสม 2nd+3rd หรือ 3rd+2nd',
     cultural_note: '"If I were you" เป็น subjunctive mood ที่ native speakers ใช้เสมอ — หลายคนพูดผิดว่า "if I was you" ซึ่งพบได้ในภาษาพูด แต่ใน formal / written English ต้องใช้ "were" ทุกครั้ง',

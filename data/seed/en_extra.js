@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // English units 5-8: Elementary → Intermediate → Advanced
 module.exports = [
@@ -6,7 +6,7 @@ module.exports = [
     title: 'Family & People',
     description: 'คนในครอบครัว บุคลิก และความสัมพันธ์',
     icon: '👨‍👩‍👧',
-    order_num: 5,
+    order_num: 80,
     level: 'B1',
     grammar_note: 'สรรพนามแสดงความเป็นเจ้าของ:\n• I → my (My mother is a nurse.)\n• He → his / She → her / They → their\n\nPresent Simple สำหรับข้อเท็จจริง:\n• She works at a hospital.\n• My parents live in Bangkok.\n\nใช้ look like เพื่อบรรยายลักษณะ: She looks like her mother.',
     cultural_note: 'ในวัฒนธรรมตะวันตก การถามเรื่องอายุ น้ำหนัก หรือเงินเดือนถือว่า "too personal" — หลีกเลี่ยงในการสนทนากับคนที่เพิ่งรู้จัก',
@@ -63,7 +63,7 @@ module.exports = [
     title: 'Travel & Places',
     description: 'สถานที่ทิศทาง และการเดินทาง',
     icon: '✈️',
-    order_num: 6,
+    order_num: 90,
     level: 'B1',
     grammar_note: 'Prepositions of place:\n• in = ใน (in the city, in Thailand)\n• at = ณ จุดที่ระบุ (at the airport, at school)\n• on = บน (on the left, on the bus)\n• next to / near / opposite = ถัดจาก/ใกล้/ตรงข้าม\n\nขอทาง: Excuse me, how do I get to...?\nบอกทาง: Go straight, turn left/right, it\'s on your left.',
     cultural_note: 'ในสหราชอาณาจักรขับรถทางซ้าย ส่วนอเมริกาขับทางขวา เวลาถามทางต้องระวังเรื่องนี้ด้วย',
@@ -120,7 +120,7 @@ module.exports = [
     title: 'Grammar: Tenses',
     description: 'Present, Past, Future — การใช้กาลอย่างถูกต้อง',
     icon: '📝',
-    order_num: 7,
+    order_num: 120,
     level: 'B2',
     grammar_note: 'กาลสำคัญ:\n• Present Simple: I work (ปกติ/ความจริง)\n• Present Continuous: I am working (กำลังทำอยู่ตอนนี้)\n• Past Simple: I worked / I went (จบแล้ว)\n• Past Continuous: I was working when... (กำลังทำอยู่ขณะที่...)\n• Future will: I will go (ตัดสินใจตอนนี้)\n• Future going to: I\'m going to go (วางแผนไว้แล้ว)\n• Present Perfect: I have worked here for 3 years (เชื่อมอดีต-ปัจจุบัน)',
     cultural_note: 'Present Perfect ใช้บ่อยในภาษาอังกฤษแบบอังกฤษ (British) มากกว่าแบบอเมริกัน เช่น "I\'ve just eaten" (UK) vs "I just ate" (US)',
@@ -177,7 +177,7 @@ module.exports = [
     title: 'Advanced English',
     description: 'Idioms · Business · Academic — ระดับสูง',
     icon: '🏆',
-    order_num: 8,
+    order_num: 140,
     level: 'C1',
     grammar_note: 'Idioms = สำนวนที่ความหมายไม่ตรงตัว:\n• "Break a leg" = โชคดี (ไม่ใช่หักขา)\n• "Hit the sack" = เข้านอน\n• "Beat around the bush" = พูดอ้อมค้อม\n\nPhrasal verbs = กริยา+คำบุพบท:\n• give up = ยอมแพ้ · look up = ค้นหา · run out of = หมด\n\nPassive voice (Academic):\n• Active: They conducted the study.\n• Passive: The study was conducted.',
     cultural_note: 'ภาษาอังกฤษธุรกิจ (Business English) เน้นความตรงไปตรงมา ไม่อ้อมค้อม เช่น "I\'ll get back to you by Friday" ดีกว่า "Maybe I could possibly consider..."',

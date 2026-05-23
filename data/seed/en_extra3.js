@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // English units 10-12: A1 Basic Grammar, A2 Daily Routines, A2 Time & Calendar
 module.exports = [
@@ -6,7 +6,7 @@ module.exports = [
     title: 'Basic Grammar',
     description: 'To Be · To Have · Simple Questions — ไวยากรณ์พื้นฐาน',
     icon: '📝',
-    order_num: 10,
+    order_num: 30,
     level: 'A1',
     grammar_note: 'ไวยากรณ์พื้นฐาน A1:\n\nTo Be (am/is/are):\n• I am a student.\n• She is tall.\n• They are friends.\n\nTo Have (have/has):\n• I have a dog. / She has a cat.\n\nSimple Questions:\n• Are you a teacher? → Yes, I am. / No, I\'m not.\n• Is he happy? → Yes, he is.\n• Do you have a pen? → Yes, I do.',
     cultural_note: 'ในภาษาอังกฤษ "to be" ใช้บ่อยมากในชีวิตประจำวัน ต่างจากภาษาไทยที่มักละกริยา "เป็น" ได้ — เช่น "เธอสวย" แต่ภาษาอังกฤษต้องมี "She IS beautiful" ห้ามละ is/am/are เป็นอันขาด',
@@ -62,7 +62,7 @@ module.exports = [
     title: 'Daily Routines',
     description: 'Morning Routine · Evening Activities · Telling Time — กิจวัตรประจำวัน',
     icon: '🌅',
-    order_num: 11,
+    order_num: 60,
     level: 'A2',
     grammar_note: 'Present Simple — กิจวัตรประจำวัน:\n\nโครงสร้าง: Subject + V1 (s/es กับ he/she/it)\n• I wake up at 7 AM.\n• She wakes up at 6 AM.\n\nTime expressions:\n• every day / every morning / on weekdays\n• at 7 o\'clock / at half past 8 / at quarter to 9\n• before / after / then / first / next / finally\n\nFrequency adverbs:\n• always > usually > often > sometimes > rarely > never',
     cultural_note: 'ชาวตะวันตกมักใช้ระบบ 12 ชั่วโมง (AM/PM) ในชีวิตประจำวัน ต่างจากไทยที่ใช้ทั้ง 24 ชั่วโมงและระบบไทย (บ่ายสองโมง) — "half past" = ครึ่ง, "quarter to" = 15 นาทีก่อน เป็นคำที่ native speakers ใช้ในการสนทนาทั่วไป',
@@ -118,7 +118,7 @@ module.exports = [
     title: 'Time & Calendar',
     description: 'Days of Week · Months & Seasons · Dates — เวลาและปฏิทิน',
     icon: '📅',
-    order_num: 12,
+    order_num: 70,
     level: 'A2',
     grammar_note: 'Prepositions of time — คำบุพบทบอกเวลา:\n\n• ON — วันและวันที่: on Monday, on 5th July\n• IN — เดือน ปี ฤดู ช่วงเวลา: in January, in 2024, in summer, in the morning\n• AT — เวลาแน่นอน ช่วงเวลาสั้น: at 3 PM, at noon, at night\n\nDates:\n• "the 5th of July" / "July 5th"\n• Ordinal: 1st, 2nd, 3rd, 4th, 5th...',
     cultural_note: 'รูปแบบวันที่ต่างกันระหว่างอเมริกา (Month/Day/Year → 7/4/2024) กับอังกฤษ (Day/Month/Year → 4/7/2024) ซึ่งสร้างความสับสนมาก เวลาเขียนเป็นทางการจึงนิยมเขียนเต็มเช่น "4th July 2024" หรือ "July 4, 2024" เพื่อหลีกเลี่ยงความกำกวม',

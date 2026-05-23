@@ -6,12 +6,17 @@
 <div id="lesson-container" data-lesson-id="<%= lessonId %>" data-lang-code="<%= langCode %>">
 
   <div id="lesson-header">
-    <button id="exit-btn" class="exit-btn">✕</button>
+    <button id="exit-btn" class="exit-btn" title="ออก (Esc)">✕</button>
     <div id="progress-bar-wrap">
       <div id="progress-bar"></div>
     </div>
-    <span id="progress-text">0 / 0</span>
+    <div id="hearts-display" class="hearts-display hidden">
+      <span class="heart heart-alive">♥</span>
+      <span class="heart heart-alive">♥</span>
+      <span class="heart heart-alive">♥</span>
+    </div>
   </div>
+  <div id="combo-display" class="combo-display"></div>
 
   <!-- ─── INTRO SCREEN ────────────────────────────────────────────── -->
   <div id="intro-screen" class="hidden">
@@ -66,8 +71,8 @@
         <div class="fc-meaning hidden" id="fc-meaning"></div>
       </div>
       <div class="fc-actions">
-        <button id="fc-reveal-btn" class="btn-outline fc-btn">ดูความหมาย</button>
-        <button id="fc-next-btn" class="btn-primary fc-btn hidden">ถัดไป →</button>
+        <button id="fc-reveal-btn" class="btn-outline fc-btn">ดูความหมาย <span class="kb-hint">Space</span></button>
+        <button id="fc-next-btn" class="btn-primary fc-btn hidden">ถัดไป → <span class="kb-hint">Enter</span></button>
         <button id="fc-done-btn" class="btn-primary fc-btn hidden">เริ่มทำแบบฝึกหัด →</button>
       </div>
       <div class="fc-tip" id="fc-tip"></div>
@@ -80,13 +85,13 @@
     <div id="answer-area"></div>
 
     <div id="check-bar">
-      <button id="check-btn" disabled>ตรวจคำตอบ</button>
+      <button id="check-btn" disabled>ตรวจคำตอบ <span class="kb-hint-btn">Enter</span></button>
     </div>
 
     <div id="feedback-panel">
       <div id="feedback-header"></div>
       <div id="feedback-body"></div>
-      <button id="continue-btn">ถัดไป →</button>
+      <button id="continue-btn">ถัดไป → <span class="kb-hint-btn">Enter</span></button>
     </div>
   </div>
 
@@ -95,8 +100,8 @@
 <!-- ─── COMPLETION SCREEN ─────────────────────────────────────────── -->
 <div id="completion-screen" class="hidden">
   <div class="completion-card">
-    <div class="completion-star">★</div>
-    <h2>เยี่ยมมาก!</h2>
+    <div id="result-stars" class="completion-stars"></div>
+    <h2 id="result-title">เยี่ยมมาก!</h2>
     <div class="completion-stats">
       <div class="completion-stat" id="result-score"></div>
       <div class="completion-stat" id="result-pct"></div>
@@ -104,7 +109,11 @@
       <div class="completion-stat" id="result-streak"></div>
       <div class="completion-stat" id="result-level"></div>
     </div>
-    <a id="back-learn-btn" href="/learn/<%= langCode %>" class="btn-primary btn-lg">กลับไปเรียน</a>
+    <div id="wrong-review-section"></div>
+    <div class="completion-actions">
+      <a id="back-learn-btn" href="/learn/<%= langCode %>" class="btn-primary btn-lg">กลับไปเรียน</a>
+      <button id="retry-btn" class="btn-outline btn-lg">ลองใหม่ 🔄</button>
+    </div>
   </div>
 </div>
 

@@ -29,6 +29,37 @@ const langs = [
   { ...zh, units: mergedUnits(zh, [...zhExtra, ...zhExtra2, ...zhExtra3, ...zhExtra4]) },
 ];
 
+// Order-num migration: moves units from sequential 1-17 to spaced multiples
+// so inserted extra units appear in correct curriculum order.
+const ORDER_MAPS = {
+  ja: { 1:10,2:30,3:40,4:70,5:90,6:100,7:120,8:130,9:150,10:170,11:20,12:50,13:60,14:110,15:80,16:140,17:160 },
+  zh: { 1:10,2:20,3:30,4:50,5:60,6:80,7:90,8:120,9:140,10:150,11:40,12:70,13:100,14:110,15:130 },
+  en: { 1:10,2:20,3:40,4:50,5:80,6:90,7:120,8:140,9:150,10:30,11:60,12:70,13:100,14:110,15:130,16:135 }
+};
+
+async function migrateUnitOrder(pool, langCode, langId) {
+  const map = ORDER_MAPS[langCode];
+  if (!map) return;
+  // Only run if units still have old sequential numbering (1 exists)
+  const { rows } = await pool.query(
+    'SELECT 1 FROM units WHERE language_id=$1 AND order_num=1 LIMIT 1', [langId]
+  );
+  if (rows.length === 0) return;
+  console.log(`  ↻ Migrating unit order for ${langCode}...`);
+  // Phase 1: shift all old nums +1000 to avoid conflicts
+  await pool.query(
+    'UPDATE units SET order_num = order_num + 1000 WHERE language_id=$1 AND order_num <= 20', [langId]
+  );
+  // Phase 2: move from temp to final new nums
+  for (const [oldNum, newNum] of Object.entries(map)) {
+    await pool.query(
+      'UPDATE units SET order_num=$1 WHERE language_id=$2 AND order_num=$3',
+      [newNum, langId, parseInt(oldNum) + 1000]
+    );
+  }
+  console.log(`  ✓ Unit order migrated for ${langCode}`);
+}
+
 async function seedAll(pool) {
   console.log('🌱 Running idempotent seed...');
 
@@ -40,6 +71,8 @@ async function seedAll(pool) {
        ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
       [lang.code, lang.name, lang.native_name, lang.flag]
     );
+
+    await migrateUnitOrder(pool, lang.code, language.id);
 
     for (const unit of lang.units) {
       // Check if unit already exists by language_id + order_num

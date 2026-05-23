@@ -71,6 +71,15 @@
         html += '<div class="unit-title">' + unit.title + '</div>';
         html += '<div class="unit-desc">' + (unit.description || '') + '</div>';
         html += '</div></div>';
+        var total = unit.lessons.length;
+        var done  = unit.lessons.filter(function(l){ return l.completed; }).length;
+        var pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+        var pctClass = pct === 100 ? 'done' : pct > 0 ? 'wip' : 'none';
+        html += '<div class="unit-progress">';
+        html += '<div class="unit-progress-bar"><div class="unit-progress-fill" style="width:' + pct + '%"></div></div>';
+        html += '<span class="unit-progress-text">' + done + '/' + total + '</span>';
+        html += '<span class="unit-progress-pct ' + pctClass + '">' + pct + '%</span>';
+        html += '</div>';
         html += '<div class="lesson-list">';
         for (var li = 0; li < unit.lessons.length; li++) {
           html += lessonItem(unit.lessons[li]);

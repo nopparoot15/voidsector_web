@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // English unit 9: C2 — Mastery
 module.exports = [
@@ -6,7 +6,7 @@ module.exports = [
     title: 'Mastery English',
     description: 'Rhetoric · Literary devices · Nuanced register — ระดับเชี่ยวชาญ',
     icon: '👑',
-    order_num: 9,
+    order_num: 150,
     level: 'C2',
     grammar_note: 'ระดับ C2 — การใช้ภาษาอย่างเชี่ยวชาญ:\n\nRhetorical devices:\n• Metaphor: "Time is money" (เปรียบเปรย)\n• Irony: พูดตรงข้ามความหมายจริง "Oh great, another meeting!"\n• Understatement: "It\'s not bad" = ดีมาก\n• Hyperbole: "I\'ve told you a million times"\n\nRegister — ระดับภาษา:\n• Formal: "I would be grateful if you could..."\n• Neutral: "Could you please..."\n• Informal: "Can you..."\n• Colloquial: "Gimme a hand?"\n\nSubjunctive mood (ความปรารถนา/สมมติ):\n• "I wish I were taller." (ไม่ใช่ was)\n• "If I were you, I would..."',
     cultural_note: 'C2 คือระดับที่คนพูดภาษาอังกฤษเป็นภาษาที่สองมักจะเรียกว่า "near-native" แต่ native speakers ก็ยังสังเกตเห็น subtle differences ได้ — เช่น การใช้ collocation ผิด ("strong tea" ไม่ใช่ "powerful tea") ซึ่งเป็นสิ่งที่ต้องอ่านและฟังมากๆ ถึงจะซึมซับได้',

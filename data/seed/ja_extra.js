@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // Japanese units 5-8: Elementary → Intermediate → Advanced
 module.exports = [
@@ -6,7 +6,7 @@ module.exports = [
     title: 'กริยาและประโยคง่าย',
     description: 'กริยา verb groups และการสร้างประโยคเบื้องต้น',
     icon: '🔤',
-    order_num: 5,
+    order_num: 90,
     level: 'N4',
     grammar_note: 'กริยา 3 กลุ่ม:\n\n① Group 1 (う-verbs): เปลี่ยน u→i + ます\n• かく(kaku)→かきます · のむ→のみます · はなす→はなします\n\n② Group 2 (る-verbs): ตัด る + ます\n• たべる→たべます · みる→みます\n\n③ Irregular: する→します · くる→きます\n\nรูปปฏิเสธ: ます→ません\nรูปอดีต: ます→ました · ません→ませんでした',
     cultural_note: 'ในภาษาญี่ปุ่น กริยาอยู่ท้ายประโยคเสมอ: わたしは りんごを たべます (ฉัน แอปเปิ้ล กิน) — ตรงข้ามกับภาษาไทยและอังกฤษ',
@@ -63,7 +63,7 @@ module.exports = [
     title: 'Particles & Grammar',
     description: 'อนุภาค は・が・を・に・で และโครงสร้างสำคัญ',
     icon: '⚙️',
-    order_num: 6,
+    order_num: 100,
     level: 'N4',
     grammar_note: 'อนุภาค (Particles) — หัวใจของภาษาญี่ปุ่น:\n\n• は (wa) = Topic marker "เรื่องที่พูดถึง"\n  わたしは がくせいです。= ฉัน(topic) เป็นนักเรียน\n\n• が (ga) = Subject marker "ผู้กระทำ"\n  ねこが います。= มีแมว(subject)อยู่\n\n• を (wo) = Object marker "สิ่งที่ถูกกระทำ"\n  りんごを たべます。= กินแอปเปิ้ล\n\n• に (ni) = Direction / Time / Target\n  がっこうに いきます。= ไปโรงเรียน\n\n• で (de) = Place of action / Means\n  バスで いきます。= ไปด้วยรถบัส',
     cultural_note: 'は vs が ใช้ยากที่สุดในภาษาญี่ปุ่น — Rule of thumb: は ใช้เมื่อเป็น topic ที่รู้จักกันแล้ว, が ใช้เมื่อแนะนำสิ่งใหม่หรือเน้น subject',
@@ -120,7 +120,7 @@ module.exports = [
     title: 'Daily Conversations',
     description: 'สนทนาในชีวิตประจำวัน — ช้อปปิ้ง, ร้านอาหาร, โทรศัพท์',
     icon: '💬',
-    order_num: 7,
+    order_num: 120,
     level: 'N3',
     grammar_note: 'โครงสร้างสำคัญระดับ N3:\n\n• て-form ต่อกริยา: たべて、のんで、ねます (กิน ดื่ม แล้วนอน)\n\n• たい = ต้องการ/อยาก:\n  すしを たべたい。= อยากกินซูชิ\n\n• ～てください = ขอให้ทำ:\n  ちょっと まってください。= รอสักครู่นะ\n\n• ～てもいいですか = ขออนุญาต:\n  はいってもいいですか？= ขอเข้าไปได้ไหม?\n\n• から / ので = เพราะว่า (เหตุผล)',
     cultural_note: 'ในร้านอาหารญี่ปุ่น เรียกพนักงานด้วย "すみません!" ไม่ใช่โบกมือ และไม่ต้องทิป — ถือว่าหยาบคายในญี่ปุ่น',
@@ -177,7 +177,7 @@ module.exports = [
     title: 'Keigo & Advanced',
     description: 'ภาษาสุภาพ (เกโกะ) และไวยากรณ์ขั้นสูง',
     icon: '🎎',
-    order_num: 8,
+    order_num: 130,
     level: 'N3',
     grammar_note: 'Keigo (敬語) ภาษาสุภาพ 3 ระดับ:\n\n① 丁寧語 (Teineigo) = สุภาพทั่วไป: ます/です\n\n② 尊敬語 (Sonkeigo) = ยกย่องผู้อื่น:\n• いる → いらっしゃる\n• 食べる → 召し上がる\n• 言う → おっしゃる\n\n③ 謙譲語 (Kenjougo) = ถ่อมตัว:\n• いる → おります\n• 食べる → いただく\n• 言う → 申す\n\nใช้ Keigo กับ: หัวหน้า ลูกค้า ผู้สูงอายุ',
     cultural_note: 'Keigo ไม่ใช่แค่ภาษา — มันสะท้อน hierarchy ของสังคมญี่ปุ่น ที่ทำงานญี่ปุ่นคุณต้องพูด Keigo กับหัวหน้าตลอดเวลา แม้จะรู้จักกันนาน',
