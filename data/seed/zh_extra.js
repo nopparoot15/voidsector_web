@@ -7,6 +7,7 @@ module.exports = [
     description: '家庭和日常生活',
     icon: '👨‍👩‍👧',
     order_num: 5,
+    level: 'HSK2',
     lessons: [
       {
         title: 'สมาชิกในครอบครัว',
@@ -62,6 +63,7 @@ module.exports = [
     description: '购物与美食',
     icon: '🛒',
     order_num: 6,
+    level: 'HSK3',
     lessons: [
       {
         title: 'ที่ตลาดและร้านค้า',
@@ -117,6 +119,7 @@ module.exports = [
     description: '量词与句型',
     icon: '📐',
     order_num: 7,
+    level: 'HSK3',
     lessons: [
       {
         title: 'ลักษณนาม (量词)',
@@ -172,6 +175,7 @@ module.exports = [
     description: '高级汉语',
     icon: '🏆',
     order_num: 8,
+    level: 'HSK4',
     lessons: [
       {
         title: 'สำนวนและสุภาษิตจีน',

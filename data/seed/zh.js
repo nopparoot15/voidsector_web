@@ -11,6 +11,7 @@ module.exports = {
       description: 'ตัวอักษรจีนพื้นฐาน',
       icon: '字',
       order_num: 1,
+      level: 'HSK1',
       lessons: [
         {
           title: 'คำพื้นฐาน',
@@ -64,6 +65,7 @@ module.exports = {
       description: 'คำทักทายภาษาจีน',
       icon: '🤝',
       order_num: 2,
+      level: 'HSK1',
       lessons: [
         {
           title: 'สวัสดีและลาก่อน',
@@ -117,6 +119,7 @@ module.exports = {
       description: 'ตัวเลขภาษาจีน',
       icon: '🔢',
       order_num: 3,
+      level: 'HSK1',
       lessons: [
         {
           title: '1 ถึง 5',
@@ -170,6 +173,7 @@ module.exports = {
       description: 'คำเรียกสมาชิกในครอบครัว',
       icon: '👨‍👩‍👧‍👦',
       order_num: 4,
+      level: 'HSK2',
       lessons: [
         {
           title: 'พ่อแม่',

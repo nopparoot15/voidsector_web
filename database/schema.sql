@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS units (
   order_num INTEGER NOT NULL,
   title VARCHAR(200) NOT NULL,
   description TEXT,
-  icon VARCHAR(50) DEFAULT '📚'
+  icon VARCHAR(50) DEFAULT '📚',
+  level VARCHAR(20)
 );
 
 CREATE TABLE IF NOT EXISTS lessons (

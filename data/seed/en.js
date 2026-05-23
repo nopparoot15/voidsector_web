@@ -11,6 +11,7 @@ module.exports = {
       description: 'คำทักทายพื้นฐานที่ใช้ทุกวัน',
       icon: '👋',
       order_num: 1,
+      level: 'A1',
       lessons: [
         {
           title: 'Hello & Goodbye',
@@ -64,6 +65,7 @@ module.exports = {
       description: 'ตัวเลข 1 ถึง 10',
       icon: '🔢',
       order_num: 2,
+      level: 'A1',
       lessons: [
         {
           title: '1 to 5',
@@ -117,6 +119,7 @@ module.exports = {
       description: 'สัตว์รอบตัวเรา',
       icon: '🐾',
       order_num: 3,
+      level: 'A2',
       lessons: [
         {
           title: 'Pets',
@@ -170,6 +173,7 @@ module.exports = {
       description: 'อาหารและเครื่องดื่ม',
       icon: '🍜',
       order_num: 4,
+      level: 'A2',
       lessons: [
         {
           title: 'Fruits',

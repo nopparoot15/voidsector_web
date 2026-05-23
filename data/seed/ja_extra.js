@@ -7,6 +7,7 @@ module.exports = [
     description: 'กริยา verb groups และการสร้างประโยคเบื้องต้น',
     icon: '🔤',
     order_num: 5,
+    level: 'N4',
     lessons: [
       {
         title: 'กริยากลุ่ม 1 (う-verbs)',
@@ -61,6 +62,7 @@ module.exports = [
     description: 'อนุภาค は・が・を・に・で และโครงสร้างสำคัญ',
     icon: '⚙️',
     order_num: 6,
+    level: 'N4',
     lessons: [
       {
         title: 'Particles は・が・を',
@@ -115,6 +117,7 @@ module.exports = [
     description: 'สนทนาในชีวิตประจำวัน — ช้อปปิ้ง, ร้านอาหาร, โทรศัพท์',
     icon: '💬',
     order_num: 7,
+    level: 'N3',
     lessons: [
       {
         title: 'ที่ร้านอาหาร',
@@ -169,6 +172,7 @@ module.exports = [
     description: 'ภาษาสุภาพ (เกโกะ) และไวยากรณ์ขั้นสูง',
     icon: '🎎',
     order_num: 8,
+    level: 'N3',
     lessons: [
       {
         title: 'Keigo เบื้องต้น (ภาษาสุภาพ)',

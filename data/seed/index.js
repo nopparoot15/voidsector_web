@@ -38,11 +38,19 @@ async function seedAll(pool) {
         'SELECT id FROM units WHERE language_id=$1 AND order_num=$2',
         [language.id, unit.order_num]
       );
-      if (existing.rows.length > 0) continue; // already seeded, skip
+      if (existing.rows.length > 0) {
+        if (unit.level) {
+          await pool.query(
+            'UPDATE units SET level=$1 WHERE id=$2',
+            [unit.level, existing.rows[0].id]
+          );
+        }
+        continue;
+      }
 
       const { rows: [u] } = await pool.query(
-        'INSERT INTO units (language_id, order_num, title, description, icon) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-        [language.id, unit.order_num, unit.title, unit.description || '', unit.icon || '📚']
+        'INSERT INTO units (language_id, order_num, title, description, icon, level) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+        [language.id, unit.order_num, unit.title, unit.description || '', unit.icon || '📚', unit.level || null]
       );
 
       for (const lesson of unit.lessons) {

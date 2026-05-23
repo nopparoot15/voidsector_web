@@ -11,6 +11,7 @@ module.exports = {
       description: 'ตัวอักษรฮิรางานะพื้นฐาน',
       icon: 'あ',
       order_num: 1,
+      level: 'N5',
       lessons: [
         {
           title: 'สระ (Vowels)',
@@ -64,6 +65,7 @@ module.exports = {
       description: 'คำทักทายภาษาญี่ปุ่น',
       icon: '🙏',
       order_num: 2,
+      level: 'N5',
       lessons: [
         {
           title: 'คำทักทายตามเวลา',
@@ -116,6 +118,7 @@ module.exports = {
       title: 'Numbers',
       description: 'ตัวเลขภาษาญี่ปุ่น',
       icon: '🔢',
+      level: 'N5',
       order_num: 3,
       lessons: [
         {
@@ -169,6 +172,7 @@ module.exports = {
       title: 'Adjectives',
       description: 'คำคุณศัพท์ภาษาญี่ปุ่น',
       icon: '💬',
+      level: 'N5',
       order_num: 4,
       lessons: [
         {

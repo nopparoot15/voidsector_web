@@ -7,6 +7,7 @@ module.exports = [
     description: 'คนในครอบครัว บุคลิก และความสัมพันธ์',
     icon: '👨‍👩‍👧',
     order_num: 5,
+    level: 'B1',
     lessons: [
       {
         title: 'Family Members',
@@ -61,6 +62,7 @@ module.exports = [
     description: 'สถานที่ทิศทาง และการเดินทาง',
     icon: '✈️',
     order_num: 6,
+    level: 'B1',
     lessons: [
       {
         title: 'Places Around Town',
@@ -115,6 +117,7 @@ module.exports = [
     description: 'Present, Past, Future — การใช้กาลอย่างถูกต้อง',
     icon: '📝',
     order_num: 7,
+    level: 'B2',
     lessons: [
       {
         title: 'Present Simple & Continuous',
@@ -169,6 +172,7 @@ module.exports = [
     description: 'Idioms · Business · Academic — ระดับสูง',
     icon: '🏆',
     order_num: 8,
+    level: 'C1',
     lessons: [
       {
         title: 'Idioms & Phrasal Verbs',
