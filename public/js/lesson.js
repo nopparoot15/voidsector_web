@@ -496,6 +496,7 @@
     if (current >= exercises.length) { showCompletion(); return; }
     userAnswer = null;
     checked = false;
+    answerArea.removeAttribute('data-auto-mc');
     matchPairs = [];
     matchUserPairs = new Map();
     matchRightAssigned = new Map();
@@ -581,6 +582,10 @@
       });
     } else {
       const prompt = d.prompt || d.sentence || '';
+      if (langCode === 'ja' || langCode === 'zh') {
+        renderLangInputAsMC(prompt, '', d.answer);
+        return;
+      }
       exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
       answerArea.innerHTML = `<input id="fill-input" class="translate-input" type="text" placeholder="พิมพ์คำตอบ... (Enter เพื่อตรวจ)" autocomplete="off" />`;
       const inp = document.getElementById('fill-input');
@@ -591,6 +596,7 @@
   }
 
   function checkFillBlank(ex) {
+    if (checkAutoMC()) return;
     const d = ex.data;
     if (d.options && d.options.length) {
       const correctIdx = parseInt(answerArea.dataset.correctIdx);
@@ -660,11 +666,68 @@
     document.querySelectorAll('.word-chip, .answer-chip').forEach(b => b.disabled = true);
   }
 
+  // ── Auto-MC helpers (for ja/zh keyboard-free mode) ───────────────────
+  function getLangDistractors(correctAnswer, count) {
+    const pool = new Set();
+    for (const ex of exercises) {
+      const a = ex.data && ex.data.answer;
+      if (a && a !== correctAnswer) pool.add(String(a));
+      if (ex.type === 'multiple_choice' && ex.data.options) {
+        for (const opt of ex.data.options) {
+          if (opt !== correctAnswer) pool.add(String(opt));
+        }
+      }
+    }
+    return shuffle([...pool]).slice(0, count);
+  }
+
+  function renderLangInputAsMC(prompt, hint, correctAnswer) {
+    const distractors = getLangDistractors(correctAnswer, 3);
+    const opts = shuffle([correctAnswer, ...distractors]);
+    const correctIdx = opts.indexOf(correctAnswer);
+    exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>${hint}`;
+    answerArea.innerHTML = `<div class="mc-options">${opts.map((o, i) =>
+      `<button class="mc-option" data-idx="${i}"><span class="mc-num">${i + 1}</span>${esc(o)}</button>`
+    ).join('')}</div>`;
+    answerArea.dataset.correctIdx = correctIdx;
+    answerArea.dataset.correctText = correctAnswer;
+    answerArea.dataset.prompt = prompt;
+    answerArea.setAttribute('data-auto-mc', '1');
+    answerArea.querySelectorAll('.mc-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        answerArea.querySelectorAll('.mc-option').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        userAnswer = btn.dataset.idx;
+        checkBtn.disabled = false;
+      });
+    });
+  }
+
+  function checkAutoMC() {
+    if (!answerArea.getAttribute('data-auto-mc')) return false;
+    const correctIdx = parseInt(answerArea.dataset.correctIdx);
+    const correctText = answerArea.dataset.correctText;
+    const prompt = answerArea.dataset.prompt || '';
+    const correct = parseInt(userAnswer) === correctIdx;
+    if (correct) score++;
+    showFeedback(correct, correctText, prompt);
+    answerArea.querySelectorAll('.mc-option').forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === correctIdx) btn.classList.add('correct');
+      else if (String(i) === String(userAnswer)) btn.classList.add('wrong');
+    });
+    return true;
+  }
+
   // ── Translate ────────────────────────────────────────────────────────
   function renderTranslate(ex) {
     const d = ex.data;
     const prompt = d.prompt || '';
     const hint = d.hint ? `<div class="ex-hint">${esc(d.hint)}</div>` : '';
+    if (langCode === 'ja' || langCode === 'zh') {
+      renderLangInputAsMC(prompt, hint, d.answer);
+      return;
+    }
     exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>${hint}`;
     answerArea.innerHTML = `<textarea id="translate-input" class="translate-input" rows="2" placeholder="พิมพ์คำแปล... (Enter เพื่อตรวจ)"></textarea>`;
     const inp = document.getElementById('translate-input');
@@ -676,6 +739,7 @@
   }
 
   function checkTranslate(ex) {
+    if (checkAutoMC()) return;
     const d = ex.data;
     const answers = [d.answer, ...(d.alternatives || [])].filter(Boolean);
     const correct = answers.some(a => normalize(userAnswer) === normalize(a));
