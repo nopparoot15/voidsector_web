@@ -68,9 +68,10 @@
     if (!vocabTableBody) return;
     const rows = [];
     const seen = new Set();
-    const hasThai = s => /[฀-๿]/.test(s);
+    // Thai block U+0E00-U+0E7F — charCodeAt avoids any regex encoding issues
+    const hasThai = s => { for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); if (c >= 0x0E00 && c <= 0x0E7F) return true; } return false; };
 
-    // Build reading lookup from translate exercises so match_pairs can share readings
+    // Build reading lookup from translate exercises so match_pairs can reuse readings
     const readingMap = {};
     if (langCode !== 'en') {
       for (const ex of exs) {
@@ -89,7 +90,7 @@
           Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
         );
         for (const p of pairs) {
-          // skip antonym/English-only pairs — only include if meaning contains Thai
+          // skip pairs where right side has no Thai — those are antonym/English-only pairs
           if (!hasThai(p.right)) continue;
           const key = p.left + '|' + p.right;
           if (!seen.has(key)) {
@@ -101,11 +102,10 @@
         const word = String(d.answer || '').trim();
         const meaning = String(d.prompt || '').trim();
         const rawHint = String(d.hint || '').trim();
-        // skip if word or meaning looks like a sentence (too long)
+        // skip if too long (sentence-level entries)
         if (!word || word.length > 60 || meaning.length > 80) continue;
-        // meaning must contain Thai to be a real translation
-        if (!hasThai(meaning)) continue;
-        // reading only makes sense for JA/ZH; for EN hints are Thai category descriptions
+        // for EN: reading column stays empty (hint is a Thai category label, not phonetics)
+        // for JA/ZH: hint is romaji/pinyin — show it
         const reading = (langCode === 'en') ? '' : rawHint;
         const key = word + '|' + meaning;
         if (!seen.has(key)) {
