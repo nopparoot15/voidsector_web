@@ -99,7 +99,23 @@
     '高兴':'gāo xìng','快乐':'kuài lè','难过':'nán guò','生气':'shēng qì',
     '漂亮':'piào liang','便宜':'pián yi','贵':'guì','多少钱':'duō shao qián',
     '太贵了':'tài guì le','一点儿':'yī diǎnr','还好':'hái hǎo',
-    '一起':'yī qǐ','一下':'yī xià','一些':'yī xiē','一样':'yī yàng'
+    '一起':'yī qǐ','一下':'yī xià','一些':'yī xiē','一样':'yī yàng',
+    // Colors & shapes (zh_extra3)
+    '红色':'hóng sè','白色':'bái sè','黑色':'hēi sè','黄色':'huáng sè','绿色':'lǜ sè','蓝色':'lán sè',
+    '红':'hóng','白':'bái','黑':'hēi','黄':'huáng','绿':'lǜ','蓝':'lán',
+    '多':'duō','少':'shǎo','大的':'dà de','小的':'xiǎo de',
+    // School & work (zh_extra3)
+    '作业':'zuò yè','同学':'tóng xué','想':'xiǎng','能':'néng',
+    '上班':'shàng bān','下班':'xià bān','上学':'shàng xué','下课':'xià kè',
+    // Demonstratives & question
+    '这':'zhè','那':'nà','哪':'nǎ','颜色':'yán sè',
+    // Descriptions
+    '可爱':'kě ài','漂亮':'piào liang','一点儿':'yī diǎnr',
+    // Body
+    '头':'tóu','手':'shǒu','脚':'jiǎo','眼睛':'yǎn jīng','耳朵':'ěr duo','嘴':'zuǐ','鼻子':'bí zi',
+    // Extra common
+    '帮':'bāng','游泳':'yóu yǒng','书包':'shū bāo','铅笔':'qiān bǐ',
+    '学习':'xué xí','练习':'liàn xí','复习':'fù xí'
   };
 
   var JA_ROMAJI = {
@@ -187,7 +203,29 @@
     'てもいいです':'temo ii desu','なければなりません':'nakereba narimasen',
     'けいけん':'keiken','きかい':'kikai','もくひょう':'mokuhyou','どりょく':'doryoku',
     // Business (N2+)
-    'かねます':'kanemasu','さいわいです':'saiwai desu','おせわになっております':'osewa ni natte orimasu'
+    'かねます':'kanemasu','さいわいです':'saiwai desu','おせわになっております':'osewa ni natte orimasu',
+    // Colors — い-adjectives (ja_extra3)
+    'あかい':'akai','しろい':'shiroi','くろい':'kuroi','きいろい':'kiiroi','あおい':'aoi',
+    'みどり':'midori','みどりいろ':'midori iro',
+    // Katakana loanwords (ja_extra3)
+    'テレビ':'terebi','カメラ':'kamera','タクシー':'takushii','スーパー':'suupaa',
+    'コンピューター':'konpyuutaa','バス':'basu','テスト':'tesuto','コンビニ':'konbini',
+    'アイスクリーム':'aisu kuriimu','ジュース':'juusu','ミルク':'miruku',
+    // Existence verbs
+    'あります':'arimasu','います':'imasu',
+    // Body parts
+    'からだ':'karada','め':'me','て':'te','あし':'ashi','くち':'kuchi','かみ':'kami','みみ':'mimi',
+    // Objects (classroom/daily)
+    'ほん':'hon','えんぴつ':'enpitsu','かばん':'kaban','かぎ':'kagi',
+    'つくえ':'tsukue','いす':'isu','にわ':'niwa','なか':'naka','うえ':'ue',
+    // Time expressions
+    'ごぜん':'gozen','ごご':'gogo','ちょうど':'choudo','じかん':'jikan','ごろ':'goro',
+    // Planning/schedule
+    'よてい':'yotei','やくそく':'yakusoku','ひま':'hima','あいます':'aimasu',
+    // Sentence pattern words
+    'がくせい':'gakusei','せんせい':'sensei',
+    // Frequency
+    'しゅう':'shuu','まいばん':'maiban','いっかい':'ikkai','さんかい':'sankai'
   };
 
   // ── Intro / Vocab table ─────────────────────────────────────────────
@@ -258,7 +296,12 @@
 
     vocabTableBody.innerHTML = rows.map(r => `
       <tr>
-        <td class="vocab-word">${esc(r.word)}</td>
+        <td class="vocab-word">
+          <span class="vocab-word-cell">
+            <span>${esc(r.word)}</span>
+            <button class="speak-btn" data-word="${esc(r.word)}" title="ฟังเสียง">🔊</button>
+          </span>
+        </td>
         ${langCode !== 'en' ? '<td class="vocab-reading">' + esc(r.reading) + '</td>' : ''}
         <td class="vocab-meaning">${esc(r.meaning)}</td>
       </tr>
@@ -290,6 +333,8 @@
 
     document.getElementById('fc-word').textContent = card.word;
     document.getElementById('fc-reading').textContent = card.reading || '';
+    const fcSpeakBtn = document.getElementById('fc-speak-btn');
+    if (fcSpeakBtn) fcSpeakBtn.dataset.word = card.word;
 
     const meaningEl = document.getElementById('fc-meaning');
     const dividerEl = document.getElementById('fc-divider');
@@ -618,7 +663,7 @@
     feedbackHeader.innerHTML = `<span id="feedback-icon">${correct ? '✓' : '✗'}</span><span id="feedback-text">${correct ? 'ถูกต้อง!' : 'ยังไม่ถูก'}</span>`;
     let bodyHtml = '';
     if (!correct && correctAnswer) {
-      bodyHtml += `<div class="fb-answer">คำตอบ: <strong>${esc(correctAnswer)}</strong></div>`;
+      bodyHtml += `<div class="fb-answer">คำตอบ: <strong>${esc(correctAnswer)}</strong><button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button></div>`;
       if (langCode !== 'en') {
         const reading = globalReadingMap[correctAnswer];
         if (reading) bodyHtml += `<div class="fb-reading">${esc(reading)}</div>`;
@@ -667,6 +712,30 @@
   function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  // ── Text-to-Speech ────────────────────────────────────────────────────
+  function speak(text, lang) {
+    if (!window.speechSynthesis || !text) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang === 'ja' ? 'ja-JP' : lang === 'zh' ? 'zh-CN' : 'en-US';
+    utter.rate = 0.85;
+    window.speechSynthesis.speak(utter);
+  }
+
+  // Delegated TTS click handler for vocab table and feedback panel
+  vocabTableBody && vocabTableBody.addEventListener('click', e => {
+    const btn = e.target.closest('.speak-btn');
+    if (btn) speak(btn.dataset.word, langCode);
+  });
+  feedbackBody && feedbackBody.addEventListener('click', e => {
+    const btn = e.target.closest('.speak-btn');
+    if (btn) speak(btn.dataset.word, langCode);
+  });
+  document.getElementById('fc-speak-btn')?.addEventListener('click', () => {
+    const btn = document.getElementById('fc-speak-btn');
+    if (btn && btn.dataset.word) speak(btn.dataset.word, langCode);
+  });
 
   // Convert raw grammar note text (bullet `•`, `①②③` sections) to structured HTML
   function renderGrammarNote(text) {
