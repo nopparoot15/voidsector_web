@@ -299,9 +299,8 @@ main { padding-top: var(--topbar-h); }
 .hub-card-body p { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .hub-card-arrow { color: var(--muted); flex-shrink: 0; font-size: 18px; transition: color 0.2s; }
 .hub-card:hover .hub-card-arrow { color: var(--text); }
-.hub-footer-links { text-align: right; padding: 0 4px 8px; }
-.hub-footer-link { font-size: 12px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
-.hub-footer-link:hover { color: var(--text); }
+.portfolio-lock { position: fixed; bottom: 18px; right: 18px; font-size: 15px; opacity: 0.18; text-decoration: none; transition: opacity 0.2s; line-height: 1; }
+.portfolio-lock:hover { opacity: 0.5; }
 
 /* Portfolio gate */
 .gate-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--topbar-h) - 60px); }
