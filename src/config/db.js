@@ -30,6 +30,8 @@ async function initDb() {
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_date DATE`,
     `CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL`,
     `ALTER TABLE units ADD COLUMN IF NOT EXISTS level VARCHAR(20)`,
+    `ALTER TABLE units ADD COLUMN IF NOT EXISTS grammar_note TEXT`,
+    `ALTER TABLE units ADD COLUMN IF NOT EXISTS cultural_note TEXT`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});

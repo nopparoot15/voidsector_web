@@ -69,7 +69,9 @@ router.get('/lesson/:lessonId', requireLogin, async (req, res) => {
   try {
     const lessonId = parseInt(req.params.lessonId);
     const { rows: [lesson] } = await pool.query(
-      'SELECT * FROM lessons WHERE id=$1', [lessonId]
+      `SELECT l.*, u.title AS unit_title, u.grammar_note, u.cultural_note, u.level
+       FROM lessons l JOIN units u ON l.unit_id = u.id WHERE l.id=$1`,
+      [lessonId]
     );
     if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
 

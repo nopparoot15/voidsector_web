@@ -4,11 +4,8 @@
   const langCode = page.dataset.langCode;
 
   const LEVEL_ORDER = {
-    // English CEFR
     A1: 0, A2: 1, B1: 2, B2: 3, C1: 4, C2: 5,
-    // Japanese JLPT (N5=beginner, N1=advanced)
     N5: 0, N4: 1, N3: 2, N2: 3, N1: 4,
-    // Chinese HSK
     HSK1: 0, HSK2: 1, HSK3: 2, HSK4: 3, HSK5: 4, HSK6: 5,
   };
 
@@ -20,78 +17,94 @@
 
   async function init() {
     const [unitsRes, langsRes] = await Promise.all([
-      fetch(`/api/units/${langCode}`),
+      fetch('/api/units/' + langCode),
       fetch('/api/languages')
     ]);
     const unitsData = await unitsRes.json();
     const units = unitsData.units || unitsData;
     const langs = await langsRes.json();
-    const lang = langs.find(l => l.code === langCode) || {};
+    const lang = langs.find(function (l) { return l.code === langCode; }) || {};
 
-    document.getElementById('lang-title').textContent = `${lang.flag || ''} ${lang.name || langCode}`;
+    document.getElementById('lang-title').textContent = (lang.flag || '') + ' ' + (lang.name || langCode);
 
     const map = document.getElementById('unit-map');
     if (!units.length) { map.innerHTML = '<p class="loading">ยังไม่มีเนื้อหา</p>'; return; }
 
     // Group by level
-    const groups = new Map();
-    for (const unit of units) {
-      const lv = unit.level || 'ทั่วไป';
-      if (!groups.has(lv)) groups.set(lv, []);
-      groups.get(lv).push(unit);
+    var groups = {};
+    var groupOrder = [];
+    for (var i = 0; i < units.length; i++) {
+      var lv = units[i].level || 'ทั่วไป';
+      if (!groups[lv]) { groups[lv] = []; groupOrder.push(lv); }
+      groups[lv].push(units[i]);
     }
 
-    // Sort groups by level order
-    const sortedGroups = [...groups.entries()].sort((a, b) => {
-      const oa = LEVEL_ORDER[a[0]] ?? 99;
-      const ob = LEVEL_ORDER[b[0]] ?? 99;
-      return oa - ob;
+    // Sort groups
+    groupOrder.sort(function (a, b) {
+      return (LEVEL_ORDER[a] !== undefined ? LEVEL_ORDER[a] : 99) -
+             (LEVEL_ORDER[b] !== undefined ? LEVEL_ORDER[b] : 99);
     });
 
-    map.innerHTML = sortedGroups.map(([level, groupUnits]) => `
-      <div class="level-section">
-        <div class="level-header">
-          <span class="level-badge level-badge--${level.toLowerCase().replace(/\s/g, '')}">${level}</span>
-          <span class="level-desc">${LEVEL_DESC[level] || ''}</span>
-        </div>
-        ${groupUnits.map(unit => `
-          <div class="unit-card">
-            <div class="unit-header">
-              <span class="unit-icon">${unit.icon || '📚'}</span>
-              <div>
-                <div class="unit-title">${unit.title}</div>
-                <div class="unit-desc">${unit.description || ''}</div>
-              </div>
-            </div>
-            <div class="lesson-list">
-              ${unit.lessons.map(lesson => lessonItem(lesson)).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
+    var recommended = '';
+    try { recommended = localStorage.getItem('vs_placement_' + langCode) || ''; } catch (e) {}
+
+    var html = '';
+    for (var gi = 0; gi < groupOrder.length; gi++) {
+      var level = groupOrder[gi];
+      var groupUnits = groups[level];
+      var isRec = recommended && recommended === level;
+      var levelSlug = level.toLowerCase().replace(/\s/g, '');
+
+      html += '<div class="level-section' + (isRec ? ' level-section--recommended' : '') + '" id="level-' + level + '">';
+      html += '<div class="level-header">';
+      html += '<span class="level-badge level-badge--' + levelSlug + '">' + level + '</span>';
+      html += '<span class="level-desc">' + (LEVEL_DESC[level] || '') + '</span>';
+      if (isRec) html += '<span class="level-recommended-tag">⭐ ระดับแนะนำสำหรับคุณ</span>';
+      html += '</div>';
+
+      for (var ui = 0; ui < groupUnits.length; ui++) {
+        var unit = groupUnits[ui];
+        html += '<div class="unit-card">';
+        html += '<div class="unit-header">';
+        html += '<span class="unit-icon">' + (unit.icon || '📚') + '</span>';
+        html += '<div>';
+        html += '<div class="unit-title">' + unit.title + '</div>';
+        html += '<div class="unit-desc">' + (unit.description || '') + '</div>';
+        html += '</div></div>';
+        html += '<div class="lesson-list">';
+        for (var li = 0; li < unit.lessons.length; li++) {
+          html += lessonItem(unit.lessons[li]);
+        }
+        html += '</div></div>';
+      }
+      html += '</div>';
+    }
+    map.innerHTML = html;
+
+    // Scroll to recommended level
+    if (recommended) {
+      var el = document.getElementById('level-' + recommended);
+      if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300);
+    }
   }
 
   function lessonItem(lesson) {
     if (lesson.completed) {
-      return `<a href="/lesson/${lesson.id}" class="lesson-item completed">
-        <span class="lesson-icon">✅</span>
-        <span class="lesson-title">${lesson.title}</span>
-        <span class="lesson-xp">+${lesson.xp_reward} XP</span>
-      </a>`;
+      return '<a href="/lesson/' + lesson.id + '" class="lesson-item completed">' +
+        '<span class="lesson-icon">✅</span>' +
+        '<span class="lesson-title">' + lesson.title + '</span>' +
+        '<span class="lesson-xp">+' + lesson.xp_reward + ' XP</span></a>';
     }
     if (lesson.unlocked) {
-      return `<a href="/lesson/${lesson.id}" class="lesson-item unlocked">
-        <span class="lesson-icon">▶</span>
-        <span class="lesson-title">${lesson.title}</span>
-        <span class="lesson-xp">+${lesson.xp_reward} XP</span>
-      </a>`;
+      return '<a href="/lesson/' + lesson.id + '" class="lesson-item unlocked">' +
+        '<span class="lesson-icon">▶</span>' +
+        '<span class="lesson-title">' + lesson.title + '</span>' +
+        '<span class="lesson-xp">+' + lesson.xp_reward + ' XP</span></a>';
     }
-    return `<div class="lesson-item locked">
-      <span class="lesson-icon">🔒</span>
-      <span class="lesson-title">${lesson.title}</span>
-      <span class="lesson-xp">+${lesson.xp_reward} XP</span>
-    </div>`;
+    return '<div class="lesson-item locked">' +
+      '<span class="lesson-icon">🔒</span>' +
+      '<span class="lesson-title">' + lesson.title + '</span>' +
+      '<span class="lesson-xp">+' + lesson.xp_reward + ' XP</span></div>';
   }
 
   init();

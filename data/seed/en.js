@@ -12,6 +12,8 @@ module.exports = {
       icon: '👋',
       order_num: 1,
       level: 'A1',
+      grammar_note: 'คำทักทายพื้นฐาน:\n• Hello / Hi = สวัสดี (Hi ไม่ทางการกว่า)\n• Goodbye / Bye = ลาก่อน\n• Thank you / Thanks = ขอบคุณ\n• Sorry / Excuse me = ขอโทษ\n• Please = กรุณา\n\nรูปประโยค: [คำทักทาย], my name is [ชื่อ]. เช่น Hello, my name is Sara.',
+      cultural_note: 'คนอังกฤษและอเมริกันจะทักทายกันด้วย "How are you?" หรือ "How\'s it going?" แต่ไม่ได้ถามจริง — ตอบแค่ "Fine, thanks!" หรือ "Good, you?" ก็พอ',
       lessons: [
         {
           title: 'Hello & Goodbye',
@@ -66,6 +68,8 @@ module.exports = {
       icon: '🔢',
       order_num: 2,
       level: 'A1',
+      grammar_note: 'ตัวเลข 1-10:\none · two · three · four · five · six · seven · eight · nine · ten\n\nถามจำนวน: How many [คำนามพหูพจน์]? เช่น How many cats? → Three cats.\nตัวเลขอยู่หน้าคำนาม: two dogs, five books',
+      cultural_note: 'ตัวเลข 13 (thirteen) และ 30 (thirty) ออกเสียงใกล้เคียงกัน ฟังให้ดี — 13 เน้น -TEEN, 30 เน้น THIR-',
       lessons: [
         {
           title: '1 to 5',
@@ -120,6 +124,8 @@ module.exports = {
       icon: '🐾',
       order_num: 3,
       level: 'A2',
+      grammar_note: 'คำนามเอกพจน์/พหูพจน์:\n• a/an + เอกพจน์: a cat, an elephant\n• เติม -s/-es: cats, dogs, foxes\n• ผิดปกติ: mouse→mice, fish→fish\n\nคำคุณศัพท์อยู่หน้าคำนาม: a big dog, a small cat\nกริยา to be: The dog is big. The cats are small.',
+      cultural_note: 'สัตว์เลี้ยงยอดนิยมในอังกฤษ/อเมริกาคือสุนัขและแมว — มักถูกมองเป็นสมาชิกครอบครัว ไม่ใช่แค่สัตว์เลี้ยง',
       lessons: [
         {
           title: 'Pets',
@@ -174,6 +180,8 @@ module.exports = {
       icon: '🍜',
       order_num: 4,
       level: 'A2',
+      grammar_note: 'สั่งอาหาร/ถามความชอบ:\n• I\'d like... / Can I have...? = ขอ...\n• Would you like...? = อยากได้...ไหม?\n• I like / I don\'t like + noun\n\nนับไม่ได้ (uncountable): water, rice, milk → some water, a glass of milk\nนับได้ (countable): apple → an apple, two apples',
+      cultural_note: 'ในร้านอาหารอังกฤษ/อเมริกา ทิปประมาณ 15-20% เป็นมารยาทปกติ และพนักงานจะไม่เติมน้ำให้อัตโนมัติ ต้องขอเอง',
       lessons: [
         {
           title: 'Fruits',

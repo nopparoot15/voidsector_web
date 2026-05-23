@@ -45,6 +45,13 @@ router.get('/learn/:langCode', requireLogin, (req, res) => {
   res.render('pages/learn', { title: 'เรียน ' + names[langCode], langCode });
 });
 
+router.get('/placement/:langCode', requireLogin, (req, res) => {
+  const { langCode } = req.params;
+  const names = { en: 'English', ja: 'Japanese', zh: 'Chinese' };
+  if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
+  res.render('pages/placement', { title: 'Placement Test — ' + names[langCode], langCode });
+});
+
 router.get('/lesson/:lessonId', requireLogin, async (req, res) => {
   try {
     const lessonId = parseInt(req.params.lessonId);

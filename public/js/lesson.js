@@ -36,8 +36,23 @@
       const res = await fetch(`/api/lesson/${lessonId}`);
       const data = await res.json();
       exercises = data.exercises || [];
+      const lesson = data.lesson || {};
 
-      if (lessonTitleEl && data.lesson) lessonTitleEl.textContent = data.lesson.title;
+      if (lessonTitleEl) lessonTitleEl.textContent = lesson.title || '';
+
+      // Grammar note
+      if (lesson.grammar_note) {
+        const sec = document.getElementById('grammar-note-section');
+        const txt = document.getElementById('grammar-note-text');
+        if (sec && txt) { txt.textContent = lesson.grammar_note; sec.classList.remove('hidden'); }
+      }
+
+      // Cultural note
+      if (lesson.cultural_note) {
+        const sec = document.getElementById('cultural-note-section');
+        const txt = document.getElementById('cultural-note-text');
+        if (sec && txt) { txt.textContent = lesson.cultural_note; sec.classList.remove('hidden'); }
+      }
 
       buildVocabTable(exercises);
       showIntro();

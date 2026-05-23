@@ -8,7 +8,10 @@
     <div id="lang-header" class="lang-header">
       <a href="/home" class="back-link">← กลับ</a>
       <div id="lang-title" class="lang-title-text"></div>
-      <a href="/flashcards/<%= langCode %>" class="btn-outline">🃏 Flashcard</a>
+      <div class="lang-header-actions">
+        <a href="/placement/<%= langCode %>" class="btn-outline btn-sm">🎯 หาระดับของฉัน</a>
+        <a href="/flashcards/<%= langCode %>" class="btn-outline btn-sm">🃏 Flashcard</a>
+      </div>
     </div>
     <div id="unit-map" class="unit-map">
       <div class="loading">กำลังโหลด...</div>

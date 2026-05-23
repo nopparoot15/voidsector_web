@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <title>VOIDSECTOR | Placement Test</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="placement-main">
+
+  <div id="placement-page" data-lang="<%= langCode %>">
+
+    <!-- Start screen -->
+    <div id="pt-start" class="pt-card">
+      <div class="pt-icon">🎯</div>
+      <h1 id="pt-lang-title">Placement Test</h1>
+      <p class="pt-desc">ทดสอบระดับภาษาของคุณ — ตอบคำถาม 15 ข้อ แล้วเราจะแนะนำระดับที่เหมาะกับคุณ</p>
+      <div class="pt-info-row">
+        <span>⏱ ประมาณ 5 นาที</span>
+        <span>❓ 15 ข้อ</span>
+        <span>🎯 ไม่มีผลต่อคะแนน</span>
+      </div>
+      <button id="pt-start-btn" class="btn-primary btn-lg">เริ่มทดสอบ →</button>
+      <a href="/learn/<%= langCode %>" class="pt-skip">ข้ามไปเรียนเลย</a>
+    </div>
+
+    <!-- Quiz screen -->
+    <div id="pt-quiz" class="pt-card hidden">
+      <div class="pt-progress-wrap">
+        <div class="pt-progress-bar"><div id="pt-bar"></div></div>
+        <span id="pt-counter">1 / 15</span>
+      </div>
+      <div id="pt-level-tag" class="pt-level-tag"></div>
+      <div id="pt-question" class="pt-question"></div>
+      <div id="pt-options" class="pt-options"></div>
+    </div>
+
+    <!-- Result screen -->
+    <div id="pt-result" class="pt-card hidden">
+      <div class="pt-icon">🏆</div>
+      <div class="pt-result-label">ระดับของคุณคือ</div>
+      <div id="pt-result-level" class="pt-result-level"></div>
+      <div id="pt-result-desc" class="pt-result-desc"></div>
+      <div class="pt-result-detail">
+        <div id="pt-result-score"></div>
+      </div>
+      <a id="pt-go-learn" href="/learn/<%= langCode %>" class="btn-primary btn-lg">เริ่มเรียนระดับนี้ →</a>
+      <button id="pt-retry" class="pt-skip">ทำใหม่</button>
+    </div>
+
+  </div>
+
+</main>
+<script>const PT_LANG = '<%= langCode %>';</script>
+<script src="/js/placement.js"></script>
+</body>
+</html>

@@ -6,7 +6,7 @@
 <main class="hub-main">
   <div class="section-header">
     <h1>🌐 เรียนภาษา</h1>
-    <p class="section-sub">เลือกภาษาที่ต้องการฝึก — มีบทเรียนอินเตอร์แอคทีฟและ Flashcard SRS</p>
+    <p class="section-sub">เลือกภาษาที่ต้องการฝึก — เรียนตามระดับ CEFR / JLPT / HSK · Grammar Notes · Cultural Notes · Flashcard SRS</p>
   </div>
 
   <% if (!user) { %>
@@ -15,6 +15,17 @@
     <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
       <a href="/register" class="btn-primary">สมัครฟรี</a>
       <a href="/login" class="btn-outline">เข้าสู่ระบบ</a>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (user) { %>
+  <div class="placement-banner">
+    <span>ไม่รู้จะเริ่มระดับไหน?</span>
+    <div class="placement-banner-links">
+      <a href="/placement/en" class="placement-banner-btn">🎯 EN Test</a>
+      <a href="/placement/ja" class="placement-banner-btn">🎯 JA Test</a>
+      <a href="/placement/zh" class="placement-banner-btn">🎯 ZH Test</a>
     </div>
   </div>
   <% } %>
