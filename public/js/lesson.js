@@ -70,6 +70,18 @@
     const seen = new Set();
     const hasThai = s => /[฀-๿]/.test(s);
 
+    // Build reading lookup from translate exercises so match_pairs can share readings
+    const readingMap = {};
+    if (langCode !== 'en') {
+      for (const ex of exs) {
+        if (ex.type === 'translate') {
+          const w = String(ex.data.answer || '').trim();
+          const h = String(ex.data.hint || '').trim();
+          if (w && h) readingMap[w] = h;
+        }
+      }
+    }
+
     for (const ex of exs) {
       const d = ex.data;
       if (ex.type === 'match_pairs') {
@@ -82,7 +94,7 @@
           const key = p.left + '|' + p.right;
           if (!seen.has(key)) {
             seen.add(key);
-            rows.push({ word: p.left, reading: '', meaning: p.right });
+            rows.push({ word: p.left, reading: readingMap[p.left] || '', meaning: p.right });
           }
         }
       } else if (ex.type === 'translate') {
