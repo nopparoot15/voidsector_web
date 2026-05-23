@@ -49,7 +49,7 @@ router.get('/register', (req, res) => {
 
 router.get('/learn/:langCode', requireLogin, (req, res) => {
   const { langCode } = req.params;
-  const names = { en: 'English', ja: 'Japanese', zh: 'Chinese', math: 'คณิตศาสตร์' };
+  const names = { en: 'English', ja: 'Japanese', zh: 'Chinese', math: 'คณิตศาสตร์', py: 'Python', js: 'JavaScript', cs: 'C#' };
   if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
   res.render('pages/learn', { title: 'เรียน ' + names[langCode], langCode });
 });

@@ -3,6 +3,9 @@ const en = require('./en');
 const ja = require('./ja');
 const zh = require('./zh');
 const math = require('./math');
+const py = require('./python');
+const js = require('./javascript');
+const cs = require('./csharp');
 const enExtra = require('./en_extra');
 const jaExtra = require('./ja_extra');
 const zhExtra = require('./zh_extra');
@@ -29,6 +32,9 @@ const langs = [
   { ...ja, units: mergedUnits(ja, [...jaExtra, ...jaExtra2, ...jaExtra3, ...jaExtra4]) },
   { ...zh, units: mergedUnits(zh, [...zhExtra, ...zhExtra2, ...zhExtra3, ...zhExtra4]) },
   math,
+  py,
+  js,
+  cs,
 ];
 
 // Order-num migration: moves units from sequential 1-17 to spaced multiples
