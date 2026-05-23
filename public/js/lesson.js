@@ -811,11 +811,16 @@
       }
     }
     if (feedbackBody) feedbackBody.innerHTML = bodyHtml;
-    continueBtn.textContent = current + 1 >= exercises.length ? 'ดูผลลัพธ์' : 'ถัดไป →';
+    if (lives === 0) {
+      continueBtn.textContent = 'ดูผล 💔';
+    } else {
+      continueBtn.textContent = current + 1 >= exercises.length ? 'ดูผลลัพธ์' : 'ถัดไป →';
+    }
   }
 
   continueBtn.addEventListener('click', () => {
     feedbackPanel.className = '';
+    if (lives === 0) { showGameOver(); return; }
     current++;
     setTimeout(renderExercise, 300);
   });
@@ -882,6 +887,39 @@
       });
     }
   }
+
+  // ── Game Over ────────────────────────────────────────────────────────
+  function showGameOver() {
+    document.body.classList.remove('exercise-mode');
+    const heartsEl = document.getElementById('hearts-display');
+    if (heartsEl) heartsEl.classList.add('hidden');
+    container.classList.add('hidden');
+    const goScreen = document.getElementById('game-over-screen');
+    if (!goScreen) return;
+    goScreen.classList.remove('hidden');
+    document.getElementById('go-back-btn').href = '/learn/' + langCode;
+
+    const reviewSection = document.getElementById('go-wrong-review');
+    if (reviewSection && wrongAnswers.length > 0) {
+      reviewSection.innerHTML = `
+        <div class="wrong-review">
+          <div class="wrong-review-title">📝 ข้อที่ตอบผิด (${wrongAnswers.length} ข้อ)</div>
+          ${wrongAnswers.map(wa => `
+            <div class="wrong-review-item">
+              <div class="wr-prompt">${esc(wa.prompt)}</div>
+              <div class="wr-answer">
+                <span class="wr-correct-label">✓</span>
+                <strong>${esc(wa.correctAnswer)}</strong>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    }
+  }
+
+  document.getElementById('go-retry-btn')?.addEventListener('click', () => {
+    window.location.reload();
+  });
 
   // ── Helpers ──────────────────────────────────────────────────────────
   function normalize(s) { return String(s).toLowerCase().trim().replace(/\s+/g, ' '); }

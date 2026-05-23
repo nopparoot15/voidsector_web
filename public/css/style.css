@@ -1234,6 +1234,22 @@ main { padding-top: var(--topbar-h); }
 .wr-answer { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
 .wr-correct-label { color: var(--success); font-size: 14px; }
 
+/* ===== GAME OVER SCREEN ===== */
+#game-over-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(13,13,20,0.97);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+#game-over-screen.hidden { display: none; }
+.game-over-card { border: 1px solid rgba(239,68,68,0.25); box-shadow: 0 0 40px rgba(239,68,68,0.15); }
+.go-icon { font-size: 56px; margin-bottom: 12px; animation: heart-lose 0.4s ease; }
+.go-sub { color: var(--muted); font-size: 15px; margin-top: -12px; margin-bottom: 4px; }
+
 /* ===== COMPLETION ACTIONS ===== */
 .completion-actions {
   display: flex; flex-direction: column; gap: 10px; margin-top: 20px;

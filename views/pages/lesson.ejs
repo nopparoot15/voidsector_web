@@ -97,6 +97,20 @@
 
 </div>
 
+<!-- ─── GAME OVER SCREEN ──────────────────────────────────────────── -->
+<div id="game-over-screen" class="hidden">
+  <div class="completion-card game-over-card">
+    <div class="go-icon">💔</div>
+    <h2 id="go-title">หมดแรงแล้ว</h2>
+    <p class="go-sub">หัวใจหมด — ลองใหม่อีกครั้งนะ</p>
+    <div id="go-wrong-review"></div>
+    <div class="completion-actions">
+      <button id="go-retry-btn" class="btn-primary btn-lg">ลองใหม่ 🔄</button>
+      <a id="go-back-btn" href="/learn/<%= langCode %>" class="btn-outline btn-lg">กลับไปเรียน</a>
+    </div>
+  </div>
+</div>
+
 <!-- ─── COMPLETION SCREEN ─────────────────────────────────────────── -->
 <div id="completion-screen" class="hidden">
   <div class="completion-card">
