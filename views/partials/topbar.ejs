@@ -1,15 +1,19 @@
 <header class="topbar">
-  <a href="/" class="logo">⬡ VoidSector</a>
+  <a href="/" class="logo">
+    <span class="logo-dot"></span>
+    VoidSector
+  </a>
   <nav class="topbar-nav">
-    <a href="/languages" class="nav-link">🌐 ภาษา</a>
-    <a href="/coding" class="nav-link">💻 Coding</a>
-    <a href="/games" class="nav-link">🎮 เกม</a>
-    <a href="/music" class="nav-link">🎵 ดนตรี</a>
+    <a href="/languages" class="nav-link">ภาษา</a>
+    <a href="/coding" class="nav-link">Coding</a>
+    <a href="/games" class="nav-link">เกม</a>
+    <a href="/music" class="nav-link">ดนตรี</a>
+    <a href="/leaderboard" class="nav-link">Leaderboard</a>
   </nav>
   <div class="topbar-right">
     <% if (user) { %>
-      <span class="streak-badge">🔥 <%= user.streak || 0 %></span>
-      <span class="xp-badge">⚡ <%= user.xp || 0 %></span>
+      <span class="streak-badge"><%= user.streak || 0 %> day streak</span>
+      <span class="xp-badge"><%= (user.xp || 0).toLocaleString() %> XP</span>
       <a href="/profile" class="nav-link user-link"><%= user.username %></a>
       <a href="/logout" class="btn-outline btn-sm">ออก</a>
     <% } else { %>

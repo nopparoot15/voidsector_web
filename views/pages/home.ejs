@@ -6,52 +6,56 @@
 <main class="hub-main">
 
   <section class="hub-hero">
-    <div class="hub-avatar">🧂</div>
-    <h1 class="hub-name">salty</h1>
-    <p class="hub-bio">ยินดีต้อนรับกลับ, <strong><%= user.username %></strong> 👋</p>
     <% const xp = user.xp || 0; const streak = user.streak || 0; const level = Math.floor(Math.sqrt(xp / 100)) + 1; %>
+    <p class="hub-welcome">ยินดีต้อนรับกลับ</p>
+    <h1 class="hub-name"><%= user.username %></h1>
     <div class="hub-user-stats">
-      <span class="stat-pill">🔥 <%= streak %> วัน</span>
-      <span class="stat-pill">⚡ <%= xp %> XP</span>
-      <span class="stat-pill">🏅 Lv.<%= level %></span>
+      <span class="stat-pill">
+        <span class="stat-pill-label">Streak</span>
+        <strong><%= streak %> วัน</strong>
+      </span>
+      <span class="stat-pill">
+        <span class="stat-pill-label">XP</span>
+        <strong><%= xp.toLocaleString() %></strong>
+      </span>
+      <span class="stat-pill">
+        <span class="stat-pill-label">Level</span>
+        <strong><%= level %></strong>
+      </span>
     </div>
   </section>
 
   <section class="hub-grid">
     <a href="/languages" class="hub-card hub-card--lang">
-      <div class="hub-card-icon">🌐</div>
       <div class="hub-card-body">
         <h2>เรียนภาษา</h2>
-        <p>English · 日本語 · 中文<br>บทเรียน + Flashcard SRS + XP</p>
+        <p>English · 日本語 · 中文 — บทเรียน Flashcard SRS XP</p>
       </div>
-      <div class="hub-card-arrow">→</div>
+      <span class="hub-card-arrow">→</span>
     </a>
 
     <a href="/coding" class="hub-card hub-card--code">
-      <div class="hub-card-icon">💻</div>
       <div class="hub-card-body">
         <h2>Coding</h2>
         <p>โปรเจกต์ · ภาษาที่ใช้ · สิ่งที่กำลังทำ</p>
       </div>
-      <div class="hub-card-arrow">→</div>
+      <span class="hub-card-arrow">→</span>
     </a>
 
     <a href="/games" class="hub-card hub-card--games">
-      <div class="hub-card-icon">🎮</div>
       <div class="hub-card-body">
         <h2>เกม & Anime</h2>
         <p>เกมที่เล่น · Anime ที่ดู · รายการโปรด</p>
       </div>
-      <div class="hub-card-arrow">→</div>
+      <span class="hub-card-arrow">→</span>
     </a>
 
     <a href="/music" class="hub-card hub-card--music">
-      <div class="hub-card-icon">🎵</div>
       <div class="hub-card-body">
         <h2>ดนตรี</h2>
         <p>เพลงที่ฟัง · เครื่องดนตรี · playlist</p>
       </div>
-      <div class="hub-card-arrow">→</div>
+      <span class="hub-card-arrow">→</span>
     </a>
   </section>
 
