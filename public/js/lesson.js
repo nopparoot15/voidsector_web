@@ -113,9 +113,53 @@
     '可爱':'kě ài','漂亮':'piào liang','一点儿':'yī diǎnr',
     // Body
     '头':'tóu','手':'shǒu','脚':'jiǎo','眼睛':'yǎn jīng','耳朵':'ěr duo','嘴':'zuǐ','鼻子':'bí zi',
+    // Maternal grandparents (zh base)
+    '外公':'wài gōng','外婆':'wài pó',
     // Extra common
     '帮':'bāng','游泳':'yóu yǒng','书包':'shū bāo','铅笔':'qiān bǐ',
-    '学习':'xué xí','练习':'liàn xí','复习':'fù xí'
+    '学习':'xué xí','练习':'liàn xí','复习':'fù xí',
+    // Daily routines (zh_extra)
+    '吃饭':'chī fàn','睡觉':'shuì jiào','起床':'qǐ chuáng',
+    // Home (zh_extra)
+    '房间':'fáng jiān','厨房':'chú fáng','卫生间':'wèi shēng jiān',
+    // Restaurant (zh_extra)
+    '菜单':'cài dān','服务员':'fú wù yuán','买单':'mǎi dān','好吃':'hǎo chī',
+    // Classifiers (zh_extra)
+    '条':'tiáo','个':'gè',
+    // Grammar markers (zh_extra)
+    '把':'bǎ','了':'le','过':'guò',
+    // Connectors (zh_extra)
+    '如果...就...':'rú guǒ...jiù...','因为...所以...':'yīn wèi...suǒ yǐ...',
+    '虽然...但是...':'suī rán...dàn shì','尽管...还是':'jǐn guǎn...hái shì',
+    '宁可...也不':'nìng kě...yě bù','既然':'jì rán',
+    // Chengyu (zh_extra)
+    '马到成功':'mǎ dào chéng gōng','一石二鸟':'yī shí èr niǎo',
+    '半途而废':'bàn tú ér fèi','活到老学到老':'huó dào lǎo xué dào lǎo',
+    // Formal / work (zh_extra)
+    '您好':'nín hǎo','请问':'qǐng wèn','合同':'hé tóng','会议':'huì yì','不得不':'bù dé bù',
+    // HSK5/6 (zh_extra2)
+    '与其...不如':'yǔ qí...bù rú','既然...就':'jì rán...jiù',
+    '之所以...是因为':'zhī suǒ yǐ...shì yīn wèi',
+    '据报道':'jù bào dào','舆论':'yú lùn','可持续':'kě chí xù','下行压力':'xià háng yā lì',
+    '综上所述':'zōng shàng suǒ shù','诚然':'chéng rán','反之':'fǎn zhī','鉴于':'jiàn yú',
+    '不可思议':'bù kě sī yì','实事求是':'shí shì qiú shì',
+    '与时俱进':'yǔ shí jù jìn','无可厚非':'wú kě hòu fēi',
+    '不失为':'bù shī wéi','毋庸置疑':'wú yōng zhì yí',
+    '言简意赅':'yán jiǎn yì gāi','姑且不论':'gū qiě bù lùn',
+    '曲折':'qū zhé','沧桑':'cāng sāng','字里行间':'zì lǐ háng jiān','苦中作乐':'kǔ zhōng zuò lè',
+    // Phrases from zh_extra3
+    '大红花':'dà hóng huā','小白猫':'xiǎo bái māo',
+    '黑色的车':'hēi sè de chē','黄色的大书':'huáng sè de dà shū',
+    // Transport & directions (zh_extra4)
+    '公共汽车':'gōng gòng qì chē','出租车':'chū zū chē','高铁':'gāo tiě',
+    '左转':'zuǒ zhuǎn','一直走':'yī zhí zǒu','对面':'duì miàn',
+    '然后':'rán hòu','路口':'lù kǒu','星期天':'xīng qī tiān','怎么样':'zěn me yàng',
+    // Sports & hobbies (zh_extra4)
+    '踢足球':'tī zú qiú','打篮球':'dǎ lán qiú','打乒乓球':'dǎ pīng pāng qiú',
+    '听音乐':'tīng yīn yuè','画画':'huà huà','弹钢琴':'tán gāng qín',
+    '好主意':'hǎo zhǔ yì','更喜欢':'gèng xǐ huān',
+    // Resultative verbs & connectors (zh_extra4)
+    '做好':'zuò hǎo','买到':'mǎi dào','除了...还':'chú le...hái'
   };
 
   var JA_ROMAJI = {
@@ -225,7 +269,34 @@
     // Sentence pattern words
     'がくせい':'gakusei','せんせい':'sensei',
     // Frequency
-    'しゅう':'shuu','まいばん':'maiban','いっかい':'ikkai','さんかい':'sankai'
+    'しゅう':'shuu','まいばん':'maiban','いっかい':'ikkai','さんかい':'sankai',
+    // Alternate number readings (ja base)
+    'なな':'nana','よん':'yon','きゅう':'kyuu',
+    // Katakana individual chars (ja_extra3)
+    'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+    // Missing demonstratives / question words
+    'どれ':'dore',
+    // Body parts not yet mapped
+    'あたま':'atama',
+    // Time approximation
+    '～ごろ':'~goro',
+    // Direction kanji (ja_extra4)
+    '上':'ue','下':'shita','左':'hidari','中':'naka',
+    // Day element kanji + reading pairs (ja_extra4)
+    '月 (月曜日)':'tsuki (getsuyoubi)','火 (火曜日)':'hi (kayoubi)',
+    '木 (木曜日)':'ki (mokuyoubi)','土 (土曜日)':'tsuchi (doyoubi)',
+    // N2 vocabulary (ja_extra4)
+    '普及':'fukyuu','移住':'ijuu','検討':'kentou','慎重':'shinchou',
+    // N1/N2 grammar patterns (ja_extra2)
+    'にもかかわらず':'ni mo kakawarazu','に反して':'ni han shite',
+    'に加えて':'ni kuwaete','をめぐって':'wo megutte',
+    'に際して':'ni saishite','を契機に':'wo keiki ni',
+    'に基づいて':'ni motozuite','とともに':'to tomo ni',
+    'いかんにかかわらず':'ikan ni kakawarazu','をもって':'wo motte',
+    'ならでは':'nara dewa','に足る':'ni taru',
+    '建前':'tatemae','本音':'honne','忖度':'sontaku','侘び寂び':'wabi-sabi',
+    'に先立って':'ni sakidatte','をよそに':'wo yoso ni',
+    'ともなると':'to mo naru to','かたわら':'katawara'
   };
 
   // ── Intro / Vocab table ─────────────────────────────────────────────
