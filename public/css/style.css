@@ -461,6 +461,7 @@ main { padding-top: var(--topbar-h); }
   background: var(--card); border: 1px solid var(--border); border-radius: 20px;
   padding: 32px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px;
   cursor: pointer; text-align: center; transition: all 0.2s; position: relative; overflow: hidden;
+  color: var(--text);
 }
 .learn-cat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:20px 20px 0 0; }
 .learn-cat-card--lang::before  { background: #6366f1; }
