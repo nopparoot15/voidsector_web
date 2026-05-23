@@ -63,7 +63,7 @@
     }
   }
 
-  // ── Static reading fallback for ZH characters not covered by translate exercises ──
+  // ── Static reading fallbacks ──────────────────────────────────────────
   var ZH_PINYIN = {
     '人':'rén','大':'dà','小':'xiǎo','好':'hǎo','水':'shuǐ','山':'shān','火':'huǒ',
     '日':'rì','月':'yuè','天':'tiān','爱':'ài','美':'měi','木':'mù','土':'tǔ',
@@ -94,65 +94,145 @@
     '一起':'yī qǐ','一下':'yī xià','一些':'yī xiē','一样':'yī yàng'
   };
 
+  var JA_ROMAJI = {
+    // Greetings & Politeness
+    'おはようございます':'ohayou gozaimasu','おはよう':'ohayou','こんにちは':'konnichiwa',
+    'こんばんは':'konbanwa','おやすみ':'oyasumi','おやすみなさい':'oyasumi nasai',
+    'さようなら':'sayounara','またね':'mata ne','じゃあね':'jaa ne',
+    'ありがとうございます':'arigatou gozaimasu','ありがとう':'arigatou',
+    'どういたしまして':'douitashimashite','すみません':'sumimasen',
+    'ごめんなさい':'gomen nasai','はい':'hai','いいえ':'iie',
+    'どうぞ':'douzo','どうも':'doumo','よろしくおねがいします':'yoroshiku onegaishimasu',
+    'はじめまして':'hajimemashite','おげんきですか':'ogenki desu ka',
+    'げんきです':'genki desu','わかりました':'wakarimashita','わかりません':'wakarimasen',
+    'そうです':'sou desu','ちがいます':'chigaimasu',
+    // Numbers
+    'いち':'ichi','に':'ni','さん':'san','し':'shi','ご':'go',
+    'ろく':'roku','しち':'shichi','はち':'hachi','く':'ku','じゅう':'juu',
+    'ひゃく':'hyaku','せん':'sen','まん':'man',
+    // Animals & Nature
+    'いぬ':'inu','ねこ':'neko','とり':'tori','さかな':'sakana','うま':'uma',
+    'はな':'hana','き':'ki','やま':'yama','かわ':'kawa','うみ':'umi','そら':'sora',
+    // Food & Drink
+    'たべもの':'tabemono','のみもの':'nomimono','みず':'mizu','おちゃ':'ocha',
+    'コーヒー':'koohii','ごはん':'gohan','パン':'pan','にく':'niku','やさい':'yasai',
+    'すし':'sushi','ラーメン':'raamen','てんぷら':'tenpura','たまご':'tamago',
+    'くだもの':'kudamono','りんご':'ringo','バナナ':'banana','みかん':'mikan',
+    // Places
+    'がっこう':'gakkou','かいしゃ':'kaisha','びょういん':'byouin','みせ':'mise',
+    'レストラン':'resutoran','えき':'eki','くうこう':'kuukou','ホテル':'hoteru',
+    'としょかん':'toshokan','ゆうびんきょく':'yuubinkyoku','ぎんこう':'ginkou',
+    // Family
+    'ちち':'chichi','はは':'haha','あに':'ani','あね':'ane','おとうと':'otouto',
+    'いもうと':'imouto','そふ':'sofu','そぼ':'sobo','かぞく':'kazoku',
+    'おとうさん':'otousan','おかあさん':'okaasan','おにいさん':'oniisan',
+    'おねえさん':'oneesan','おとうとさん':'otoutosan','いもうとさん':'imoutosan',
+    // People
+    'ともだち':'tomodachi','せんせい':'sensei','がくせい':'gakusei',
+    'わたし':'watashi','あなた':'anata','かれ':'kare','かのじょ':'kanojo',
+    'かれら':'karera','わたしたち':'watashitachi',
+    // Adjectives
+    'たかい':'takai','ひくい':'hikui','おおきい':'ookii','ちいさい':'chiisai',
+    'あたらしい':'atarashii','ふるい':'furui','たのしい':'tanoshii','むずかしい':'muzukashii',
+    'おもしろい':'omoshiroi','つまらない':'tsumaranai','きれい':'kirei','きたない':'kitanai',
+    'おいしい':'oishii','まずい':'mazui','あつい':'atsui','さむい':'samui',
+    'やすい':'yasui','たのしい':'tanoshii','うれしい':'ureshii',
+    'かなしい':'kanashii','こわい':'kowai','いそがしい':'isogashii',
+    'げんき':'genki','しずか':'shizuka','にぎやか':'nigiyaka','べんり':'benri',
+    // Verbs (dictionary form)
+    'たべる':'taberu','のむ':'nomu','みる':'miru','きく':'kiku',
+    'いく':'iku','くる':'kuru','かう':'kau','かえる':'kaeru',
+    'はなす':'hanasu','よむ':'yomu','かく':'kaku','べんきょうする':'benkyou suru',
+    'おきる':'okiru','ねる':'neru','しごとする':'shigoto suru',
+    // Verbs (masu form)
+    'たべます':'tabemasu','のみます':'nomimasu','いきます':'ikimasu','みます':'mimasu',
+    'かいます':'kaimasu','かえります':'kaerimasu','おきます':'okimasu',
+    'ねます':'nemasu','はなします':'hanashimasu','よみます':'yomimasu',
+    'かきます':'kakimasu','べんきょうします':'benkyou shimasu','します':'shimasu',
+    'きます':'kimasu','いらっしゃいます':'irasshaimasu',
+    // Verbs (special)
+    'いらっしゃいませ':'irasshaimase',
+    // Time
+    'きょう':'kyou','あした':'ashita','きのう':'kinou','あさ':'asa','ひる':'hiru','よる':'yoru',
+    'いま':'ima','まえ':'mae','あと':'ato','まいにち':'mainichi','まいあさ':'maiasa',
+    'まいばん':'maiban','らいしゅう':'raishuu','せんしゅう':'senshuu',
+    'げつようび':'getsuyoubi','かようび':'kayoubi','すいようび':'suiyoubi',
+    'もくようび':'mokuyoubi','きんようび':'kin-youbi','どようび':'doyoubi','にちようび':'nichiyoubi',
+    // Countries & Language
+    'にほん':'nihon','タイ':'tai','にほんご':'nihongo','えいご':'eigo','ちゅうごく':'chuugoku',
+    // Pronouns & Demonstratives
+    'これ':'kore','それ':'sore','あれ':'are','ここ':'koko','そこ':'soko','あそこ':'asoko',
+    'この':'kono','その':'sono','あの':'ano',
+    // Question words
+    'なに':'nani','いつ':'itsu','どこ':'doko','だれ':'dare','どうして':'doushite',
+    'いくら':'ikura','いくつ':'ikutsu','どう':'dou','どんな':'donna',
+    // Common expressions
+    'すき':'suki','きらい':'kirai','じょうず':'jouzu','へた':'heta',
+    'からい':'karai','あまい':'amai','しょっぱい':'shoppai',
+    // Particles (for vocab table)
+    'は':'wa (topic)','が':'ga (subject)','を':'wo (object)','に':'ni (direction/time)','で':'de (place/means)',
+    'も':'mo (also)','と':'to (and/with)','の':'no (possessive)','か':'ka (question)',
+    // Shopping
+    'おかいけい':'okaikei','いくらですか':'ikura desu ka','やすい':'yasui',
+    // Grammar patterns (N4+)
+    'たいです':'tai desu','かもしれません':'kamoshiremasen','とおもいます':'to omoimasu',
+    'てもいいです':'temo ii desu','なければなりません':'nakereba narimasen',
+    'けいけん':'keiken','きかい':'kikai','もくひょう':'mokuhyou','どりょく':'doryoku',
+    // Business (N2+)
+    'かねます':'kanemasu','さいわいです':'saiwai desu','おせわになっております':'osewa ni natte orimasu'
+  };
+
   // ── Intro / Vocab table ─────────────────────────────────────────────
   function buildVocabTable(exs) {
     if (!vocabTableBody) return;
     const rows = [];
-    const seen = new Set();
-    // Thai block U+0E00-U+0E7F — charCodeAt avoids any regex encoding issues
+    const seenWords = new Set();
+    // U+0E00-U+0E7F = Thai block
     const hasThai = s => { for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); if (c >= 0x0E00 && c <= 0x0E7F) return true; } return false; };
-    // Pure lowercase romaji check — used to skip JA hiragana phonetic drills (あ→a)
-    const isPureRomaji = s => /^[a-z]+$/.test(s.trim());
+    // U+3040-U+30FF = hiragana/katakana, U+4E00-U+9FFF = CJK — if hint has these, it's NOT romaji/pinyin
+    const hasJpChar = s => { for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); if ((c >= 0x3040 && c <= 0x30FF) || (c >= 0x4E00 && c <= 0x9FFF)) return true; } return false; };
 
-    // Build reading lookup: start with static fallback, then translate exercises override
+    // Build reading lookup: static fallbacks first, lesson's translate hints override
     var readingMap = {};
-    if (langCode === 'zh') {
-      for (var k in ZH_PINYIN) readingMap[k] = ZH_PINYIN[k];
-    }
+    if (langCode === 'zh') { for (var k in ZH_PINYIN) readingMap[k] = ZH_PINYIN[k]; }
+    if (langCode === 'ja') { for (var k in JA_ROMAJI) readingMap[k] = JA_ROMAJI[k]; }
     if (langCode !== 'en') {
       for (const ex of exs) {
-        if (ex.type === 'translate') {
-          const w = String(ex.data.answer || '').trim();
-          const h = String(ex.data.hint || '').trim();
-          if (w && h) readingMap[w] = h;
-        }
+        if (ex.type !== 'translate') continue;
+        const w = String(ex.data.answer || '').trim();
+        const h = String(ex.data.hint || '').trim();
+        // Only store as reading if hint is romaji/pinyin (no Japanese/Chinese characters)
+        if (w && h && !hasJpChar(h)) readingMap[w] = h;
       }
     }
 
+    // Pass 1: translate exercises (word + reading + meaning explicit)
     for (const ex of exs) {
+      if (ex.type !== 'translate') continue;
       const d = ex.data;
-      if (ex.type === 'match_pairs') {
-        const pairs = (d.pairs || []).map(p =>
-          Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
-        );
-        for (const p of pairs) {
-          const r = String(p.right || '').trim();
-          // EN: skip antonym/English-only pairs (right has no Thai)
-          if (langCode === 'en' && !hasThai(r)) continue;
-          // JA: skip pure hiragana phonetic drills (right is pure romaji like 'a', 'ka')
-          if (langCode === 'ja' && isPureRomaji(r)) continue;
-          // Must have some meaningful meaning to show
-          if (!r) continue;
-          const key = p.left + '|' + r;
-          if (!seen.has(key)) {
-            seen.add(key);
-            rows.push({ word: p.left, reading: readingMap[p.left] || '', meaning: r });
-          }
-        }
-      } else if (ex.type === 'translate') {
-        const word = String(d.answer || '').trim();
-        const meaning = String(d.prompt || '').trim();
-        const rawHint = String(d.hint || '').trim();
-        // skip if too long (sentence-level entries)
-        if (!word || word.length > 60 || meaning.length > 80) continue;
-        // for EN: reading column stays empty (hint is a Thai category label, not phonetics)
-        // for JA/ZH: hint is romaji/pinyin — show it
-        const reading = (langCode === 'en') ? '' : rawHint;
-        const key = word + '|' + meaning;
-        if (!seen.has(key)) {
-          seen.add(key);
-          rows.push({ word, reading, meaning });
-        }
+      const word = String(d.answer || '').trim();
+      const meaning = String(d.prompt || '').trim();
+      if (!word || word.length > 60 || meaning.length > 80) continue;
+      if (langCode === 'ja' && word.includes(' ')) continue; // skip JA sentence-level entries
+      if (seenWords.has(word)) continue;
+      seenWords.add(word);
+      rows.push({ word, reading: langCode === 'en' ? '' : (readingMap[word] || ''), meaning });
+    }
+
+    // Pass 2: match_pairs — add words not covered by translate
+    for (const ex of exs) {
+      if (ex.type !== 'match_pairs') continue;
+      const pairs = (ex.data.pairs || []).map(p =>
+        Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
+      );
+      for (const p of pairs) {
+        const word = String(p.left || '').trim();
+        const meaning = String(p.right || '').trim();
+        if (!word || !meaning) continue;
+        if (!hasThai(meaning)) continue; // only show pairs that have Thai meaning
+        if (seenWords.has(word)) continue;
+        seenWords.add(word);
+        rows.push({ word, reading: langCode === 'en' ? '' : (readingMap[word] || ''), meaning });
       }
     }
 
@@ -161,7 +241,6 @@
       return;
     }
 
-    // Hide reading column header for EN (always empty)
     const readingTh = vocabTableBody.closest('table').querySelector('thead th:nth-child(2)');
     if (readingTh) readingTh.style.display = langCode === 'en' ? 'none' : '';
 
