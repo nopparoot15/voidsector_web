@@ -108,42 +108,53 @@
 }
 .pf-br { display: block; }
 
-.pf-stats {
+.pf-meta-block {
   display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 28px;
+  width: 360px;
+  max-width: 100%;
+}
+
+.pf-stats {
+  display: flex;
   align-items: center;
-  gap: 0;
+  justify-content: space-between;
   background: rgba(255,255,255,0.03);
   border: 1px solid #1c1c2e;
   border-radius: 12px;
-  padding: 14px 28px;
-  margin-bottom: 28px;
-  gap: 24px;
+  padding: 14px 24px;
 }
-.pf-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pf-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
 .pf-stat-n { font-size: 20px; font-weight: 800; color: #a5b4fc; line-height: 1; }
 .pf-stat-l { font-size: 11px; color: #52525b; font-weight: 500; letter-spacing: 0.04em; }
-.pf-stat-sep { width: 1px; height: 28px; background: #27272a; }
+.pf-stat-sep { width: 1px; height: 28px; background: #27272a; flex-shrink: 0; }
 
 .pf-contacts {
-  display: inline-flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 .pf-contact-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  padding: 9px 18px;
+  padding: 9px 12px;
   border: 1px solid #27272a;
   border-radius: 8px;
   background: rgba(255,255,255,0.03);
   color: #71717a;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   text-decoration: none;
   transition: border-color 0.2s, color 0.2s, background 0.2s;
   font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pf-contact-btn:hover {
   border-color: #6366f1;
