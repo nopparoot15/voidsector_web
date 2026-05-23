@@ -16,8 +16,8 @@ module.exports = [
         order_num: 1,
         xp_reward: 15,
         exercises: [
-          { type: 'multiple_choice', data: { question: "'たべます' (tabemasu) แปลว่าอะไร?", options: ['ดื่ม', 'กิน', 'นอน', 'เดิน'], correct: 1 } },
-          { type: 'multiple_choice', data: { question: "'いきます' (ikimasu) แปลว่าอะไร?", options: ['กลับ', 'อยู่', 'ไป', 'มา'], correct: 2 } },
+          { type: 'multiple_choice', data: { question: "กริยาใดต่อไปนี้เป็น Group 2 (る-verb) ที่แท้จริง?", options: ['かく (kaku)', 'のむ (nomu)', 'たべる (taberu)', 'はなす (hanasu)'], correct: 2 } },
+          { type: 'multiple_choice', data: { question: "masu-form ของ 'かく (to write)' คือ?", options: ['かきます', 'かくます', 'かけます', 'かいます'], correct: 0 } },
           { type: 'multiple_choice', data: { question: "ประโยคใดถูกต้อง? (ฉันไปโรงเรียน)", options: ['わたしは がっこうを いきます。', 'わたしは がっこうに いきます。', 'わたしを がっこうに いきます。', 'わたしが がっこうで いきます。'], correct: 1 } },
           { type: 'translate', data: { prompt: 'ฉันกินข้าว', hint: 'ごはんを', answer: 'ごはんを たべます', alternatives: ['ごはんをたべます'] } },
           { type: 'translate', data: { prompt: 'คุณดื่มน้ำไหม?', hint: 'みずを　のみますか', answer: 'みずを のみますか', alternatives: ['みずをのみますか'] } },
