@@ -201,19 +201,22 @@
 }
 .pf-card:hover { transform: translateY(-3px); }
 
-.pf-card--web::before { background: linear-gradient(90deg, transparent, #6366f1, transparent); }
-.pf-card--bot::before { background: linear-gradient(90deg, transparent, #7289da, transparent); }
-.pf-card--ai::before  { background: linear-gradient(90deg, transparent, #a78bfa, transparent); }
-.pf-card--tts::before { background: linear-gradient(90deg, transparent, #34d399, transparent); }
+.pf-card--web::before  { background: linear-gradient(90deg, transparent, #6366f1, transparent); }
+.pf-card--bot::before  { background: linear-gradient(90deg, transparent, #7289da, transparent); }
+.pf-card--ai::before   { background: linear-gradient(90deg, transparent, #a78bfa, transparent); }
+.pf-card--game::before { background: linear-gradient(90deg, transparent, #f59e0b, transparent); }
+.pf-card--tts::before  { background: linear-gradient(90deg, transparent, #34d399, transparent); }
 
-.pf-card--web:hover { border-color: rgba(99,102,241,0.35);  box-shadow: 0 8px 40px rgba(99,102,241,0.1); }
-.pf-card--bot:hover { border-color: rgba(114,137,218,0.35); box-shadow: 0 8px 40px rgba(114,137,218,0.1); }
-.pf-card--ai:hover  { border-color: rgba(167,139,250,0.35); box-shadow: 0 8px 40px rgba(167,139,250,0.1); }
-.pf-card--tts:hover { border-color: rgba(52,211,153,0.35);  box-shadow: 0 8px 40px rgba(52,211,153,0.1); }
+.pf-card--web:hover  { border-color: rgba(99,102,241,0.35);  box-shadow: 0 8px 40px rgba(99,102,241,0.1); }
+.pf-card--bot:hover  { border-color: rgba(114,137,218,0.35); box-shadow: 0 8px 40px rgba(114,137,218,0.1); }
+.pf-card--ai:hover   { border-color: rgba(167,139,250,0.35); box-shadow: 0 8px 40px rgba(167,139,250,0.1); }
+.pf-card--game:hover { border-color: rgba(245,158,11,0.35);  box-shadow: 0 8px 40px rgba(245,158,11,0.1); }
+.pf-card--tts:hover  { border-color: rgba(52,211,153,0.35);  box-shadow: 0 8px 40px rgba(52,211,153,0.1); }
 
 .pf-card--web:hover::before,
 .pf-card--bot:hover::before,
 .pf-card--ai:hover::before,
+.pf-card--game:hover::before,
 .pf-card--tts:hover::before { opacity: 1; }
 
 .pf-card-top {
