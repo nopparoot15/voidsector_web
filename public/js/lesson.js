@@ -11,9 +11,11 @@
   let userAnswer = null;
   let checked = false;
 
-  let matchSelected = { left: null, right: null };
   let matchPairs = [];
-  let matchDone = new Set();
+  let matchUserPairs = new Map();    // leftIdx → rightIdx
+  let matchRightAssigned = new Map(); // rightIdx → leftIdx
+  let matchSelectedLeft = null;
+  let matchRightsOrder = [];
 
   // Vocab rows and reading map exposed for flashcards and feedback
   let vocabRows = [];
@@ -384,8 +386,7 @@
       </tr>
     `).join('');
 
-    // Update start button label based on whether flashcards are available
-    if (startBtn) startBtn.textContent = 'ศึกษาคำศัพท์ก่อนเริ่ม →';
+    if (startBtn) startBtn.textContent = 'เริ่มทำแบบทดสอบ →';
   }
 
   function showIntro() {
@@ -472,10 +473,7 @@
   }
 
   if (startBtn) {
-    startBtn.addEventListener('click', () => {
-      if (vocabRows.length > 0) startFlashcards();
-      else startExercises();
-    });
+    startBtn.addEventListener('click', startExercises);
   }
 
   // ── Exercise loop ────────────────────────────────────────────────────
@@ -489,9 +487,11 @@
     if (current >= exercises.length) { showCompletion(); return; }
     userAnswer = null;
     checked = false;
-    matchSelected = { left: null, right: null };
     matchPairs = [];
-    matchDone = new Set();
+    matchUserPairs = new Map();
+    matchRightAssigned = new Map();
+    matchSelectedLeft = null;
+    matchRightsOrder = [];
     checkBtn.disabled = true;
     feedbackPanel.className = '';
     updateProgress();
@@ -683,63 +683,86 @@
     matchPairs = (d.pairs || []).map(p =>
       Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
     );
-
-    const lefts = matchPairs.map((p, i) => ({ text: p.left, idx: i }));
-    const rights = shuffle(matchPairs.map((p, i) => ({ text: p.right, idx: i })));
+    matchUserPairs = new Map();
+    matchRightAssigned = new Map();
+    matchSelectedLeft = null;
+    matchRightsOrder = shuffle(matchPairs.map((_, i) => i));
 
     exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
-    answerArea.innerHTML = `<div class="match-cols">
-      <div class="match-col" id="match-left">${lefts.map(l =>
-        `<button class="match-item" data-side="left" data-idx="${l.idx}">${esc(l.text)}</button>`
-      ).join('')}</div>
-      <div class="match-col" id="match-right">${rights.map(r =>
-        `<button class="match-item" data-side="right" data-idx="${r.idx}">${esc(r.text)}</button>`
-      ).join('')}</div>
-    </div>`;
-
-    answerArea.querySelectorAll('.match-item').forEach(btn => {
-      btn.addEventListener('click', () => matchClick(btn));
-    });
-    userAnswer = 'pending';
+    renderMatchGrid();
+    userAnswer = null;
     checkBtn.disabled = true;
   }
 
-  function matchClick(btn) {
-    if (btn.disabled || btn.classList.contains('matched')) return;
-    const side = btn.dataset.side;
-    const idx = parseInt(btn.dataset.idx);
+  function renderMatchGrid() {
+    const leftHtml = matchPairs.map((p, i) => {
+      const paired = matchUserPairs.has(i);
+      const colorCls = paired ? ` match-color-${matchUserPairs.get(i) % 6}` : '';
+      const selCls = matchSelectedLeft === i ? ' selected' : '';
+      return `<button class="match-item match-left${colorCls}${selCls}" data-side="left" data-idx="${i}">${esc(p.left)}</button>`;
+    }).join('');
 
-    const prev = answerArea.querySelector(`.match-item[data-side="${side}"].selected`);
-    if (prev) prev.classList.remove('selected');
-    matchSelected[side] = idx;
-    btn.classList.add('selected');
+    const rightHtml = matchRightsOrder.map(ri => {
+      const paired = matchRightAssigned.has(ri);
+      const colorCls = paired ? ` match-color-${ri % 6}` : '';
+      return `<button class="match-item match-right${colorCls}" data-side="right" data-idx="${ri}">${esc(matchPairs[ri].right)}</button>`;
+    }).join('');
 
-    if (matchSelected.left !== null && matchSelected.right !== null) {
-      const lIdx = matchSelected.left;
-      const rIdx = matchSelected.right;
-      const lBtn = answerArea.querySelector(`.match-item[data-side="left"][data-idx="${lIdx}"]`);
-      const rBtn = answerArea.querySelector(`.match-item[data-side="right"][data-idx="${rIdx}"]`);
+    answerArea.innerHTML = `<div class="match-cols">
+      <div class="match-col" id="match-left">${leftHtml}</div>
+      <div class="match-col" id="match-right">${rightHtml}</div>
+    </div>`;
 
-      if (lIdx === rIdx) {
-        lBtn.classList.remove('selected'); lBtn.classList.add('matched'); lBtn.disabled = true;
-        rBtn.classList.remove('selected'); rBtn.classList.add('matched'); rBtn.disabled = true;
-        matchDone.add(lIdx);
-        if (matchDone.size === matchPairs.length) {
-          score++;
-          userAnswer = 'done';
-          setTimeout(doCheck, 300);
-        }
-      } else {
-        lBtn.classList.remove('selected'); lBtn.classList.add('shake');
-        rBtn.classList.remove('selected'); rBtn.classList.add('shake');
-        setTimeout(() => { lBtn.classList.remove('shake'); rBtn.classList.remove('shake'); }, 500);
-      }
-      matchSelected = { left: null, right: null };
-    }
+    answerArea.querySelectorAll('.match-item[data-side="left"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = parseInt(btn.dataset.idx);
+        matchSelectedLeft = (matchSelectedLeft === i) ? null : i;
+        renderMatchGrid();
+      });
+    });
+    answerArea.querySelectorAll('.match-item[data-side="right"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (matchSelectedLeft === null) return;
+        const i = matchSelectedLeft;
+        const j = parseInt(btn.dataset.idx);
+        // Unlink old right from this left
+        if (matchUserPairs.has(i)) matchRightAssigned.delete(matchUserPairs.get(i));
+        // Unlink old left from this right
+        if (matchRightAssigned.has(j)) matchUserPairs.delete(matchRightAssigned.get(j));
+        matchUserPairs.set(i, j);
+        matchRightAssigned.set(j, i);
+        matchSelectedLeft = null;
+        renderMatchGrid();
+        checkBtn.disabled = matchUserPairs.size < matchPairs.length;
+        if (matchUserPairs.size === matchPairs.length) userAnswer = 'ready';
+      });
+    });
   }
 
   function checkMatchPairs() {
-    showFeedback(matchDone.size === matchPairs.length, '');
+    const wrongPairs = [];
+    matchUserPairs.forEach((rightIdx, leftIdx) => {
+      if (leftIdx !== rightIdx) wrongPairs.push(`${matchPairs[leftIdx].left} → ${matchPairs[leftIdx].right}`);
+    });
+    const allCorrect = wrongPairs.length === 0;
+    if (allCorrect) score++;
+
+    // Mark correct / wrong visually
+    answerArea.querySelectorAll('.match-item[data-side="left"]').forEach(btn => {
+      btn.disabled = true;
+      const li = parseInt(btn.dataset.idx);
+      btn.classList.remove('selected');
+      if (matchUserPairs.has(li)) btn.classList.add(li === matchUserPairs.get(li) ? 'matched' : 'match-wrong');
+    });
+    answerArea.querySelectorAll('.match-item[data-side="right"]').forEach(btn => {
+      btn.disabled = true;
+      const ri = parseInt(btn.dataset.idx);
+      btn.classList.remove('selected');
+      if (matchRightAssigned.has(ri)) btn.classList.add(ri === matchRightAssigned.get(ri) ? 'matched' : 'match-wrong');
+    });
+
+    const correctAnswer = wrongPairs.length > 0 ? wrongPairs.join(' | ') : '';
+    showFeedback(allCorrect, correctAnswer, 'จับคู่คำศัพท์');
   }
 
   // ── Check & Feedback ─────────────────────────────────────────────────

@@ -5,8 +5,8 @@
 <%- include('../partials/topbar') %>
 <main class="hub-main">
   <div class="section-header">
-    <h1>เรียนภาษา</h1>
-    <p class="section-sub">เรียนตามระดับ CEFR / JLPT / HSK · Grammar Notes · Cultural Notes · Flashcard SRS</p>
+    <h1>🎓 Learning</h1>
+    <p class="section-sub">เรียนภาษา · คณิตศาสตร์ · ภาษาคอมพิวเตอร์</p>
   </div>
 
   <% if (!user) { %>
@@ -19,60 +19,130 @@
   </div>
   <% } %>
 
-  <% if (user) { %>
-  <div class="placement-banner">
-    <span>ไม่รู้จะเริ่มระดับไหน?</span>
-    <div class="placement-banner-links">
-      <a href="/placement/en" class="placement-banner-btn">EN Test</a>
-      <a href="/placement/ja" class="placement-banner-btn">JA Test</a>
-      <a href="/placement/zh" class="placement-banner-btn">ZH Test</a>
+  <!-- ภาษา -->
+  <div class="learning-category">
+    <div class="learning-cat-header">
+      <span class="learning-cat-icon">🌐</span>
+      <h2>ภาษา</h2>
+    </div>
+
+    <% if (user) { %>
+    <div class="placement-banner">
+      <span>ไม่รู้จะเริ่มระดับไหน?</span>
+      <div class="placement-banner-links">
+        <a href="/placement/en" class="placement-banner-btn">EN Test</a>
+        <a href="/placement/ja" class="placement-banner-btn">JA Test</a>
+        <a href="/placement/zh" class="placement-banner-btn">ZH Test</a>
+      </div>
+    </div>
+    <% } %>
+
+    <div class="lang-grid">
+      <a href="/learn/en" class="lang-card">
+        <div class="lang-flag"><img src="https://flagcdn.com/56x42/gb.png" alt="UK" width="56" height="42" style="border-radius:4px"></div>
+        <div class="lang-name">English</div>
+        <div class="lang-desc">ภาษาอังกฤษสำหรับคนไทย</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#10b981">A1</span>
+          <span class="lang-level-chip" style="color:#10b981">A2</span>
+          <span class="lang-level-chip" style="color:#f59e0b">B1</span>
+          <span class="lang-level-chip" style="color:#f59e0b">B2</span>
+          <span class="lang-level-chip" style="color:#ef4444">C1</span>
+          <span class="lang-level-chip" style="color:#ef4444">C2</span>
+        </div>
+        <div class="lang-cta">เริ่มเรียน →</div>
+      </a>
+      <a href="/learn/ja" class="lang-card">
+        <div class="lang-flag"><img src="https://flagcdn.com/56x42/jp.png" alt="JP" width="56" height="42" style="border-radius:4px"></div>
+        <div class="lang-name">日本語</div>
+        <div class="lang-desc">ภาษาญี่ปุ่นสำหรับคนไทย</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#10b981">N5</span>
+          <span class="lang-level-chip" style="color:#3b82f6">N4</span>
+          <span class="lang-level-chip" style="color:#f59e0b">N3</span>
+          <span class="lang-level-chip" style="color:#f59e0b">N2</span>
+          <span class="lang-level-chip" style="color:#ef4444">N1</span>
+        </div>
+        <div class="lang-cta">เริ่มเรียน →</div>
+      </a>
+      <a href="/learn/zh" class="lang-card">
+        <div class="lang-flag"><img src="https://flagcdn.com/56x42/cn.png" alt="CN" width="56" height="42" style="border-radius:4px"></div>
+        <div class="lang-name">中文</div>
+        <div class="lang-desc">ภาษาจีนสำหรับคนไทย</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#10b981">HSK1</span>
+          <span class="lang-level-chip" style="color:#3b82f6">HSK2</span>
+          <span class="lang-level-chip" style="color:#f59e0b">HSK3</span>
+          <span class="lang-level-chip" style="color:#ef4444">HSK4</span>
+          <span class="lang-level-chip" style="color:#ef4444">HSK5</span>
+          <span class="lang-level-chip" style="color:#9333ea">HSK6</span>
+        </div>
+        <div class="lang-cta">เริ่มเรียน →</div>
+      </a>
     </div>
   </div>
-  <% } %>
 
-  <div class="lang-grid">
-    <a href="/learn/en" class="lang-card">
-      <div class="lang-flag"><img src="https://flagcdn.com/56x42/gb.png" alt="UK" width="56" height="42" style="border-radius:4px"></div>
-      <div class="lang-name">English</div>
-      <div class="lang-desc">ภาษาอังกฤษสำหรับคนไทย</div>
-      <div class="lang-levels">
-        <span class="lang-level-chip" style="color:#10b981">A1</span>
-        <span class="lang-level-chip" style="color:#10b981">A2</span>
-        <span class="lang-level-chip" style="color:#f59e0b">B1</span>
-        <span class="lang-level-chip" style="color:#f59e0b">B2</span>
-        <span class="lang-level-chip" style="color:#ef4444">C1</span>
-        <span class="lang-level-chip" style="color:#ef4444">C2</span>
+  <!-- คณิตศาสตร์ -->
+  <div class="learning-category">
+    <div class="learning-cat-header">
+      <span class="learning-cat-icon">➕</span>
+      <h2>คณิตศาสตร์</h2>
+    </div>
+    <div class="lang-grid">
+      <div class="lang-card lang-card--soon">
+        <div class="lang-flag" style="font-size:2.5rem;line-height:1">➕</div>
+        <div class="lang-name">คณิตศาสตร์พื้นฐาน</div>
+        <div class="lang-desc">จำนวน · สมการ · เรขาคณิต</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#6b7280">ม.ต้น</span>
+          <span class="lang-level-chip" style="color:#6b7280">ม.ปลาย</span>
+        </div>
+        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
       </div>
-      <div class="lang-cta">เริ่มเรียน →</div>
-    </a>
-    <a href="/learn/ja" class="lang-card">
-      <div class="lang-flag"><img src="https://flagcdn.com/56x42/jp.png" alt="JP" width="56" height="42" style="border-radius:4px"></div>
-      <div class="lang-name">日本語</div>
-      <div class="lang-desc">ภาษาญี่ปุ่นสำหรับคนไทย</div>
-      <div class="lang-levels">
-        <span class="lang-level-chip" style="color:#10b981">N5</span>
-        <span class="lang-level-chip" style="color:#3b82f6">N4</span>
-        <span class="lang-level-chip" style="color:#f59e0b">N3</span>
-        <span class="lang-level-chip" style="color:#f59e0b">N2</span>
-        <span class="lang-level-chip" style="color:#ef4444">N1</span>
+      <div class="lang-card lang-card--soon">
+        <div class="lang-flag" style="font-size:2.5rem;line-height:1">📐</div>
+        <div class="lang-name">แคลคูลัส</div>
+        <div class="lang-desc">Limit · Derivative · Integral</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#6b7280">ม.6 / มหาวิทยาลัย</span>
+        </div>
+        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
       </div>
-      <div class="lang-cta">เริ่มเรียน →</div>
-    </a>
-    <a href="/learn/zh" class="lang-card">
-      <div class="lang-flag"><img src="https://flagcdn.com/56x42/cn.png" alt="CN" width="56" height="42" style="border-radius:4px"></div>
-      <div class="lang-name">中文</div>
-      <div class="lang-desc">ภาษาจีนสำหรับคนไทย</div>
-      <div class="lang-levels">
-        <span class="lang-level-chip" style="color:#10b981">HSK1</span>
-        <span class="lang-level-chip" style="color:#3b82f6">HSK2</span>
-        <span class="lang-level-chip" style="color:#f59e0b">HSK3</span>
-        <span class="lang-level-chip" style="color:#ef4444">HSK4</span>
-        <span class="lang-level-chip" style="color:#ef4444">HSK5</span>
-        <span class="lang-level-chip" style="color:#9333ea">HSK6</span>
-      </div>
-      <div class="lang-cta">เริ่มเรียน →</div>
-    </a>
+    </div>
   </div>
+
+  <!-- ภาษาคอมพิวเตอร์ -->
+  <div class="learning-category">
+    <div class="learning-cat-header">
+      <span class="learning-cat-icon">💻</span>
+      <h2>ภาษาคอมพิวเตอร์</h2>
+    </div>
+    <div class="lang-grid">
+      <div class="lang-card lang-card--soon">
+        <div class="lang-flag" style="font-size:2.5rem;line-height:1">🐍</div>
+        <div class="lang-name">Python</div>
+        <div class="lang-desc">ตัวแปร · ฟังก์ชัน · OOP · Data Structures</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#10b981">Beginner</span>
+          <span class="lang-level-chip" style="color:#f59e0b">Intermediate</span>
+          <span class="lang-level-chip" style="color:#ef4444">Advanced</span>
+        </div>
+        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
+      </div>
+      <div class="lang-card lang-card--soon">
+        <div class="lang-flag" style="font-size:2.5rem;line-height:1">🎯</div>
+        <div class="lang-name">C#</div>
+        <div class="lang-desc">Syntax · OOP · .NET · Game Dev (Unity)</div>
+        <div class="lang-levels">
+          <span class="lang-level-chip" style="color:#10b981">Beginner</span>
+          <span class="lang-level-chip" style="color:#f59e0b">Intermediate</span>
+          <span class="lang-level-chip" style="color:#ef4444">Advanced</span>
+        </div>
+        <div class="lang-cta lang-cta--soon">เร็วๆ นี้</div>
+      </div>
+    </div>
+  </div>
+
 </main>
 </body>
 </html>
