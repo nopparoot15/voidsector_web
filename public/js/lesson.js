@@ -585,9 +585,10 @@
     const d = ex.data;
     const prompt = d.prompt || d.instruction || '';
     exerciseCard.innerHTML = `<div class="ex-prompt">${esc(prompt)}</div>`;
+    const shuffled = d.words.slice().sort(() => Math.random() - 0.5);
     answerArea.innerHTML = `
       <div id="answer-slots" class="answer-slots"></div>
-      <div id="word-bank" class="word-bank">${d.words.map((w, i) =>
+      <div id="word-bank" class="word-bank">${shuffled.map((w, i) =>
         `<button class="word-chip" data-word="${esc(w)}" data-idx="${i}">${esc(w)}</button>`
       ).join('')}</div>`;
     answerArea.querySelectorAll('.word-chip').forEach(btn => {
