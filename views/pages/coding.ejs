@@ -52,7 +52,9 @@
           <span class="pf-tag">Express</span>
           <span class="pf-tag">Socket.IO</span>
           <span class="pf-tag">discord.py</span>
-          <span class="pf-tag">EJS</span>
+          <span class="pf-tag">asyncpg</span>
+          <span class="pf-tag">llama-cpp-python</span>
+          <span class="pf-tag">Tkinter / Pillow</span>
         </div>
       </div>
       <div class="pf-skill-group">
@@ -60,7 +62,9 @@
         <div class="pf-skill-tags">
           <span class="pf-tag">PostgreSQL</span>
           <span class="pf-tag">Git / GitHub</span>
+          <span class="pf-tag">Docker</span>
           <span class="pf-tag">Railway</span>
+          <span class="pf-tag">OpenAI API</span>
           <span class="pf-tag">Linux CLI</span>
         </div>
       </div>
@@ -77,7 +81,7 @@
           <div>
             <h3 class="pf-project-name">VoidSector</h3>
             <p class="pf-project-desc">
-              Personal learning platform ที่สร้างขึ้นเองทั้งหมด ประกอบด้วยระบบเรียนภาษา (EN/JA/ZH), คณิตศาสตร์, Coding, XP &amp; Streak system, Multiplayer games (XO, Word Bomb, Trivia), Whiteboard และ Watch Party แบบ realtime
+              Personal learning platform — ระบบเรียนภาษา (EN/JA/ZH), คณิตศาสตร์, Coding พร้อม XP &amp; Streak system, Multiplayer games (XO, Word Bomb, Trivia Quiz), Whiteboard และ Watch Party แบบ realtime ผ่าน Socket.IO
             </p>
             <div class="pf-project-stack">
               <span>Node.js</span><span>Express</span><span>PostgreSQL</span><span>Socket.IO</span><span>EJS</span><span>Railway</span>
@@ -93,20 +97,63 @@
         </div>
       </div>
 
-      <div class="pf-project pf-project--dim">
+      <div class="pf-project">
         <div class="pf-project-header">
           <div>
-            <h3 class="pf-project-name">Discord Bot</h3>
+            <h3 class="pf-project-name">SaltyBot</h3>
             <p class="pf-project-desc">
-              Bot สำหรับ Discord server — ระบบ Moderation, Verification และ Auto-response พร้อม dashboard จัดการ
+              Discord bot ครบวงจรสำหรับ server ภาษาไทย — ระบบยืนยันตัวตนพร้อม approval flow, Moderation (mute/warn/ban) พร้อมระบบอุทธรณ์, เล่นเพลงผ่าน Lavalink v4, AI ถาม-ตอบด้วย GPT-4.1 พร้อม web search, และระบบบันทึก invite links แบบ persistent ทนต่อการ restart
             </p>
             <div class="pf-project-stack">
-              <span>Python</span><span>discord.py</span>
+              <span>Python</span><span>discord.py</span><span>PostgreSQL</span><span>asyncpg</span><span>OpenAI API</span><span>Lavalink v4</span><span>Docker</span>
             </div>
           </div>
           <div class="pf-project-badges">
-            <span class="pf-badge pf-badge--wip">In Progress</span>
+            <span class="pf-badge pf-badge--live">Live</span>
           </div>
+        </div>
+        <div class="pf-project-links">
+          <a href="https://github.com/nopparoot15/SaltyBot" target="_blank" rel="noopener" class="pf-link-btn">GitHub →</a>
+        </div>
+      </div>
+
+      <div class="pf-project">
+        <div class="pf-project-header">
+          <div>
+            <h3 class="pf-project-name">ฟ้าใส — Local AI Companion</h3>
+            <p class="pf-project-desc">
+              Desktop app แชท AI ภาษาไทยแบบ offline 100% ไม่ผ่าน cloud รัน LLM บนเครื่องตัวเองด้วย llama.cpp รองรับทั้ง NVIDIA CUDA, AMD ROCm และ CPU — มีระบบความสัมพันธ์ 5 ระดับ, sprite avatar 8 อารมณ์ที่เปลี่ยนตาม context, และ Markdown rendering ใน Tkinter GUI
+            </p>
+            <div class="pf-project-stack">
+              <span>Python</span><span>llama-cpp-python</span><span>Tkinter</span><span>Pillow</span><span>Win32 API</span><span>CUDA / ROCm</span>
+            </div>
+          </div>
+          <div class="pf-project-badges">
+            <span class="pf-badge pf-badge--live">Live</span>
+          </div>
+        </div>
+        <div class="pf-project-links">
+          <a href="https://github.com/nopparoot15/salty_local_chatbot" target="_blank" rel="noopener" class="pf-link-btn">GitHub →</a>
+        </div>
+      </div>
+
+      <div class="pf-project">
+        <div class="pf-project-header">
+          <div>
+            <h3 class="pf-project-name">salty_tts_bot</h3>
+            <p class="pf-project-desc">
+              Discord TTS Bot ที่อ่านข้อความในช่องเสียงแบบ realtime — สร้างเสียงจาก edge-tts / gTTS แล้วส่งผ่าน Lavalink audio pipeline รองรับหลายภาษาและหลาย channel พร้อม auto-leave เมื่อไม่มีคนฟัง
+            </p>
+            <div class="pf-project-stack">
+              <span>Python</span><span>discord.py</span><span>edge-tts</span><span>gTTS</span><span>Lavalink</span><span>Docker</span>
+            </div>
+          </div>
+          <div class="pf-project-badges">
+            <span class="pf-badge pf-badge--live">Live</span>
+          </div>
+        </div>
+        <div class="pf-project-links">
+          <a href="https://github.com/nopparoot15/salty_tts_bot" target="_blank" rel="noopener" class="pf-link-btn">GitHub →</a>
         </div>
       </div>
 
