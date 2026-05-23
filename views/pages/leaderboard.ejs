@@ -1,72 +1,36 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
-  <title>VOIDSECTOR | Leaderboard</title>
-  <%- include('../partials/head') %>
-  <style>
-    .lb-wrap{max-width:1100px;margin:0 auto;}
-    .lb-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-    .lb-title{font-family:'Orbitron';color:#0ff;text-shadow:0 0 14px rgba(0,255,255,0.35);margin:0;font-size:30px;letter-spacing:1.2px;}
-    .lb-sub{color:#9fb0c2;margin:8px 0 0;line-height:1.6;max-width:720px;}
-    .lb-card{border:1px solid rgba(0,255,255,0.16);border-radius:16px;background:rgba(255,255,255,0.03);padding:16px;box-shadow:0 12px 50px rgba(0,0,0,0.35);}
-    .lb-table{width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:14px;}
-    .lb-row{background:rgba(0,0,0,0.28);border:1px solid rgba(0,255,255,0.14);}
-    .lb-row td{padding:12px 14px;color:#d7e2ef;font-size:14px;}
-    .lb-row td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px;}
-    .lb-row td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px;text-align:right;color:#9ff;}
-    .lb-head th{color:#8aa0b8;font-weight:600;font-size:12px;padding:0 14px;text-align:left;}
-    .lb-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,0,255,0.20);background:rgba(255,0,255,0.06);color:#ffb3ff;font-size:12px;white-space:nowrap;}
-    .lb-me{outline:2px solid rgba(255,0,255,0.45);box-shadow:0 0 0 6px rgba(255,0,255,0.10), 0 0 26px rgba(255,0,255,0.22);}
-    .muted{color:#7f93a8;}
-    .mono{font-variant-numeric:tabular-nums;}
-    .btn-mini{cursor:pointer;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:700;letter-spacing:.4px;
-      border:1px solid rgba(0,255,255,0.22);background:rgba(0,255,255,0.08);color:#9ff;text-decoration:none;display:inline-flex;gap:8px;align-items:center;}
-  </style>
-</head>
+<head><%- include('../partials/head') %></head>
 <body>
-  <div class="background"></div>
-  <%- include('../partials/topbar') %>
-
-  <div class="container vs-page">
-    <div class="lb-wrap">
-      <div class="lb-hero">
-        <div>
-          <h1 class="lb-title">LEADERBOARD</h1>
-          <p class="lb-sub">จัดอันดับคะแนนจาก <b style="color:#9ff;">ผลล่าสุด</b> ที่ทำ Quiz ของแต่ละบท (รวมทุกคอร์ส) — คะแนนจะอัปเดตทันทีหลัง Submit.</p>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <span class="lb-badge">🏆 QUIZ RANKING</span>
-          <a class="btn-mini" href="/learn/categories">🎓 Learn Hub</a>
-        </div>
-      </div>
-
-      <div class="lb-card" style="margin-top:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <div>
-            <div style="color:#0ff;font-family:'Orbitron';font-size:13px;letter-spacing:0.7px;">RANKINGS</div>
-            <div class="muted" style="margin-top:6px;font-size:12px;">* ยิ่งทำ quiz เยอะ คะแนนรวม/เปอร์เซ็นต์จะยิ่งแม่น</div>
-          </div>
-          <button id="lbRefresh" class="btn-mini" type="button">🔄 Refresh</button>
-        </div>
-
-        <table class="lb-table">
-          <thead class="lb-head">
-            <tr>
-              <th style="width:70px;">#</th>
-              <th>Username</th>
-              <th style="width:140px;">Score</th>
-              <th style="width:120px;">%</th>
-              <th style="width:220px;text-align:right;">Last Quiz</th>
-            </tr>
-          </thead>
-          <tbody id="lbBody"></tbody>
-        </table>
-
-        <div id="lbEmpty" class="muted" style="display:none;padding:18px;text-align:center;">ยังไม่มีใครทำ quiz เลย — ไปทำคอร์สแล้วกลับมาดูอันดับได้ที่นี่ 🛰️</div>
-      </div>
-    </div>
+<%- include('../partials/topbar') %>
+<main class="hub-main">
+  <div class="section-header">
+    <h1>🏆 Leaderboard</h1>
+    <p class="section-sub">จัดอันดับตาม XP สะสม — ยิ่งเรียนเยอะ ยิ่งขึ้นอันดับ</p>
   </div>
 
-  <script defer src="/js/leaderboard.js"></script>
+  <div class="lb-podium" id="lbPodium"></div>
+
+  <div class="lb-card">
+    <div class="lb-toolbar">
+      <span class="lb-sub-label">อันดับทั้งหมด</span>
+      <button id="lbRefresh" class="btn-sm btn-outline">🔄 รีเฟรช</button>
+    </div>
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ผู้เรียน</th>
+          <th>XP</th>
+          <th>Streak</th>
+          <th>บทเรียน</th>
+        </tr>
+      </thead>
+      <tbody id="lbBody"></tbody>
+    </table>
+    <div id="lbEmpty" class="lb-empty" style="display:none">ยังไม่มีข้อมูล — ไปเรียนแล้วมาดูอันดับได้เลย 🚀</div>
+  </div>
+</main>
+<script src="/js/leaderboard.js"></script>
 </body>
 </html>

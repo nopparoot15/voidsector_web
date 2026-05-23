@@ -132,4 +132,34 @@ router.post('/lesson/:lessonId/complete', requireLogin, async (req, res) => {
   }
 });
 
+router.get('/leaderboard', requireLogin, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.xp, u.streak,
+             COUNT(ulp.lesson_id)::int AS lessons_done
+      FROM users u
+      LEFT JOIN user_lesson_progress ulp ON ulp.user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.xp DESC, u.streak DESC
+      LIMIT 50
+    `);
+    const meId = req.session.user?.id;
+    res.json({
+      success: true,
+      board: rows.map((r, i) => ({
+        rank: i + 1,
+        userId: r.id,
+        username: r.username,
+        xp: r.xp || 0,
+        streak: r.streak || 0,
+        lessons: r.lessons_done || 0,
+        isMe: r.id === meId,
+      }))
+    });
+  } catch (err) {
+    console.error('leaderboard error:', err.message);
+    res.status(500).json({ success: false, msg: 'server_error' });
+  }
+});
+
 module.exports = router;

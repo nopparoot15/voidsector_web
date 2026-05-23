@@ -87,6 +87,10 @@ router.get('/tools/calculator', requireLogin, (req, res) => {
   res.render('pages/calculator', { title: 'Calculator' });
 });
 
+router.get('/leaderboard', requireLogin, (req, res) => {
+  res.render('pages/leaderboard', { title: 'Leaderboard' });
+});
+
 router.get('/profile', requireLogin, async (req, res) => {
   try {
     const userId = req.session.user.id;
