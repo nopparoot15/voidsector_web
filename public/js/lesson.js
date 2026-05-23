@@ -63,6 +63,37 @@
     }
   }
 
+  // ── Static reading fallback for ZH characters not covered by translate exercises ──
+  var ZH_PINYIN = {
+    '人':'rén','大':'dà','小':'xiǎo','好':'hǎo','水':'shuǐ','山':'shān','火':'huǒ',
+    '日':'rì','月':'yuè','天':'tiān','爱':'ài','美':'měi','木':'mù','土':'tǔ',
+    '金':'jīn','风':'fēng','云':'yún','雨':'yǔ','花':'huā','草':'cǎo','树':'shù',
+    '你好':'nǐ hǎo','再见':'zài jiàn','早上好':'zǎo shang hǎo','晚上好':'wǎn shang hǎo',
+    '谢谢':'xiè xie','不客气':'bú kè qi','对不起':'duì bu qǐ','没关系':'méi guān xi',
+    '是':'shì','不是':'bú shì','你好吗':'nǐ hǎo ma','我很好':'wǒ hěn hǎo',
+    '一':'yī','二':'èr','三':'sān','四':'sì','五':'wǔ',
+    '六':'liù','七':'qī','八':'bā','九':'jiǔ','十':'shí','百':'bǎi','千':'qiān',
+    '爸爸':'bà ba','妈妈':'mā ma','哥哥':'gē ge','姐姐':'jiě jie',
+    '弟弟':'dì di','妹妹':'mèi mei','爷爷':'yé ye','奶奶':'nǎi nai',
+    '父母':'fù mǔ','家':'jiā','我':'wǒ','你':'nǐ','他':'tā','她':'tā','我们':'wǒ men',
+    '吃':'chī','喝':'hē','说':'shuō','看':'kàn','听':'tīng','走':'zǒu',
+    '来':'lái','去':'qù','买':'mǎi','卖':'mài','要':'yào','有':'yǒu',
+    '在':'zài','是的':'shì de','不':'bù','很':'hěn','也':'yě','都':'dōu',
+    '今天':'jīn tiān','明天':'míng tiān','昨天':'zuó tiān','每天':'měi tiān',
+    '早上':'zǎo shang','中午':'zhōng wǔ','晚上':'wǎn shang','上午':'shàng wǔ','下午':'xià wǔ',
+    '苹果':'píng guǒ','香蕉':'xiāng jiāo','水果':'shuǐ guǒ','蔬菜':'shū cài',
+    '米饭':'mǐ fàn','面条':'miàn tiáo','饺子':'jiǎo zi','包子':'bāo zi',
+    '中国':'Zhōng guó','北京':'Běi jīng','上海':'Shàng hǎi','泰国':'Tài guó',
+    '学校':'xué xiào','工作':'gōng zuò','书':'shū','笔':'bǐ','电脑':'diàn nǎo',
+    '手机':'shǒu jī','朋友':'péng you','老师':'lǎo shī','学生':'xué shēng',
+    '医院':'yī yuàn','商店':'shāng diàn','餐厅':'cān tīng','公司':'gōng sī',
+    '喜欢':'xǐ huān','知道':'zhī dào','觉得':'jué de','认为':'rèn wéi',
+    '高兴':'gāo xìng','快乐':'kuài lè','难过':'nán guò','生气':'shēng qì',
+    '漂亮':'piào liang','便宜':'pián yi','贵':'guì','多少钱':'duō shao qián',
+    '太贵了':'tài guì le','一点儿':'yī diǎnr','还好':'hái hǎo',
+    '一起':'yī qǐ','一下':'yī xià','一些':'yī xiē','一样':'yī yàng'
+  };
+
   // ── Intro / Vocab table ─────────────────────────────────────────────
   function buildVocabTable(exs) {
     if (!vocabTableBody) return;
@@ -70,9 +101,14 @@
     const seen = new Set();
     // Thai block U+0E00-U+0E7F — charCodeAt avoids any regex encoding issues
     const hasThai = s => { for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); if (c >= 0x0E00 && c <= 0x0E7F) return true; } return false; };
+    // Pure lowercase romaji check — used to skip JA hiragana phonetic drills (あ→a)
+    const isPureRomaji = s => /^[a-z]+$/.test(s.trim());
 
-    // Build reading lookup from translate exercises so match_pairs can reuse readings
-    const readingMap = {};
+    // Build reading lookup: start with static fallback, then translate exercises override
+    var readingMap = {};
+    if (langCode === 'zh') {
+      for (var k in ZH_PINYIN) readingMap[k] = ZH_PINYIN[k];
+    }
     if (langCode !== 'en') {
       for (const ex of exs) {
         if (ex.type === 'translate') {
@@ -90,12 +126,17 @@
           Array.isArray(p) ? { left: p[0], right: p[1] } : { left: p.left, right: p.right }
         );
         for (const p of pairs) {
-          // skip pairs where right side has no Thai — those are antonym/English-only pairs
-          if (!hasThai(p.right)) continue;
-          const key = p.left + '|' + p.right;
+          const r = String(p.right || '').trim();
+          // EN: skip antonym/English-only pairs (right has no Thai)
+          if (langCode === 'en' && !hasThai(r)) continue;
+          // JA: skip pure hiragana phonetic drills (right is pure romaji like 'a', 'ka')
+          if (langCode === 'ja' && isPureRomaji(r)) continue;
+          // Must have some meaningful meaning to show
+          if (!r) continue;
+          const key = p.left + '|' + r;
           if (!seen.has(key)) {
             seen.add(key);
-            rows.push({ word: p.left, reading: readingMap[p.left] || '', meaning: p.right });
+            rows.push({ word: p.left, reading: readingMap[p.left] || '', meaning: r });
           }
         }
       } else if (ex.type === 'translate') {
@@ -120,10 +161,14 @@
       return;
     }
 
+    // Hide reading column header for EN (always empty)
+    const readingTh = vocabTableBody.closest('table').querySelector('thead th:nth-child(2)');
+    if (readingTh) readingTh.style.display = langCode === 'en' ? 'none' : '';
+
     vocabTableBody.innerHTML = rows.map(r => `
       <tr>
         <td class="vocab-word">${esc(r.word)}</td>
-        <td class="vocab-reading">${esc(r.reading)}</td>
+        ${langCode !== 'en' ? '<td class="vocab-reading">' + esc(r.reading) + '</td>' : ''}
         <td class="vocab-meaning">${esc(r.meaning)}</td>
       </tr>
     `).join('');
