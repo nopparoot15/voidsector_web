@@ -13,7 +13,11 @@ router.get('/home', requireLogin, (req, res) => {
 });
 
 router.get('/languages', (req, res) => {
-  res.render('pages/languages', { title: 'เรียนภาษา' });
+  res.render('pages/languages', { title: 'Learning' });
+});
+
+router.get('/languages/:cat', (req, res) => {
+  res.render('pages/languages', { title: 'Learning' });
 });
 
 router.get('/coding', (req, res) => {
