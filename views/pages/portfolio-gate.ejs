@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %></head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="hub-main">
+  <div class="gate-wrap">
+    <div class="gate-card">
+      <div class="gate-icon">🔒</div>
+      <h2 class="gate-title">Portfolio</h2>
+      <p class="gate-sub">กรอกรหัสเพื่อเข้าถึง</p>
+      <form method="POST" action="/portfolio/unlock" class="gate-form">
+        <input
+          type="text"
+          name="code"
+          class="gate-input <%= error ? 'gate-input--err' : '' %>"
+          placeholder="รหัส…"
+          autocomplete="off"
+          autofocus
+        >
+        <% if (error) { %><p class="gate-error"><%= error %></p><% } %>
+        <button type="submit" class="btn-primary btn-full">เข้า →</button>
+      </form>
+    </div>
+  </div>
+</main>
+</body>
+</html>
