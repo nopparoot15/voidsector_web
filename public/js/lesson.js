@@ -4,6 +4,7 @@
 
   const lessonId = container.dataset.lessonId;
   const langCode = container.dataset.langCode;
+  const isNoTTS = langCode === 'math' || langCode === 'py' || langCode === 'js' || langCode === 'cs';
 
   let exercises = [];
   let current = 0;
@@ -55,9 +56,9 @@
       const lesson = data.lesson || {};
 
       if (lessonTitleEl) lessonTitleEl.textContent = lesson.title || '';
-      if (langCode === 'math') {
+      if (isNoTTS) {
         const sub = document.querySelector('.intro-sub');
-        if (sub) sub.textContent = 'ศึกษาสูตรและหลักการก่อนเริ่มทำแบบฝึกหัด';
+        if (sub) sub.textContent = 'ศึกษาหลักการก่อนเริ่มทำแบบฝึกหัด';
       }
 
       // Grammar note — render as structured HTML
@@ -314,7 +315,7 @@
   // ── Intro / Vocab table ─────────────────────────────────────────────
   function buildVocabTable(exs) {
     if (!vocabTableBody) return;
-    if (langCode === 'math') {
+    if (isNoTTS) {
       vocabTableBody.closest('.vocab-section').classList.add('hidden');
       if (startBtn) startBtn.textContent = 'เริ่มทำแบบทดสอบ →';
       return;
@@ -878,9 +879,9 @@
 
     let bodyHtml = '';
     if (!correct && correctAnswer) {
-      const ttsBtn = langCode !== 'math' ? `<button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button>` : '';
+      const ttsBtn = !isNoTTS ? `<button class="speak-btn fb-speak-btn" data-word="${esc(correctAnswer)}" title="ฟังเสียง">🔊</button>` : '';
       bodyHtml += `<div class="fb-answer">คำตอบที่ถูก: <strong>${esc(correctAnswer)}</strong>${ttsBtn}</div>`;
-      if (langCode !== 'en' && langCode !== 'math') {
+      if (langCode !== 'en' && !isNoTTS) {
         const reading = globalReadingMap[correctAnswer];
         if (reading) bodyHtml += `<div class="fb-reading">${esc(reading)}</div>`;
       }
@@ -951,7 +952,7 @@
               <div class="wr-answer">
                 <span class="wr-correct-label">✓</span>
                 <strong>${esc(wa.correctAnswer)}</strong>
-                ${langCode !== 'math' ? `<button class="speak-btn" data-word="${esc(wa.correctAnswer)}" title="ฟังเสียง">🔊</button>` : ''}
+                ${!isNoTTS ? `<button class="speak-btn" data-word="${esc(wa.correctAnswer)}" title="ฟังเสียง">🔊</button>` : ''}
               </div>
             </div>
           `).join('')}
