@@ -59,6 +59,7 @@
   let timerInterval     = null;
   let timerEndsAt       = 0;
   let guessCountdown    = null;
+  let answerCountdown   = null;
   let hasVoted          = false;
   let isHost            = false;
   let isSpy             = false;
@@ -113,8 +114,14 @@
     ).join('');
   }
 
-  // ── Turn banner ───────────────────────────────────────────────────────────────
+  // ── Turn / asking banner ──────────────────────────────────────────────────────
+  function clearAnswerCountdown() {
+    clearInterval(answerCountdown);
+    answerCountdown = null;
+  }
+
   function updateTurnBanner(turnUserId, turnUsername) {
+    clearAnswerCountdown();
     currentTurnUserId = turnUserId;
     if (!turnBanner) return;
     const isMyTurn = turnUserId === myId;
@@ -127,6 +134,40 @@
     }
     show(turnBanner);
     renderPlayerList(currentPlayers);
+  }
+
+  function showAskingBanner(askerUsername, askedUserId, askedUsername, seconds) {
+    clearAnswerCountdown();
+    currentTurnUserId = null; // disable ask buttons while someone is answering
+    if (!turnBanner) return;
+
+    const isAsked = askedUserId === myId;
+    let left = seconds;
+
+    function render() {
+      if (isAsked) {
+        turnBanner.innerHTML =
+          `💬 <b>คุณกำลังโดนถามโดย ${esc(askerUsername)}!</b> ตอบแล้วกด <button id="sf-done-answer-btn" class="sf-done-btn">✅ ถามต่อ</button> <span class="sf-answer-timer">(${left}s)</span>`;
+        turnBanner.className = 'sf-turn-banner sf-turn-banner--asked';
+        document.getElementById('sf-done-answer-btn')?.addEventListener('click', () => {
+          socket.emit('sp:done_answer', { roomId });
+        });
+      } else {
+        turnBanner.innerHTML =
+          `💬 <b>${esc(askerUsername)}</b> ถาม <b>${esc(askedUsername)}</b> — รอตอบ <span class="sf-answer-timer">(${left}s)</span>`;
+        turnBanner.className = 'sf-turn-banner sf-turn-banner--other';
+      }
+    }
+
+    render();
+    show(turnBanner);
+    renderPlayerList(currentPlayers); // re-render to remove ask buttons
+
+    answerCountdown = setInterval(() => {
+      left--;
+      if (left <= 0) { clearAnswerCountdown(); return; }
+      render();
+    }, 1000);
   }
 
   // ── Game: player list ─────────────────────────────────────────────────────────
@@ -195,9 +236,9 @@
     const locs = (locations && locations.length) ? locations : allLocations;
     hide(votingOverlay);
     show(guessOverlay);
-    if (guessSelect) {
+    guessBtn?.removeAttribute('disabled');
+    if (guessSelect && locs.length) {
       guessSelect.innerHTML = locs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
-      guessBtn?.removeAttribute('disabled');
     }
     let left = 30;
     clearInterval(guessCountdown);
@@ -317,6 +358,10 @@
     updateTurnBanner(turnUserId, turnUsername);
   });
 
+  socket.on('sp:asking', ({ askerUserId, askerUsername, askedUserId, askedUsername, seconds }) => {
+    showAskingBanner(askerUsername, askedUserId, askedUsername, seconds);
+  });
+
   socket.on('sp:accusation', data => {
     showVoting(data);
   });
@@ -357,6 +402,7 @@
     currentTurnUserId = null;
     stopTimer();
     clearInterval(guessCountdown);
+    clearAnswerCountdown();
     hide(cardSpy, cardPlayer, locationHints, turnBanner);
     document.querySelectorAll('.sf-spy-caught-banner').forEach(b => b.remove());
     showLobby();

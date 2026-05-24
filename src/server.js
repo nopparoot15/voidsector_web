@@ -431,11 +431,39 @@ io.on('connection', (socket) => {
     if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
     const st = room.state;
     if (st.phase !== 'playing' || st.turnUserId !== userId) return;
+    const asker  = room.players.find(p => p.userId === userId);
     const target = room.players.find(p => p.userId === Number(targetUserId));
     if (!target || target.userId === userId) return;
-    st.turnUserId   = target.userId;
-    st.turnUsername = target.username;
-    io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: target.userId, turnUsername: target.username });
+
+    const ANSWER_SECS = 30;
+    st.askedUserId   = target.userId;
+    st.askedUsername = target.username;
+    io.to(`gm:${rid}`).emit('sp:asking', {
+      askerUserId: userId, askerUsername: asker.username,
+      askedUserId: target.userId, askedUsername: target.username,
+      seconds: ANSWER_SECS,
+    });
+    gameStore.setTimer(rid, 'spanswer', () => {
+      if (!room.state || room.state.askedUserId !== target.userId) return;
+      room.state.turnUserId   = target.userId;
+      room.state.turnUsername = target.username;
+      room.state.askedUserId  = null;
+      io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: target.userId, turnUsername: target.username });
+    }, ANSWER_SECS * 1000);
+  });
+
+  socket.on('sp:done_answer', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'playing' || st.askedUserId !== userId) return;
+    gameStore.clearTimer(rid, 'spanswer');
+    st.turnUserId   = userId;
+    st.turnUsername = st.askedUsername;
+    st.askedUserId  = null;
+    io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: userId, turnUsername: st.turnUsername });
   });
 
   socket.on('sp:accuse', ({ roomId, targetUserId } = {}) => {

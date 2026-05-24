@@ -1161,6 +1161,20 @@
   border: 1px solid rgba(255,255,255,0.1);
   color: #a1a1aa;
 }
+.sf-turn-banner--asked {
+  background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.4);
+  color: #fde68a;
+}
+.sf-answer-timer { opacity: .65; font-size: 12px; }
+.sf-done-btn {
+  display: inline-block; margin-left: 8px;
+  padding: 3px 12px; border-radius: 7px;
+  border: 1px solid rgba(110,231,183,0.5); background: rgba(110,231,183,0.12);
+  color: #6ee7b7; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.sf-done-btn:hover { background: rgba(110,231,183,0.25); }
 
 /* Player list */
 .sf-player-list { display: flex; flex-direction: column; gap: 8px; }
