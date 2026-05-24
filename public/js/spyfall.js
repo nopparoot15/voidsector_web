@@ -239,25 +239,25 @@
     const locs = (locations && locations.length) ? locations : allLocations;
     hide(votingOverlay);
 
-    // Show inline guess mode on the location list
-    if (locLabel) locLabel.textContent = '🎯 เดาสถานที่ — แตะเพื่อเลือก';
+    if (locLabel) locLabel.textContent = '🎯 แตะสถานที่เพื่อเดา';
     show(locationHints, guessInline);
     if (guessConfirmBtn) { guessConfirmBtn.setAttribute('disabled', ''); guessConfirmBtn.textContent = 'เลือกสถานที่ก่อน'; }
 
-    if (locationList && locs.length) {
+    if (locationList) {
       locationList.innerHTML = locs.map(l =>
         `<div class="sf-loc-item sf-loc-item--pick" data-loc="${esc(l)}">${esc(l)}</div>`
       ).join('');
-      locationList.querySelectorAll('.sf-loc-item--pick').forEach(item => {
-        item.addEventListener('click', () => {
-          locationList.querySelectorAll('.sf-loc-item--pick').forEach(i => i.classList.remove('selected'));
-          item.classList.add('selected');
-          if (guessConfirmBtn) {
-            guessConfirmBtn.removeAttribute('disabled');
-            guessConfirmBtn.textContent = `ยืนยัน: ${item.dataset.loc}`;
-          }
-        });
-      });
+      // event delegation — ไม่ต้องแนบ listener ทีละ element
+      locationList.onclick = (e) => {
+        const item = e.target.closest('[data-loc]');
+        if (!item) return;
+        locationList.querySelectorAll('[data-loc]').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        if (guessConfirmBtn) {
+          guessConfirmBtn.removeAttribute('disabled');
+          guessConfirmBtn.textContent = `ยืนยัน: ${item.dataset.loc}`;
+        }
+      };
     }
 
     clearInterval(guessCountdown);
