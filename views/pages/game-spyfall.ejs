@@ -21,122 +21,124 @@
     <div class="gm-players" id="gm-players"></div>
   </div>
 
-  <!-- Lobby -->
-  <div id="sf-lobby" class="gm-lobby">
-    <div class="gm-lobby-card">
-      <div class="gm-lobby-icon">🕵️</div>
-      <h2>Spyfall — ห้อง <span><%- roomId %></span></h2>
-      <p class="gm-lobby-rules">
-        ทุกคนได้รับบทบาทในสถานที่เดียวกัน — ยกเว้น <b>สปาย 1 คน</b> ที่ไม่รู้ว่าอยู่ที่ไหน<br>
-        ถามกันทีละคน หาให้ออกว่าใครคือสปาย — หรือถ้าเป็นสปาย ก็เดาสถานที่ให้ถูก
-      </p>
-      <div id="sf-lobby-players" class="lobby-player-list"></div>
-      <div class="gm-options" id="sf-options-row">
-        <span class="gm-options-label">เวลา:</span>
-        <div class="gm-option-group" id="sf-time-group">
-          <button class="gm-option-btn" data-minutes="5">5 นาที</button>
-          <button class="gm-option-btn active" data-minutes="8">8 นาที</button>
-          <button class="gm-option-btn" data-minutes="10">10 นาที</button>
+  <!-- ══ LOBBY ══════════════════════════════════════════════════════════════ -->
+  <div id="sf-lobby" class="sf-lobby">
+    <div class="sf-lobby-card">
+      <div class="sf-lobby-icon">🕵️</div>
+      <h2 class="sf-lobby-title">Spyfall</h2>
+      <div class="sf-lobby-room">ห้อง <strong><%- roomId %></strong></div>
+
+      <div class="sf-lobby-rules">
+        <div class="sf-rule-row">🎭 ทุกคนรู้สถานที่และบทบาท <b>ยกเว้นสปาย 1 คน</b></div>
+        <div class="sf-rule-row">🎤 ถามตอบกันใน Discord — อย่าเปิดเผยสถานที่ตรงๆ</div>
+        <div class="sf-rule-row">🚨 กล่าวหาให้ทุกคนโหวต ถ้าจับสปายได้ผู้เล่นชนะ</div>
+        <div class="sf-rule-row">🕵️ สปายชนะถ้าเดาสถานที่ถูก หรือรอดจนหมดเวลา</div>
+      </div>
+
+      <div id="sf-lobby-players" class="sf-lobby-players"></div>
+
+      <div class="sf-time-picker">
+        <span class="sf-time-label">เวลา</span>
+        <div class="sf-time-options" id="sf-time-group">
+          <button class="sf-time-btn" data-minutes="5">5 นาที</button>
+          <button class="sf-time-btn active" data-minutes="8">8 นาที</button>
+          <button class="sf-time-btn" data-minutes="10">10 นาที</button>
         </div>
       </div>
-      <button id="sf-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
-      <div id="sf-lobby-hint" class="gm-muted" style="margin-top:10px;">รอเจ้าของห้องเริ่มเกม…</div>
+
+      <button id="sf-start-btn" class="sf-start-btn hidden">เริ่มเกม ▶</button>
+      <div id="sf-lobby-hint" class="sf-lobby-hint">รอเจ้าของห้องเริ่มเกม…</div>
     </div>
   </div>
 
-  <!-- Game -->
-  <div id="sf-game" class="hidden">
-    <div id="sf-turn-banner" class="sf-turn-banner hidden"></div>
-    <div class="sf-game-layout">
+  <!-- ══ GAME ════════════════════════════════════════════════════════════════ -->
+  <div id="sf-game" class="sf-game hidden">
 
-      <!-- Left: card + timer -->
-      <div class="sf-left">
-        <div class="sf-timer-wrap">
-          <div class="sf-timer" id="sf-timer">8:00</div>
-          <div class="sf-timer-label">เหลือเวลา</div>
-        </div>
-
-        <div class="sf-card" id="sf-card">
-          <!-- Spy card -->
-          <div id="sf-card-spy" class="sf-card-face sf-card--spy hidden">
-            <div class="sf-card-emoji">🕵️</div>
-            <div class="sf-card-tag">คุณคือ</div>
-            <div class="sf-card-main">สปาย</div>
-            <div class="sf-card-sub">หาให้ออกว่าอยู่ที่ไหน แล้วอย่าให้ใครจับได้</div>
-            <button id="sf-spy-guess-btn" class="sf-spy-guess-trigger">🎯 เดาสถานที่เลย</button>
-          </div>
-          <!-- Player card -->
-          <div id="sf-card-player" class="sf-card-face sf-card--player hidden">
-            <div class="sf-card-emoji">📍</div>
-            <div class="sf-card-tag">สถานที่</div>
-            <div class="sf-card-main" id="sf-my-location">—</div>
-            <div class="sf-card-divider"></div>
-            <div class="sf-card-tag">บทบาทของคุณ</div>
-            <div class="sf-card-role" id="sf-my-role">—</div>
-          </div>
-        </div>
-
-        <!-- Location list for spy -->
-        <div id="sf-location-hints" class="sf-location-hints hidden">
-          <div class="sf-section-label" id="sf-loc-label">สถานที่ที่เป็นไปได้</div>
-          <div id="sf-location-list" class="sf-location-list"></div>
-          <div id="sf-guess-inline" class="sf-guess-inline hidden">
-            <div id="sf-guess-inline-timer" class="sf-guess-inline-timer"></div>
-            <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
-          </div>
-        </div>
+    <!-- Timer + Turn -->
+    <div class="sf-game-header">
+      <div class="sf-timer-block">
+        <div id="sf-timer" class="sf-timer">8:00</div>
+        <div class="sf-timer-label">เหลือเวลา</div>
       </div>
-
-      <!-- Right: players + how to play -->
-      <div class="sf-right">
-        <div class="sf-section-label">ผู้เล่น</div>
-        <div id="sf-player-list" class="sf-player-list"></div>
-
-        <div class="sf-howto">
-          <div class="sf-howto-title">วิธีเล่น</div>
-          <div class="sf-howto-row"><span class="sf-howto-icon">🎤</span><span>ผลัดกันถามตอบใน Discord — ห้ามบอกสถานที่ตรงๆ</span></div>
-          <div class="sf-howto-row"><span class="sf-howto-icon">👆</span><span>กด <b>ถาม</b> ที่ชื่อคนที่เพิ่งถามไป เพื่อส่งเทิร์น</span></div>
-          <div class="sf-howto-row"><span class="sf-howto-icon">🚨</span><span>กด <b>กล่าวหา</b> เมื่อคิดว่าเจอสปาย — ทุกคนโหวต</span></div>
-          <div class="sf-howto-divider"></div>
-          <div class="sf-howto-row sf-howto-row--spy"><span class="sf-howto-icon">🕵️</span><span><b>สปาย:</b> อย่าให้ใครจับได้ แล้วเดาสถานที่ให้ถูก</span></div>
-          <div class="sf-howto-row sf-howto-row--players"><span class="sf-howto-icon">🎉</span><span><b>ผู้เล่น:</b> จับสปายให้ได้ก่อนหมดเวลา</span></div>
-        </div>
-      </div>
-
+      <div id="sf-turn-banner" class="sf-turn-banner hidden"></div>
     </div>
+
+    <!-- Player card -->
+    <div id="sf-card-player" class="sf-rolecard sf-rolecard--player hidden">
+      <div class="sf-rolecard-icon">📍</div>
+      <div class="sf-rolecard-row">
+        <div class="sf-rolecard-label">สถานที่</div>
+        <div id="sf-my-location" class="sf-rolecard-value">—</div>
+      </div>
+      <div class="sf-rolecard-sep"></div>
+      <div class="sf-rolecard-row">
+        <div class="sf-rolecard-label">บทบาทของคุณ</div>
+        <div id="sf-my-role" class="sf-rolecard-value sf-rolecard-value--role">—</div>
+      </div>
+    </div>
+
+    <!-- Spy card -->
+    <div id="sf-card-spy" class="sf-rolecard sf-rolecard--spy hidden">
+      <div class="sf-rolecard-icon">🕵️</div>
+      <div class="sf-rolecard-spy-title">คุณคือสปาย</div>
+      <div class="sf-rolecard-spy-sub">หาให้ออกว่าอยู่ที่ไหน — อย่าให้ใครจับได้</div>
+
+      <div class="sf-locs-header">
+        <span id="sf-loc-label" class="sf-locs-label">สถานที่ที่เป็นไปได้</span>
+      </div>
+      <div id="sf-location-list" class="sf-locs-grid"></div>
+
+      <div id="sf-guess-inline" class="sf-guess-inline hidden">
+        <div id="sf-guess-inline-timer" class="sf-guess-inline-timer hidden"></div>
+        <div class="sf-guess-actions">
+          <button id="sf-guess-cancel-btn" class="sf-guess-cancel-btn">ยกเลิก</button>
+          <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
+        </div>
+      </div>
+
+      <button id="sf-spy-guess-btn" class="sf-spy-guess-btn">🎯 ประกาศเดาสถานที่</button>
+    </div>
+
+    <!-- Player list -->
+    <div class="sf-players-section">
+      <div class="sf-section-label">ผู้เล่นในห้อง</div>
+      <div id="sf-player-list" class="sf-player-list"></div>
+    </div>
+
   </div>
 
-  <!-- Voting overlay -->
+  <!-- ══ VOTING OVERLAY ══════════════════════════════════════════════════════ -->
   <div id="sf-voting" class="sf-overlay hidden">
     <div class="sf-overlay-card">
-      <div class="sf-overlay-title">🗳 โหวตกล่าวหา</div>
+      <div class="sf-overlay-emoji">🗳️</div>
+      <div class="sf-overlay-title">โหวตกล่าวหา</div>
       <div class="sf-accuse-info">
-        <span id="sf-accuse-by" class="sf-name-tag"></span>
-        กล่าวหาว่า
-        <span id="sf-accuse-target" class="sf-name-tag sf-name-tag--target"></span>
-        เป็นสปาย
+        <span id="sf-accuse-by" class="sf-nametag"></span>
+        <span class="sf-accuse-arrow">กล่าวหาว่า</span>
+        <span id="sf-accuse-target" class="sf-nametag sf-nametag--target"></span>
+        <span class="sf-accuse-arrow">เป็นสปาย</span>
       </div>
       <div class="sf-vote-btns">
         <button id="sf-vote-yes" class="sf-vote-btn sf-vote-btn--yes">✓ ผิดจริง</button>
         <button id="sf-vote-no"  class="sf-vote-btn sf-vote-btn--no">✗ ไม่ใช่</button>
       </div>
       <div id="sf-vote-tally" class="sf-vote-tally"></div>
-      <div id="sf-vote-msg" class="sf-vote-msg"></div>
+      <div id="sf-vote-msg"   class="sf-vote-msg"></div>
     </div>
   </div>
 
-  <!-- End overlay -->
+  <!-- ══ END OVERLAY ════════════════════════════════════════════════════════ -->
   <div id="sf-end" class="sf-overlay hidden">
     <div class="sf-overlay-card sf-end-card">
       <div id="sf-end-winner" class="sf-end-winner"></div>
       <div id="sf-end-reason" class="sf-end-reason"></div>
       <div class="sf-end-reveal">
-        <div class="sf-end-row"><span class="sf-end-label">สปาย:</span><span id="sf-end-spy" class="sf-name-tag sf-name-tag--target"></span></div>
-        <div class="sf-end-row"><span class="sf-end-label">สถานที่:</span><span id="sf-end-location" class="sf-name-tag"></span></div>
-        <div id="sf-end-guess-row" class="sf-end-row hidden"><span class="sf-end-label">สปายเดา:</span><span id="sf-end-spy-guess" class="sf-name-tag"></span></div>
+        <div class="sf-end-row"><span class="sf-end-lbl">สปาย</span><span id="sf-end-spy"      class="sf-nametag sf-nametag--target"></span></div>
+        <div class="sf-end-row"><span class="sf-end-lbl">สถานที่</span><span id="sf-end-location" class="sf-nametag"></span></div>
+        <div id="sf-end-guess-row" class="sf-end-row hidden"><span class="sf-end-lbl">สปายเดา</span><span id="sf-end-spy-guess" class="sf-nametag"></span></div>
       </div>
       <div id="sf-end-roles" class="sf-end-roles"></div>
-      <button id="sf-new-game-btn" class="btn-primary hidden" style="margin-top:16px;">เล่นอีกรอบ</button>
+      <button id="sf-new-game-btn" class="sf-new-game-btn hidden">เล่นอีกรอบ</button>
     </div>
   </div>
 
