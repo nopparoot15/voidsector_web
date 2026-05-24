@@ -94,6 +94,7 @@ router.get('/forum/:id', async (req, res) => {
       title: thread.title,
       thread: { ...thread, daysLeft: daysLeft(thread.expires_at), timeAgo: timeAgo(thread.created_at) },
       comments: comments.map(c => ({ ...c, timeAgo: timeAgo(c.created_at) })),
+      myId: req.session?.user?.id || null,
       error: req.query.error || null,
     });
   } catch (err) {
@@ -125,6 +126,23 @@ router.post('/forum/:id/comment', requireFullAccount, async (req, res) => {
   } catch (err) {
     console.error('forum comment error:', err.message);
     res.redirect(`/forum/${id}?error=เกิดข้อผิดพลาด`);
+  }
+});
+
+// Delete thread (owner only)
+router.post('/forum/:id/delete', requireFullAccount, async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const { rows: [thread] } = await pool.query(
+      `SELECT user_id FROM threads WHERE id = $1`, [id]
+    );
+    if (!thread) return res.redirect('/forum');
+    if (thread.user_id !== req.session.user.id) return res.redirect(`/forum/${id}`);
+    await pool.query(`DELETE FROM threads WHERE id = $1`, [id]);
+    res.redirect('/forum');
+  } catch (err) {
+    console.error('forum delete error:', err.message);
+    res.redirect(`/forum/${id}`);
   }
 });
 
