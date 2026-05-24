@@ -29,6 +29,7 @@
   const locationHints= $('sf-location-hints');
   const locationList = $('sf-location-list');
   const playerList   = $('sf-player-list');
+  const turnBanner   = $('sf-turn-banner');
 
   const accuseBy     = $('sf-accuse-by');
   const accuseTarget = $('sf-accuse-target');
@@ -53,14 +54,15 @@
   const gmPlayers    = $('gm-players');
 
   // ── State ────────────────────────────────────────────────────────────────────
-  let myMinutes  = 8;
-  let timerInterval  = null;
-  let timerEndsAt    = 0;
-  let guessCountdown = null;
-  let hasVoted       = false;
-  let isHost         = false;
-  let isSpy          = false;
-  let currentPlayers = [];
+  let myMinutes       = 8;
+  let timerInterval   = null;
+  let timerEndsAt     = 0;
+  let guessCountdown  = null;
+  let hasVoted        = false;
+  let isHost          = false;
+  let isSpy           = false;
+  let currentPlayers  = [];
+  let currentTurnUserId = null;
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function esc(s) {
@@ -109,18 +111,47 @@
     ).join('');
   }
 
+  // ── Turn banner ───────────────────────────────────────────────────────────────
+  function updateTurnBanner(turnUserId, turnUsername) {
+    currentTurnUserId = turnUserId;
+    if (!turnBanner) return;
+    const isMyTurn = turnUserId === myId;
+    if (isMyTurn) {
+      turnBanner.innerHTML = '🎤 <b>ตาคุณถาม!</b> เลือกคนที่ต้องการถาม แล้วกดปุ่ม <b>ถาม</b>';
+      turnBanner.className = 'sf-turn-banner sf-turn-banner--mine';
+    } else {
+      turnBanner.innerHTML = `🎤 <b>${esc(turnUsername)}</b> กำลังถาม…`;
+      turnBanner.className = 'sf-turn-banner sf-turn-banner--other';
+    }
+    show(turnBanner);
+    renderPlayerList(currentPlayers);
+  }
+
   // ── Game: player list ─────────────────────────────────────────────────────────
   function renderPlayerList(players) {
     currentPlayers = players;
     if (!playerList) return;
+    const isMyTurn = currentTurnUserId === myId;
+
     playerList.innerHTML = players.map(p => {
       const isMe = p.userId === myId;
-      const canAccuse = !isMe;
-      return `<div class="sf-player-row" data-uid="${p.userId}">
+      const askBtn    = (!isMe && isMyTurn)
+        ? `<button class="sf-ask-btn" data-uid="${p.userId}" data-name="${esc(p.username)}">ถาม</button>`
+        : '';
+      const accuseBtn = !isMe
+        ? `<button class="sf-accuse-btn" data-uid="${p.userId}" data-name="${esc(p.username)}">กล่าวหา</button>`
+        : '';
+      return `<div class="sf-player-row${currentTurnUserId === p.userId ? ' sf-player-row--active' : ''}" data-uid="${p.userId}">
         <span class="sf-player-name">${esc(p.username)}${isMe ? ' <span class="sf-you-tag">คุณ</span>' : ''}</span>
-        ${canAccuse ? `<button class="sf-accuse-btn" data-uid="${p.userId}" data-name="${esc(p.username)}">กล่าวหา</button>` : ''}
+        <div class="sf-player-actions">${askBtn}${accuseBtn}</div>
       </div>`;
     }).join('');
+
+    playerList.querySelectorAll('.sf-ask-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        socket.emit('sp:ask', { roomId, targetUserId: Number(btn.dataset.uid) });
+      });
+    });
 
     playerList.querySelectorAll('.sf-accuse-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -149,8 +180,7 @@
     if (accuseTarget) accuseTarget.textContent = data.targetUsername;
     if (voteTally)    voteTally.textContent    = '';
     if (voteMsg)      voteMsg.textContent      = '';
-    // Can't vote on yourself
-    const isTarget = data.targetUserId === myId;
+    const isTarget  = data.targetUserId  === myId;
     const isAccuser = data.accuserUserId === myId;
     if (isTarget || isAccuser) {
       voteYes?.setAttribute('disabled', '');
@@ -165,7 +195,6 @@
     if (guessSelect) {
       guessSelect.innerHTML = locations.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
     }
-    // 30s countdown
     let left = 30;
     clearInterval(guessCountdown);
     if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
@@ -177,7 +206,7 @@
   }
 
   function showEnd(data) {
-    hide(votingOverlay, guessOverlay); show(endOverlay);
+    hide(votingOverlay, guessOverlay, turnBanner); show(endOverlay);
     stopTimer();
     clearInterval(guessCountdown);
 
@@ -197,7 +226,6 @@
       hide(endGuessRow);
     }
 
-    // Roles
     if (endRoles && data.roles) {
       endRoles.innerHTML = '<div class="sf-end-roles-title">บทบาทของทุกคน</div>' +
         currentPlayers.map(p => {
@@ -222,9 +250,9 @@
     }
 
     if (room.status === 'playing' && state) {
-      // Reconnected mid-game
       showGame();
       startTimerDisplay(state.timerEndsAt);
+      if (state.turnUserId) updateTurnBanner(state.turnUserId, state.turnUsername);
       renderPlayerList(room.players);
       if (state.phase === 'voting' && state.accusation) {
         showVoting({
@@ -238,7 +266,6 @@
       showLobby();
     }
 
-    // Copy link
     const copyBtn = $('copy-link-btn');
     if (copyBtn) {
       copyBtn.addEventListener('click', () => {
@@ -261,13 +288,13 @@
     showGame();
     startTimerDisplay(state.timerEndsAt);
     renderPlayerList(state.players || currentPlayers);
+    if (state.turnUserId) updateTurnBanner(state.turnUserId, state.turnUsername);
   });
 
   socket.on('sp:role', ({ isSpy: spy, location, role, allLocations }) => {
     isSpy = spy;
     if (spy) {
       show(cardSpy); hide(cardPlayer);
-      // Show location hints for spy
       if (allLocations && locationList) {
         show(locationHints);
         locationList.innerHTML = allLocations.map(l =>
@@ -279,6 +306,10 @@
       if (myLocation) myLocation.textContent = location || '?';
       if (myRole)     myRole.textContent     = role     || '?';
     }
+  });
+
+  socket.on('sp:turn', ({ turnUserId, turnUsername }) => {
+    updateTurnBanner(turnUserId, turnUsername);
   });
 
   socket.on('sp:accusation', data => {
@@ -293,10 +324,7 @@
 
   socket.on('sp:spy_caught', ({ spyUserId, spyUsername }) => {
     hide(votingOverlay);
-    // Non-spy players: show waiting message
     if (myId !== spyUserId) {
-      if (voteMsg) voteMsg.textContent = `${spyUsername} โดนจับ! รอสปายเดาสถานที่…`;
-      // Keep overlay hidden but show a banner
       const banner = document.createElement('div');
       banner.className = 'sf-spy-caught-banner';
       banner.textContent = `🕵️ ${spyUsername} โดนจับแล้ว! กำลังรอเดาสถานที่…`;
@@ -310,9 +338,7 @@
 
   socket.on('sp:vote_resolved', ({ result }) => {
     hide(votingOverlay);
-    // Remove any caught banner
     document.querySelectorAll('.sf-spy-caught-banner').forEach(b => b.remove());
-    // Resume timer display
     if (timerEndsAt) startTimerDisplay(timerEndsAt);
   });
 
@@ -323,16 +349,16 @@
   socket.on('sp:reset', () => {
     isSpy = false;
     hasVoted = false;
+    currentTurnUserId = null;
     stopTimer();
     clearInterval(guessCountdown);
-    hide(cardSpy, cardPlayer, locationHints);
+    hide(cardSpy, cardPlayer, locationHints, turnBanner);
     document.querySelectorAll('.sf-spy-caught-banner').forEach(b => b.remove());
     showLobby();
     if (isHost) show(startBtn);
   });
 
   // ── UI actions ────────────────────────────────────────────────────────────────
-  // Time option buttons
   if (timeGroup) {
     timeGroup.querySelectorAll('.gm-option-btn').forEach(btn => {
       btn.addEventListener('click', () => {

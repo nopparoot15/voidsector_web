@@ -26,6 +26,7 @@
 .arcade-card--rps { --ac: #fb923c; }
 .arcade-card--dg  { --ac: #e879f9; }
 .arcade-card--sf  { --ac: #a78bfa; }
+.arcade-card--sf .arcade-play-btn { background: #a78bfa; }
 
 .arcade-card-icon {
   font-size: 2.8rem;
@@ -1132,15 +1133,48 @@
   text-decoration: line-through; opacity: .4;
 }
 
+/* Turn banner */
+.sf-turn-banner {
+  margin: 0 0 14px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  text-align: center;
+  transition: background .3s;
+}
+.sf-turn-banner--mine {
+  background: rgba(167,139,250,0.18);
+  border: 1px solid rgba(167,139,250,0.5);
+  color: #c4b5fd;
+}
+.sf-turn-banner--other {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #a1a1aa;
+}
+
 /* Player list */
 .sf-player-list { display: flex; flex-direction: column; gap: 8px; }
 .sf-player-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px; border-radius: 12px;
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  transition: border-color .2s;
+}
+.sf-player-row--active {
+  border-color: rgba(167,139,250,0.5);
+  background: rgba(167,139,250,0.07);
 }
 .sf-player-name { font-size: 14px; color: var(--text); }
 .sf-you-tag { font-size: 10px; color: #a78bfa; margin-left: 4px; }
+.sf-player-actions { display: flex; gap: 6px; align-items: center; }
+.sf-ask-btn {
+  padding: 5px 12px; border-radius: 8px;
+  border: 1px solid rgba(167,139,250,0.5); background: rgba(167,139,250,0.15);
+  color: #c4b5fd; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.sf-ask-btn:hover { background: rgba(167,139,250,0.3); }
 .sf-accuse-btn {
   padding: 5px 12px; border-radius: 8px;
   border: 1px solid rgba(248,113,113,0.4); background: rgba(248,113,113,0.08);
