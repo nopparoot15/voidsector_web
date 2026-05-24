@@ -1370,40 +1370,49 @@
 /* Guide panel (right column) */
 .sf-guide {
   position: sticky; top: 80px;
-  border-radius: 16px; padding: 20px 18px;
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
-  display: flex; flex-direction: column; gap: 18px;
-  max-height: calc(100vh - 100px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0;
 }
 .sf-guide-title {
-  font-size: 13px; font-weight: 800; color: #a78bfa;
-  text-transform: uppercase; letter-spacing: .08em;
-  padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-size: 10px; font-weight: 800; color: #52525b;
+  text-transform: uppercase; letter-spacing: .12em;
+  margin-bottom: 14px;
 }
-.sf-guide-section { display: flex; flex-direction: column; gap: 8px; }
+.sf-guide-section {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.sf-guide-section:first-of-type { border-top: none; padding-top: 0; }
 .sf-guide-section-head {
-  font-size: 12px; font-weight: 700; color: #d4d4d8;
+  font-size: 11px; font-weight: 700; color: #a78bfa;
+  margin-bottom: 2px;
 }
-.sf-guide-p { font-size: 12px; color: #a1a1aa; line-height: 1.65; margin: 0; }
-.sf-guide-steps { display: flex; flex-direction: column; gap: 7px; }
+.sf-guide-p {
+  font-size: 11.5px; color: #71717a; line-height: 1.7; margin: 0;
+}
+.sf-guide-steps { display: flex; flex-direction: column; gap: 8px; }
 .sf-guide-step {
   display: flex; align-items: flex-start; gap: 8px;
-  font-size: 12px; color: #a1a1aa; line-height: 1.5;
+  font-size: 11.5px; color: #71717a; line-height: 1.55;
 }
 .sf-step-num {
-  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
-  background: rgba(167,139,250,0.2); color: #a78bfa;
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(167,139,250,0.18); color: #a78bfa;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; margin-top: 1px;
+  font-size: 9px; font-weight: 800; margin-top: 1px;
 }
-.sf-guide-tips-list { display: flex; flex-direction: column; gap: 6px; }
+.sf-guide-tips-list { display: flex; flex-direction: column; gap: 5px; }
 .sf-guide-tip {
-  font-size: 12px; color: #a1a1aa; line-height: 1.55;
-  padding: 6px 8px; border-radius: 8px;
-  background: rgba(255,255,255,0.02); border-left: 2px solid rgba(255,255,255,0.08);
+  font-size: 11.5px; color: #71717a; line-height: 1.55;
+  padding: 5px 8px 5px 10px;
+  border-left: 2px solid rgba(255,255,255,0.1);
 }
-.sf-guide-tip--green { border-color: rgba(110,231,183,0.5); color: #a7f3d0; background: rgba(110,231,183,0.04); }
-.sf-guide-tip--red   { border-color: rgba(248,113,113,0.5); color: #fca5a5; background: rgba(248,113,113,0.04); }
-@media (max-width: 860px) {
-  .sf-guide { position: static; max-height: none; }
+.sf-guide-tip--green { border-color: rgba(110,231,183,0.4); color: #6ee7b7; }
+.sf-guide-tip--red   { border-color: rgba(248,113,113,0.4); color: #f87171; }
+@media (max-width: 680px) {
+  .sf-guide {
+    position: static;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding-top: 16px;
+  }
 }
