@@ -295,8 +295,20 @@
         <span>${medals[i] || `#${i+1}`}</span>
         <span>${esc(p.username)}</span>
         <span>${scores[p.userId] || 0} คะแนน</span>
-      </div>`).join('');
+      </div>`).join('') + `
+    <div class="gm-result-actions" style="margin-top:1.5rem">
+      <button class="btn-primary" onclick="playAgain('drawguess')">เล่นใหม่ 🔄</button>
+      <a href="/arcade" class="btn-outline">Arcade</a>
+    </div>`;
   }
+
+  window.playAgain = async (gameType) => {
+    try {
+      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
+      const { roomId } = await r.json();
+      window.location.href = `/arcade/${gameType}/${roomId}`;
+    } catch { window.location.href = '/arcade'; }
+  };
 
   function renderLobby({ players: pl, host }) {
     lobbyPlayers.innerHTML = pl.map(p => `

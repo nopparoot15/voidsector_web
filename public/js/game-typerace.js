@@ -152,7 +152,11 @@
         <span class="tr-result-name">${esc(p.username)}</span>
         <span class="tr-result-pct">${pct}% พิมพ์ได้</span>
       </div>`;
-    }).join('');
+    }).join('') + `
+    <div class="gm-result-actions" style="margin-top:1.5rem">
+      <button class="btn-primary" onclick="playAgain('typerace')">เล่นใหม่ 🔄</button>
+      <a href="/arcade" class="btn-outline">Arcade</a>
+    </div>`;
   }
 
   function renderLobby({ players: pl, host }) {
@@ -169,6 +173,14 @@
     document.getElementById('gm-players').innerHTML = pl.map(p =>
       `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`).join('');
   }
+
+  window.playAgain = async (gameType) => {
+    try {
+      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
+      const { roomId } = await r.json();
+      window.location.href = `/arcade/${gameType}/${roomId}`;
+    } catch { window.location.href = '/arcade'; }
+  };
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();

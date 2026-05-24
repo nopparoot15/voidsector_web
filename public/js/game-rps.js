@@ -151,6 +151,8 @@
         <span class="rps-hist-result">${h.winnerId === 'draw' ? 'เสมอ' : h.winnerId === me.id ? 'ชนะ ✓' : 'แพ้'}</span>
       </div>`;
     }).join('');
+    const actionsEl = document.getElementById('rps-result-actions');
+    if (actionsEl) actionsEl.classList.remove('hidden');
   }
 
   function renderLobby({ players: pl, host }) {
@@ -166,6 +168,14 @@
     document.getElementById('gm-players').innerHTML = pl.map(p =>
       `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`).join('');
   }
+
+  window.playAgain = async (gameType) => {
+    try {
+      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
+      const { roomId } = await r.json();
+      window.location.href = `/arcade/${gameType}/${roomId}`;
+    } catch { window.location.href = '/arcade'; }
+  };
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();

@@ -172,7 +172,7 @@
             </div>`).join('')}
         </div>
         <div class="gm-result-actions">
-          <a href="/arcade/trivia" class="btn-outline">เล่นใหม่</a>
+          <button class="btn-primary" onclick="playAgain('trivia')">เล่นใหม่ 🔄</button>
           <a href="/arcade" class="btn-outline">Arcade</a>
         </div>
       </div>`;
@@ -191,6 +191,14 @@
       `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`
     ).join('');
   }
+
+  window.playAgain = async (gameType) => {
+    try {
+      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
+      const { roomId } = await r.json();
+      window.location.href = `/arcade/${gameType}/${roomId}`;
+    } catch { window.location.href = '/arcade'; }
+  };
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();
