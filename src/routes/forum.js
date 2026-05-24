@@ -56,6 +56,8 @@ router.get('/forum/new', requireFullAccount, (req, res) => {
   res.render('pages/forum-new', { title: 'ตั้งกระทู้ใหม่', error: null });
 });
 
+const MAX_IMAGE_BYTES = 600 * 1024; // 600KB base64
+
 // Create thread
 router.post('/forum', requireFullAccount, async (req, res) => {
   const title = (req.body.title || '').trim().slice(0, 200);
@@ -63,11 +65,21 @@ router.post('/forum', requireFullAccount, async (req, res) => {
   if (!title || !body) {
     return res.render('pages/forum-new', { title: 'ตั้งกระทู้ใหม่', error: 'กรุณากรอกหัวข้อและเนื้อหา' });
   }
+
+  let image = null;
+  const raw = (req.body.image || '').trim();
+  if (raw) {
+    if (!raw.startsWith('data:image/') || Buffer.byteLength(raw) > MAX_IMAGE_BYTES) {
+      return res.render('pages/forum-new', { title: 'ตั้งกระทู้ใหม่', error: 'รูปใหญ่เกินไป (สูงสุด ~450KB)' });
+    }
+    image = raw;
+  }
+
   try {
     const { rows: [t] } = await pool.query(
-      `INSERT INTO threads (user_id, username, title, body)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [req.session.user.id, req.session.user.username, title, body]
+      `INSERT INTO threads (user_id, username, title, body, image)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [req.session.user.id, req.session.user.username, title, body, image]
     );
     res.redirect(`/forum/${t.id}`);
   } catch (err) {

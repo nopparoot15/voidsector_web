@@ -25,8 +25,8 @@ function createApp() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '../views'));
 
-  app.use(express.urlencoded({ extended: false }));
-  app.use(express.json());
+  app.use(express.urlencoded({ extended: false, limit: '2mb' }));
+  app.use(express.json({ limit: '2mb' }));
 
   app.use(session({
     secret: process.env.SESSION_SECRET || 'change-me-in-.env',

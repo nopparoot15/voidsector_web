@@ -29,6 +29,9 @@
       </div>
     </div>
     <div class="thread-detail-body"><%= thread.body %></div>
+    <% if (thread.image) { %>
+      <img class="thread-detail-image" src="<%- thread.image %>" alt="รูปประกอบ">
+    <% } %>
   </div>
 
   <!-- Comments -->
