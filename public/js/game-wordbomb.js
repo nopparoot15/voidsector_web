@@ -116,10 +116,15 @@
 
     // Letter
     const cur = getCurrentPlayer(st);
-    letterEl.textContent = st.lastLetter ? st.lastLetter.toUpperCase() : '—';
+    const displayLetter = st.lastLetter ? st.lastLetter.toUpperCase() : '—';
+    letterEl.textContent = displayLetter;
 
-    // Last word
-    lastWordEl.textContent = st.lastWord ? `"${st.lastWord}"` : '';
+    // Last word — show word + arrow + required letter for clarity
+    if (st.lastWord && st.lastLetter) {
+      lastWordEl.innerHTML = `<span class="wb-last-word-text">${esc(st.lastWord)}</span><span class="wb-last-word-arrow"> → </span><span class="wb-last-letter-hint">${displayLetter}</span>`;
+    } else {
+      lastWordEl.textContent = '';
+    }
 
     // Turn
     const isMyTurn = cur?.userId === me.id;
