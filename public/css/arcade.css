@@ -1311,7 +1311,7 @@
 .sf-vote-msg   { font-size: 13px; color: #a78bfa; text-align: center; }
 
 /* End screen */
-.sf-end-card { max-width: 460px; }
+.sf-end-card { max-width: 500px; }
 .sf-end-winner { font-size: 1.8rem; font-weight: 900; }
 .sf-end-winner--spy     { color: #f87171; }
 .sf-end-winner--players { color: #6ee7b7; }
@@ -1319,12 +1319,59 @@
 .sf-end-reveal { width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .sf-end-row { display: flex; align-items: center; gap: 10px; }
 .sf-end-lbl { font-size: 12px; color: #52525b; width: 56px; text-align: right; flex-shrink: 0; }
-.sf-end-roles { width: 100%; display: flex; flex-direction: column; gap: 6px; }
-.sf-end-roles-title { font-size: 11px; font-weight: 700; color: #52525b; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
-.sf-end-role-row { font-size: 13px; color: #a1a1aa; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+/* Result columns */
+.sf-end-roles {
+  width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.sf-result-col { display: flex; flex-direction: column; gap: 6px; }
+.sf-result-header {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em;
+  padding: 6px 10px; border-radius: 8px; text-align: center;
+}
+.sf-result-header--win  { background: rgba(110,231,183,0.12); color: #6ee7b7; border: 1px solid rgba(110,231,183,0.25); }
+.sf-result-header--lose { background: rgba(248,113,113,0.1);  color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+.sf-result-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 8px; border-radius: 12px; text-align: center;
+  border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);
+}
+.sf-result-card--win  { border-color: rgba(110,231,183,0.2); background: rgba(110,231,183,0.05); }
+.sf-result-card--lose { border-color: rgba(248,113,113,0.15); background: rgba(248,113,113,0.04); }
+.sf-result-card--me   { outline: 2px solid rgba(167,139,250,0.5); }
+.sf-result-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(167,139,250,0.15); color: #a78bfa;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+}
+.sf-result-card--win  .sf-result-avatar { background: rgba(110,231,183,0.15); color: #6ee7b7; }
+.sf-result-card--lose .sf-result-avatar { background: rgba(248,113,113,0.12); color: #f87171; }
+.sf-result-name { font-size: 12px; color: #d4d4d8; font-weight: 600; line-height: 1.3; }
+.sf-result-role { font-size: 11px; color: #71717a; }
+
 .sf-new-game-btn {
   width: 100%; padding: 13px; border-radius: 12px; border: none;
   background: #a78bfa; color: #07070e; font-size: 15px; font-weight: 700;
   cursor: pointer; transition: background .15s;
 }
 .sf-new-game-btn:hover { background: #c4b5fd; }
+
+/* How-to-play tips */
+.sf-tips {
+  border-radius: 14px; padding: 14px 16px;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+}
+.sf-tips-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: 12px; font-weight: 700; color: #52525b; text-transform: uppercase; letter-spacing: .08em;
+}
+.sf-tips-toggle:hover { color: #a78bfa; }
+.sf-tips-toggle-arrow { font-size: 10px; transition: transform .2s; }
+.sf-tips-toggle-arrow.open { transform: rotate(180deg); }
+.sf-tips-body { padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.sf-tips-body.hidden { display: none; }
+.sf-tips-section-title { font-size: 11px; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.sf-tips-list { display: flex; flex-direction: column; gap: 5px; }
+.sf-tip { font-size: 12px; color: #a1a1aa; padding-left: 4px; line-height: 1.5; }

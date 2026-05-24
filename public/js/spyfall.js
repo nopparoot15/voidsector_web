@@ -35,7 +35,6 @@
   const guessTimer    = $('sf-guess-inline-timer');
   const guessConfirm  = $('sf-guess-confirm-btn');
   const guessCancel   = $('sf-guess-cancel-btn');
-  const spyGuessBtn   = $('sf-spy-guess-btn');
 
   const playerList    = $('sf-player-list');
 
@@ -68,7 +67,7 @@
   let currentPlayers    = [];
   let currentTurnUserId = null;
   let allLocations      = [];
-  let inGuessMode       = false;
+  let inForcedGuess     = false;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function esc(s) {
@@ -212,57 +211,46 @@
     });
   }
 
-  // ── Guess mode (inline in spy card) ───────────────────────────────────────
-  function enterGuessMode(withTimer = false) {
-    inGuessMode = true;
-    if (locLabel) locLabel.textContent = 'แตะเพื่อเลือกสถานที่';
-    if (guessConfirm) { guessConfirm.setAttribute('disabled', ''); guessConfirm.textContent = 'เลือกสถานที่ก่อน'; }
-    show(guessInline);
-    hide(spyGuessBtn);
-
-    // Rebuild grid as selectable
-    if (locationList) {
-      locationList.innerHTML = allLocations.map(l =>
-        `<div class="sf-loc-chip sf-loc-chip--pick" data-loc="${esc(l)}">${esc(l)}</div>`
-      ).join('');
-      locationList.onclick = (e) => {
-        const chip = e.target.closest('[data-loc]');
-        if (!chip) return;
-        locationList.querySelectorAll('[data-loc]').forEach(c => c.classList.remove('picked'));
-        chip.classList.add('picked');
-        if (guessConfirm) {
-          guessConfirm.removeAttribute('disabled');
-          guessConfirm.textContent = `ยืนยัน: ${chip.dataset.loc}`;
-          guessConfirm.dataset.loc = chip.dataset.loc;
-        }
-      };
-    }
-
-    clearInterval(guessCountdown);
-    if (withTimer) {
-      let left = 30;
-      if (guessTimer) { guessTimer.textContent = `เหลือ ${left} วินาที`; show(guessTimer); }
-      guessCountdown = setInterval(() => {
-        left--;
-        if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
-        if (left <= 0) clearInterval(guessCountdown);
-      }, 1000);
-    }
+  // ── Spy location grid ─────────────────────────────────────────────────────
+  function buildSpyGrid() {
+    if (!locationList || !allLocations.length) return;
+    locationList.innerHTML = allLocations.map(l =>
+      `<div class="sf-loc-chip sf-loc-chip--pick" data-loc="${esc(l)}">${esc(l)}</div>`
+    ).join('');
+    locationList.onclick = (e) => {
+      const chip = e.target.closest('[data-loc]');
+      if (!chip) return;
+      locationList.querySelectorAll('[data-loc]').forEach(c => c.classList.remove('picked'));
+      chip.classList.add('picked');
+      if (guessConfirm) {
+        guessConfirm.removeAttribute('disabled');
+        guessConfirm.textContent = `ยืนยัน: ${chip.dataset.loc}`;
+        guessConfirm.dataset.loc = chip.dataset.loc;
+      }
+      show(guessInline);
+    };
   }
 
-  function exitGuessMode() {
-    inGuessMode = false;
+  function enterForcedGuessMode() {
+    inForcedGuess = true;
+    buildSpyGrid();
     clearInterval(guessCountdown);
-    if (locLabel) locLabel.textContent = 'สถานที่ที่เป็นไปได้';
+    let left = 30;
+    if (guessTimer) { guessTimer.textContent = `เหลือ ${left} วินาที`; show(guessTimer); }
+    show(guessInline);
+    guessCountdown = setInterval(() => {
+      left--;
+      if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
+      if (left <= 0) clearInterval(guessCountdown);
+    }, 1000);
+  }
+
+  function cancelSelection() {
+    clearInterval(guessCountdown);
+    inForcedGuess = false;
     hide(guessInline, guessTimer);
-    show(spyGuessBtn);
-    // Rebuild as read-only
-    if (locationList) {
-      locationList.onclick = null;
-      locationList.innerHTML = allLocations.map(l =>
-        `<div class="sf-loc-chip">${esc(l)}</div>`
-      ).join('');
-    }
+    locationList?.querySelectorAll('[data-loc]').forEach(c => c.classList.remove('picked'));
+    if (guessConfirm) { guessConfirm.setAttribute('disabled', ''); guessConfirm.textContent = 'เลือกสถานที่ก่อน'; delete guessConfirm.dataset.loc; }
   }
 
   // ── Phases ─────────────────────────────────────────────────────────────────
@@ -294,23 +282,52 @@
   function showEnd(data) {
     hide(votingOverlay, turnBanner); show(endOverlay);
     stopTimer(); clearInterval(guessCountdown); clearAnswerCountdown();
+
     const spyWon = data.winner === 'spy';
+
     if (endWinner) {
       endWinner.textContent = spyWon ? '🕵️ สปายชนะ!' : '🎉 ผู้เล่นชนะ!';
       endWinner.className = 'sf-end-winner ' + (spyWon ? 'sf-end-winner--spy' : 'sf-end-winner--players');
     }
-    if (endReason)   endReason.textContent   = data.reason || '';
-    if (endSpy)      endSpy.textContent      = data.spyUsername || '?';
-    if (endLocation) endLocation.textContent = data.location   || '?';
+    if (endReason) endReason.textContent = data.reason || '';
+
+    // Location + spy guess
+    if (endLocation) endLocation.textContent = data.location || '?';
     if (data.spyGuessedLocation) { show(endGuessRow); if (endSpyGuess) endSpyGuess.textContent = data.spyGuessedLocation; }
     else hide(endGuessRow);
-    if (endRoles && data.roles) {
-      endRoles.innerHTML = '<div class="sf-end-roles-title">บทบาทของทุกคน</div>' +
-        currentPlayers.map(p => {
-          const role = p.userId === data.spyUserId ? '🕵️ สปาย' : (data.roles[p.userId] || '?');
-          return `<div class="sf-end-role-row"><b>${esc(p.username)}</b> — ${esc(role)}</div>`;
-        }).join('');
+
+    // Winners / losers per player
+    if (endRoles) {
+      const winners = [];
+      const losers  = [];
+      currentPlayers.forEach(p => {
+        const isSpy = p.userId === data.spyUserId;
+        const role  = isSpy ? 'สปาย' : (data.roles?.[p.userId] || '?');
+        const won   = spyWon ? isSpy : !isSpy;
+        const isMe  = p.userId === myId;
+        const obj   = { name: p.username, role, isSpy, isMe };
+        (won ? winners : losers).push(obj);
+      });
+
+      const renderCard = (list, win) => list.map(p =>
+        `<div class="sf-result-card sf-result-card--${win ? 'win' : 'lose'}${p.isMe ? ' sf-result-card--me' : ''}">
+          <div class="sf-result-avatar">${esc(p.name[0]).toUpperCase()}</div>
+          <div class="sf-result-name">${esc(p.name)}${p.isMe ? ' <span class="sf-you-tag">คุณ</span>' : ''}</div>
+          <div class="sf-result-role">${p.isSpy ? '🕵️ สปาย' : esc(p.role)}</div>
+        </div>`
+      ).join('');
+
+      endRoles.innerHTML = `
+        <div class="sf-result-col">
+          <div class="sf-result-header sf-result-header--win">🏆 ชนะ</div>
+          ${renderCard(winners, true)}
+        </div>
+        <div class="sf-result-col">
+          <div class="sf-result-header sf-result-header--lose">💀 แพ้</div>
+          ${renderCard(losers, false)}
+        </div>`;
     }
+
     if (isHost) show(newGameBtn);
   }
 
@@ -362,11 +379,7 @@
     if (locs && locs.length) allLocations = locs;
     if (spy) {
       show(cardSpy); hide(cardPlayer);
-      if (locationList && allLocations.length) {
-        locationList.innerHTML = allLocations.map(l =>
-          `<div class="sf-loc-chip">${esc(l)}</div>`
-        ).join('');
-      }
+      buildSpyGrid();
     } else {
       show(cardPlayer); hide(cardSpy);
       if (myLocation) myLocation.textContent = location || '?';
@@ -400,7 +413,7 @@
 
   socket.on('sp:your_turn_guess', () => {
     document.querySelectorAll('.sf-caught-banner').forEach(b => b.remove());
-    enterGuessMode(true);
+    enterForcedGuessMode();
   });
 
   socket.on('sp:vote_resolved', () => {
@@ -412,13 +425,11 @@
   socket.on('sp:ended', data => { showEnd(data); });
 
   socket.on('sp:reset', () => {
-    isSpy = false; hasVoted = false; inGuessMode = false;
+    isSpy = false; hasVoted = false; inForcedGuess = false;
     currentTurnUserId = null; allLocations = [];
     stopTimer(); clearInterval(guessCountdown); clearAnswerCountdown();
     hide(cardSpy, cardPlayer, guessInline, guessTimer, turnBanner);
     document.querySelectorAll('.sf-caught-banner').forEach(b => b.remove());
-    if (locLabel) locLabel.textContent = 'สถานที่ที่เป็นไปได้';
-    show(spyGuessBtn);
     showLobby();
     if (isHost) show(startBtn);
   });
@@ -451,9 +462,7 @@
     socket.emit('sp:vote', { roomId, guilty: false });
   });
 
-  spyGuessBtn?.addEventListener('click', () => { enterGuessMode(false); });
-
-  guessCancel?.addEventListener('click', () => { exitGuessMode(); });
+  guessCancel?.addEventListener('click', () => { cancelSelection(); });
 
   guessConfirm?.addEventListener('click', () => {
     const loc = guessConfirm.dataset.loc;
@@ -464,6 +473,15 @@
 
   newGameBtn?.addEventListener('click', () => {
     socket.emit('sp:new_game', { roomId });
+  });
+
+  const tipsToggle = $('sf-tips-toggle');
+  const tipsBody   = $('sf-tips-body');
+  const tipsArrow  = $('sf-tips-arrow');
+  tipsToggle?.addEventListener('click', () => {
+    const open = !tipsBody?.classList.contains('hidden');
+    if (open) { tipsBody?.classList.add('hidden'); tipsArrow?.classList.remove('open'); }
+    else      { tipsBody?.classList.remove('hidden'); tipsArrow?.classList.add('open'); }
   });
 
 })();

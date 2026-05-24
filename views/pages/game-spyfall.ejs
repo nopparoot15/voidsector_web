@@ -95,14 +95,46 @@
           <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
         </div>
       </div>
-
-      <button id="sf-spy-guess-btn" class="sf-spy-guess-btn">🎯 ประกาศเดาสถานที่</button>
     </div>
 
     <!-- Player list -->
     <div class="sf-players-section">
       <div class="sf-section-label">ผู้เล่นในห้อง</div>
       <div id="sf-player-list" class="sf-player-list"></div>
+    </div>
+
+    <!-- Tips -->
+    <div class="sf-tips">
+      <button class="sf-tips-toggle" id="sf-tips-toggle">
+        <span>📖 วิธีเล่น &amp; เทคนิค</span>
+        <span class="sf-tips-toggle-arrow" id="sf-tips-arrow">▼</span>
+      </button>
+      <div class="sf-tips-body hidden" id="sf-tips-body">
+        <div>
+          <div class="sf-tips-section-title">🎤 วิธีถาม (ผู้เล่นปกติ)</div>
+          <div class="sf-tips-list">
+            <div class="sf-tip">• ถามเกี่ยวกับบรรยากาศ สภาพแวดล้อม หรือสิ่งที่เห็นในสถานที่ เช่น "มีเสียงดังไหม?" "คนใส่ชุดพิเศษไหม?"</div>
+            <div class="sf-tip">• อย่าถามตรงๆ เช่น "อยู่ที่ไหน?" เพราะสปายจะรู้ว่าคุณรู้สถานที่</div>
+            <div class="sf-tip">• ถามให้กว้างพอที่สปายจะตอบได้โดยไม่รู้จริง เช่น "อาหารที่นี่แพงไหม?"</div>
+          </div>
+        </div>
+        <div>
+          <div class="sf-tips-section-title">🕵️ วิธีรอด (สปาย)</div>
+          <div class="sf-tips-list">
+            <div class="sf-tip">• ตอบคำถามให้กว้างๆ คลุมเครือ เช่น "ก็ได้" "ขึ้นอยู่กับคน" "ปกตินะ"</div>
+            <div class="sf-tip">• สังเกตคำตอบของคนอื่นเพื่อเดาสถานที่ก่อนโหวต</div>
+            <div class="sf-tip">• หากถูกถามเรื่องที่ไม่รู้ ให้ย้อนถามกลับไปก่อน</div>
+          </div>
+        </div>
+        <div>
+          <div class="sf-tips-section-title">🚨 วิธีกล่าวหา</div>
+          <div class="sf-tips-list">
+            <div class="sf-tip">• กดปุ่ม <b>กล่าวหา</b> ที่ชื่อผู้เล่นที่สงสัย — ทุกคนจะโหวตพร้อมกัน</div>
+            <div class="sf-tip">• ถ้าโหวตเห็นด้วยเกินครึ่ง ผู้ถูกกล่าวหาแพ้ สปายได้เดาสถานที่ 1 ครั้ง</div>
+            <div class="sf-tip">• ถ้าโหวตไม่ผ่าน เกมเล่นต่อ และผู้ถูกกล่าวหาได้ถามต่อ</div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
