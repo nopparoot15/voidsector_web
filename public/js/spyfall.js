@@ -116,72 +116,32 @@
   }
 
   // ── Turn banner ────────────────────────────────────────────────────────────
-  function clearAnswerBanner() {
+  function setAskedBanner(askedId, askedName) {
     clearAnswerCountdown();
-  }
-
-  function setTurnBanner(turnUserId, turnUsername) {
-    currentTurnUserId = turnUserId;
-    clearAnswerBanner();
+    currentTurnUserId = askedId;
     if (!turnBanner) return;
-    const mine = turnUserId === myId;
-    turnBanner.className = 'sf-turn-banner ' + (mine ? 'sf-turn-banner--mine' : 'sf-turn-banner--other');
-    turnBanner.innerHTML = mine
-      ? '🎤 <strong>ตาคุณถาม!</strong> เลือกคนแล้วกด <b>ถาม</b>'
-      : `🎤 <strong>${esc(turnUsername)}</strong> กำลังถาม…`;
+    const isMe = askedId === myId;
+    turnBanner.className = 'sf-turn-banner ' + (isMe ? 'sf-turn-banner--asked' : 'sf-turn-banner--other');
+    turnBanner.innerHTML = isMe
+      ? `💬 <strong>ตาคุณตอบ!</strong> ตอบเสร็จแล้วกด <button id="sf-done-answer-btn" class="sf-done-btn">ตอบแล้ว ›</button>`
+      : `💬 <strong>${esc(askedName)}</strong> กำลังตอบ…`;
+    $('sf-done-answer-btn')?.addEventListener('click', () => {
+      socket.emit('sp:done_answer', { roomId });
+    });
     show(turnBanner);
     renderPlayerList(currentPlayers);
-  }
-
-  function setAskingBanner(askerName, askedId, askedName, seconds) {
-    clearAnswerBanner();
-    currentTurnUserId = null;
-    if (!turnBanner) return;
-    const isAsked = askedId === myId;
-    let left = seconds;
-
-    function render() {
-      if (isAsked) {
-        turnBanner.className = 'sf-turn-banner sf-turn-banner--asked';
-        turnBanner.innerHTML =
-          `💬 <strong>${esc(askerName)}</strong> ถามคุณ — ตอบแล้วกด
-           <button id="sf-done-answer-btn" class="sf-done-btn">ถามต่อ ›</button>
-           <span class="sf-answer-secs">${left}s</span>`;
-        $('sf-done-answer-btn')?.addEventListener('click', () => {
-          socket.emit('sp:done_answer', { roomId });
-        });
-      } else {
-        turnBanner.className = 'sf-turn-banner sf-turn-banner--other';
-        turnBanner.innerHTML =
-          `💬 <strong>${esc(askerName)}</strong> ถาม <strong>${esc(askedName)}</strong>
-           <span class="sf-answer-secs">${left}s</span>`;
-      }
-    }
-
-    render();
-    show(turnBanner);
-    renderPlayerList(currentPlayers);
-
-    answerCountdown = setInterval(() => {
-      left--;
-      if (left <= 0) { clearAnswerCountdown(); return; }
-      render();
-    }, 1000);
   }
 
   // ── Player list ────────────────────────────────────────────────────────────
   function renderPlayerList(players) {
     currentPlayers = players;
     if (!playerList) return;
-    const isMyTurn = currentTurnUserId === myId;
 
     playerList.innerHTML = players.map(p => {
-      const isMe   = p.userId === myId;
+      const isMe    = p.userId === myId;
       const offline = !!p.offline;
       const active  = currentTurnUserId === p.userId;
 
-      const askBtn = (!isMe && isMyTurn && !offline)
-        ? `<button class="sf-btn-ask" data-uid="${p.userId}" data-name="${esc(p.username)}">ถาม</button>` : '';
       const accuseBtn = (!isMe && !offline)
         ? `<button class="sf-btn-accuse" data-uid="${p.userId}" data-name="${esc(p.username)}">กล่าวหา</button>` : '';
 
@@ -190,19 +150,14 @@
           <span class="sf-prow-avatar">${esc(p.username[0] || '?').toUpperCase()}</span>
           <span class="sf-prow-name">${esc(p.username)}
             ${isMe ? '<span class="sf-you-tag">คุณ</span>' : ''}
-            ${active ? '<span class="sf-active-tag">กำลังถาม</span>' : ''}
+            ${active ? '<span class="sf-active-tag">กำลังตอบ</span>' : ''}
             ${offline ? '<span class="sf-offline-tag">ออฟไลน์</span>' : ''}
           </span>
         </div>
-        <div class="sf-prow-btns">${askBtn}${accuseBtn}</div>
+        <div class="sf-prow-btns">${accuseBtn}</div>
       </div>`;
     }).join('');
 
-    playerList.querySelectorAll('.sf-btn-ask').forEach(btn => {
-      btn.addEventListener('click', () => {
-        socket.emit('sp:ask', { roomId, targetUserId: Number(btn.dataset.uid) });
-      });
-    });
     playerList.querySelectorAll('.sf-btn-accuse').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!confirm(`กล่าวหาว่า "${btn.dataset.name}" เป็นสปาย?`)) return;
@@ -343,7 +298,7 @@
     if (room.status === 'playing' && state) {
       showGame();
       startTimerDisplay(state.timerEndsAt);
-      if (state.turnUserId) setTurnBanner(state.turnUserId, state.turnUsername);
+      if (state.askedUserId) setAskedBanner(state.askedUserId, state.askedUsername);
       renderPlayerList(room.players);
       if (state.phase === 'voting' && state.accusation) showVoting(state.accusation);
     } else {
@@ -371,7 +326,7 @@
     showGame();
     startTimerDisplay(state.timerEndsAt);
     renderPlayerList(state.players || currentPlayers);
-    if (state.turnUserId) setTurnBanner(state.turnUserId, state.turnUsername);
+    if (state.askedUserId) setAskedBanner(state.askedUserId, state.askedUsername);
   });
 
   socket.on('sp:role', ({ isSpy: spy, location, role, allLocations: locs }) => {
@@ -387,12 +342,8 @@
     }
   });
 
-  socket.on('sp:turn', ({ turnUserId, turnUsername }) => {
-    setTurnBanner(turnUserId, turnUsername);
-  });
-
-  socket.on('sp:asking', ({ askerUsername, askedUserId, askedUsername, seconds }) => {
-    setAskingBanner(askerUsername, askedUserId, askedUsername, seconds);
+  socket.on('sp:asking', ({ askedUserId, askedUsername }) => {
+    setAskedBanner(askedUserId, askedUsername);
   });
 
   socket.on('sp:accusation', data => { showVoting(data); });
@@ -475,13 +426,5 @@
     socket.emit('sp:new_game', { roomId });
   });
 
-  const tipsToggle = $('sf-tips-toggle');
-  const tipsBody   = $('sf-tips-body');
-  const tipsArrow  = $('sf-tips-arrow');
-  tipsToggle?.addEventListener('click', () => {
-    const open = !tipsBody?.classList.contains('hidden');
-    if (open) { tipsBody?.classList.add('hidden'); tipsArrow?.classList.remove('open'); }
-    else      { tipsBody?.classList.remove('hidden'); tipsArrow?.classList.add('open'); }
-  });
 
 })();

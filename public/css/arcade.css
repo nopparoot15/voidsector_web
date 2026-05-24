@@ -1116,10 +1116,20 @@
 .sf-start-btn:hover { background: #c4b5fd; }
 .sf-lobby-hint { text-align: center; font-size: 13px; color: #52525b; }
 
-/* Game shell */
+/* Game shell — 2-column on wide screens */
 .sf-game {
-  max-width: 560px; margin: 0 auto; padding: 16px 16px 80px;
+  max-width: 1100px; margin: 0 auto; padding: 16px 20px 80px;
+  display: grid;
+  grid-template-columns: minmax(0, 560px) 300px;
+  gap: 20px;
+  align-items: start;
+}
+.sf-game-main {
   display: flex; flex-direction: column; gap: 14px;
+  min-width: 0;
+}
+@media (max-width: 860px) {
+  .sf-game { grid-template-columns: 1fr; max-width: 560px; }
 }
 
 /* Header: timer + turn */
@@ -1357,21 +1367,43 @@
 }
 .sf-new-game-btn:hover { background: #c4b5fd; }
 
-/* How-to-play tips */
-.sf-tips {
-  border-radius: 14px; padding: 14px 16px;
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+/* Guide panel (right column) */
+.sf-guide {
+  position: sticky; top: 80px;
+  border-radius: 16px; padding: 20px 18px;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
+  display: flex; flex-direction: column; gap: 18px;
+  max-height: calc(100vh - 100px); overflow-y: auto;
 }
-.sf-tips-toggle {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  background: none; border: none; cursor: pointer; padding: 0;
-  font-size: 12px; font-weight: 700; color: #52525b; text-transform: uppercase; letter-spacing: .08em;
+.sf-guide-title {
+  font-size: 13px; font-weight: 800; color: #a78bfa;
+  text-transform: uppercase; letter-spacing: .08em;
+  padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-.sf-tips-toggle:hover { color: #a78bfa; }
-.sf-tips-toggle-arrow { font-size: 10px; transition: transform .2s; }
-.sf-tips-toggle-arrow.open { transform: rotate(180deg); }
-.sf-tips-body { padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
-.sf-tips-body.hidden { display: none; }
-.sf-tips-section-title { font-size: 11px; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
-.sf-tips-list { display: flex; flex-direction: column; gap: 5px; }
-.sf-tip { font-size: 12px; color: #a1a1aa; padding-left: 4px; line-height: 1.5; }
+.sf-guide-section { display: flex; flex-direction: column; gap: 8px; }
+.sf-guide-section-head {
+  font-size: 12px; font-weight: 700; color: #d4d4d8;
+}
+.sf-guide-p { font-size: 12px; color: #a1a1aa; line-height: 1.65; margin: 0; }
+.sf-guide-steps { display: flex; flex-direction: column; gap: 7px; }
+.sf-guide-step {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; color: #a1a1aa; line-height: 1.5;
+}
+.sf-step-num {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(167,139,250,0.2); color: #a78bfa;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; margin-top: 1px;
+}
+.sf-guide-tips-list { display: flex; flex-direction: column; gap: 6px; }
+.sf-guide-tip {
+  font-size: 12px; color: #a1a1aa; line-height: 1.55;
+  padding: 6px 8px; border-radius: 8px;
+  background: rgba(255,255,255,0.02); border-left: 2px solid rgba(255,255,255,0.08);
+}
+.sf-guide-tip--green { border-color: rgba(110,231,183,0.5); color: #a7f3d0; background: rgba(110,231,183,0.04); }
+.sf-guide-tip--red   { border-color: rgba(248,113,113,0.5); color: #fca5a5; background: rgba(248,113,113,0.04); }
+@media (max-width: 860px) {
+  .sf-guide { position: static; max-height: none; }
+}

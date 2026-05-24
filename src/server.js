@@ -314,7 +314,7 @@ io.on('connection', (socket) => {
         role: isSpy ? null : (st.roles?.[userId] || '?'),
         allLocations: st.allLocationNames,
       });
-      if (st.turnUserId) socket.emit('sp:turn', { turnUserId: st.turnUserId, turnUsername: st.turnUsername });
+      if (st.askedUserId) socket.emit('sp:asking', { askedUserId: st.askedUserId, askedUsername: st.askedUsername, seconds: null });
     }
   });
 
@@ -410,10 +410,11 @@ io.on('connection', (socket) => {
       const duration = minutes * 60 * 1000;
       const allLocationNames = SPYFALL_LOCATIONS.map(l => l.name);
 
-      const firstTurn = room.players[Math.floor(Math.random() * room.players.length)];
-      room.state = { phase: 'playing', location: loc.name, spyUserId, roles, allLocationNames, timerEndsAt: Date.now() + duration, accusation: null, winner: null, spyGuessedLocation: null, turnUserId: firstTurn.userId, turnUsername: firstTurn.username };
+      const nonSpyPlayers = room.players.filter(p => p.userId !== spyUserId);
+      const firstAsked = nonSpyPlayers[Math.floor(Math.random() * nonSpyPlayers.length)];
+      room.state = { phase: 'playing', location: loc.name, spyUserId, roles, allLocationNames, timerEndsAt: Date.now() + duration, accusation: null, winner: null, spyGuessedLocation: null, askedUserId: firstAsked.userId, askedUsername: firstAsked.username };
 
-      io.to(`gm:${rid}`).emit('gm:started', { state: { phase: 'playing', timerEndsAt: room.state.timerEndsAt, players: room.players.map(p => ({ userId: p.userId, username: p.username })), accusation: null, turnUserId: firstTurn.userId, turnUsername: firstTurn.username } });
+      io.to(`gm:${rid}`).emit('gm:started', { state: { phase: 'playing', timerEndsAt: room.state.timerEndsAt, players: room.players.map(p => ({ userId: p.userId, username: p.username })), accusation: null, askedUserId: firstAsked.userId, askedUsername: firstAsked.username } });
 
       io.in(`gm:${rid}`).fetchSockets().then(sockets => {
         sockets.forEach(s => {
@@ -421,7 +422,7 @@ io.on('connection', (socket) => {
           const spy = uid === spyUserId;
           s.emit('sp:role', { isSpy: spy, location: spy ? null : loc.name, role: spy ? null : (roles[uid] || '?'), allLocations: allLocationNames });
         });
-        io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: firstTurn.userId, turnUsername: firstTurn.username });
+        io.to(`gm:${rid}`).emit('sp:asking', { askedUserId: firstAsked.userId, askedUsername: firstAsked.username, seconds: null });
       });
       gameStore.setTimer(rid, 'sptimer', () => endSpyfall(rid, 'spy', 'หมดเวลา — สปายรอดไปได้!'), duration);
 
@@ -460,33 +461,13 @@ io.on('connection', (socket) => {
     room.state.options[key] = value;
   });
 
-  socket.on('sp:ask', ({ roomId, targetUserId } = {}) => {
-    const rid = String(roomId || '').toUpperCase();
-    const userId = Number(socket.data.userId);
+  function pickNextAsked(rid, excludeUserId) {
     const room = gameStore.get(rid);
-    if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
-    const st = room.state;
-    if (st.phase !== 'playing' || st.turnUserId !== userId) return;
-    const asker  = room.players.find(p => p.userId === userId);
-    const target = room.players.find(p => p.userId === Number(targetUserId));
-    if (!target || target.userId === userId) return;
-
-    const ANSWER_SECS = 30;
-    st.askedUserId   = target.userId;
-    st.askedUsername = target.username;
-    io.to(`gm:${rid}`).emit('sp:asking', {
-      askerUserId: userId, askerUsername: asker.username,
-      askedUserId: target.userId, askedUsername: target.username,
-      seconds: ANSWER_SECS,
-    });
-    gameStore.setTimer(rid, 'spanswer', () => {
-      if (!room.state || room.state.askedUserId !== target.userId) return;
-      room.state.turnUserId   = target.userId;
-      room.state.turnUsername = target.username;
-      room.state.askedUserId  = null;
-      io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: target.userId, turnUsername: target.username });
-    }, ANSWER_SECS * 1000);
-  });
+    if (!room) return null;
+    const candidates = room.players.filter(p => p.userId !== excludeUserId);
+    if (!candidates.length) return room.players[0] || null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
 
   socket.on('sp:done_answer', ({ roomId } = {}) => {
     const rid = String(roomId || '').toUpperCase();
@@ -496,10 +477,11 @@ io.on('connection', (socket) => {
     const st = room.state;
     if (st.phase !== 'playing' || st.askedUserId !== userId) return;
     gameStore.clearTimer(rid, 'spanswer');
-    st.turnUserId   = userId;
-    st.turnUsername = st.askedUsername;
-    st.askedUserId  = null;
-    io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: userId, turnUsername: st.turnUsername });
+    const next = pickNextAsked(rid, userId);
+    if (!next) return;
+    st.askedUserId   = next.userId;
+    st.askedUsername = next.username;
+    io.to(`gm:${rid}`).emit('sp:asking', { askedUserId: next.userId, askedUsername: next.username, seconds: null });
   });
 
   socket.on('sp:accuse', ({ roomId, targetUserId } = {}) => {
@@ -559,13 +541,12 @@ io.on('connection', (socket) => {
       } else {
         st.phase = 'playing';
         st.timerEndsAt = Date.now() + st.accusation.timeLeft;
-        const nextTurnId   = st.accusation.targetUserId;
-        const nextTurnName = st.accusation.targetUsername;
-        st.turnUserId   = nextTurnId;
-        st.turnUsername = nextTurnName;
+        const nextAsked = pickNextAsked(rid, st.accusation.targetUserId) || room.players.find(p => p.userId === st.accusation.targetUserId) || room.players[0];
+        st.askedUserId   = nextAsked.userId;
+        st.askedUsername = nextAsked.username;
         st.accusation  = null;
         io.to(`gm:${rid}`).emit('sp:vote_resolved', { result: 'innocent' });
-        io.to(`gm:${rid}`).emit('sp:turn', { turnUserId: nextTurnId, turnUsername: nextTurnName });
+        io.to(`gm:${rid}`).emit('sp:asking', { askedUserId: nextAsked.userId, askedUsername: nextAsked.username, seconds: null });
         gameStore.setTimer(rid, 'sptimer', () => endSpyfall(rid, 'spy', 'หมดเวลา — สปายรอดไปได้!'), st.timerEndsAt - Date.now());
       }
     }

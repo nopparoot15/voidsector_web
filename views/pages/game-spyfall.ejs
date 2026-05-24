@@ -54,88 +54,112 @@
   <!-- ══ GAME ════════════════════════════════════════════════════════════════ -->
   <div id="sf-game" class="sf-game hidden">
 
-    <!-- Timer + Turn -->
-    <div class="sf-game-header">
-      <div class="sf-timer-block">
-        <div id="sf-timer" class="sf-timer">8:00</div>
-        <div class="sf-timer-label">เหลือเวลา</div>
-      </div>
-      <div id="sf-turn-banner" class="sf-turn-banner hidden"></div>
-    </div>
+    <!-- LEFT: main gameplay -->
+    <div class="sf-game-main">
 
-    <!-- Player card -->
-    <div id="sf-card-player" class="sf-rolecard sf-rolecard--player hidden">
-      <div class="sf-rolecard-icon">📍</div>
-      <div class="sf-rolecard-row">
-        <div class="sf-rolecard-label">สถานที่</div>
-        <div id="sf-my-location" class="sf-rolecard-value">—</div>
+      <!-- Timer + Turn -->
+      <div class="sf-game-header">
+        <div class="sf-timer-block">
+          <div id="sf-timer" class="sf-timer">8:00</div>
+          <div class="sf-timer-label">เหลือเวลา</div>
+        </div>
+        <div id="sf-turn-banner" class="sf-turn-banner hidden"></div>
       </div>
-      <div class="sf-rolecard-sep"></div>
-      <div class="sf-rolecard-row">
-        <div class="sf-rolecard-label">บทบาทของคุณ</div>
-        <div id="sf-my-role" class="sf-rolecard-value sf-rolecard-value--role">—</div>
-      </div>
-    </div>
 
-    <!-- Spy card -->
-    <div id="sf-card-spy" class="sf-rolecard sf-rolecard--spy hidden">
-      <div class="sf-rolecard-icon">🕵️</div>
-      <div class="sf-rolecard-spy-title">คุณคือสปาย</div>
-      <div class="sf-rolecard-spy-sub">หาให้ออกว่าอยู่ที่ไหน — อย่าให้ใครจับได้</div>
-
-      <div class="sf-locs-header">
-        <span id="sf-loc-label" class="sf-locs-label">สถานที่ที่เป็นไปได้</span>
-      </div>
-      <div id="sf-location-list" class="sf-locs-grid"></div>
-
-      <div id="sf-guess-inline" class="sf-guess-inline hidden">
-        <div id="sf-guess-inline-timer" class="sf-guess-inline-timer hidden"></div>
-        <div class="sf-guess-actions">
-          <button id="sf-guess-cancel-btn" class="sf-guess-cancel-btn">ยกเลิก</button>
-          <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
+      <!-- Player card -->
+      <div id="sf-card-player" class="sf-rolecard sf-rolecard--player hidden">
+        <div class="sf-rolecard-icon">📍</div>
+        <div class="sf-rolecard-row">
+          <div class="sf-rolecard-label">สถานที่</div>
+          <div id="sf-my-location" class="sf-rolecard-value">—</div>
+        </div>
+        <div class="sf-rolecard-sep"></div>
+        <div class="sf-rolecard-row">
+          <div class="sf-rolecard-label">บทบาทของคุณ</div>
+          <div id="sf-my-role" class="sf-rolecard-value sf-rolecard-value--role">—</div>
         </div>
       </div>
-    </div>
 
-    <!-- Player list -->
-    <div class="sf-players-section">
-      <div class="sf-section-label">ผู้เล่นในห้อง</div>
-      <div id="sf-player-list" class="sf-player-list"></div>
-    </div>
+      <!-- Spy card -->
+      <div id="sf-card-spy" class="sf-rolecard sf-rolecard--spy hidden">
+        <div class="sf-rolecard-icon">🕵️</div>
+        <div class="sf-rolecard-spy-title">คุณคือสปาย</div>
+        <div class="sf-rolecard-spy-sub">หาให้ออกว่าอยู่ที่ไหน — อย่าให้ใครจับได้</div>
 
-    <!-- Tips -->
-    <div class="sf-tips">
-      <button class="sf-tips-toggle" id="sf-tips-toggle">
-        <span>📖 วิธีเล่น &amp; เทคนิค</span>
-        <span class="sf-tips-toggle-arrow" id="sf-tips-arrow">▼</span>
-      </button>
-      <div class="sf-tips-body hidden" id="sf-tips-body">
-        <div>
-          <div class="sf-tips-section-title">🎤 วิธีถาม (ผู้เล่นปกติ)</div>
-          <div class="sf-tips-list">
-            <div class="sf-tip">• ถามเกี่ยวกับบรรยากาศ สภาพแวดล้อม หรือสิ่งที่เห็นในสถานที่ เช่น "มีเสียงดังไหม?" "คนใส่ชุดพิเศษไหม?"</div>
-            <div class="sf-tip">• อย่าถามตรงๆ เช่น "อยู่ที่ไหน?" เพราะสปายจะรู้ว่าคุณรู้สถานที่</div>
-            <div class="sf-tip">• ถามให้กว้างพอที่สปายจะตอบได้โดยไม่รู้จริง เช่น "อาหารที่นี่แพงไหม?"</div>
-          </div>
+        <div class="sf-locs-header">
+          <span id="sf-loc-label" class="sf-locs-label">กดเลือกสถานที่เพื่อเดา</span>
         </div>
-        <div>
-          <div class="sf-tips-section-title">🕵️ วิธีรอด (สปาย)</div>
-          <div class="sf-tips-list">
-            <div class="sf-tip">• ตอบคำถามให้กว้างๆ คลุมเครือ เช่น "ก็ได้" "ขึ้นอยู่กับคน" "ปกตินะ"</div>
-            <div class="sf-tip">• สังเกตคำตอบของคนอื่นเพื่อเดาสถานที่ก่อนโหวต</div>
-            <div class="sf-tip">• หากถูกถามเรื่องที่ไม่รู้ ให้ย้อนถามกลับไปก่อน</div>
-          </div>
-        </div>
-        <div>
-          <div class="sf-tips-section-title">🚨 วิธีกล่าวหา</div>
-          <div class="sf-tips-list">
-            <div class="sf-tip">• กดปุ่ม <b>กล่าวหา</b> ที่ชื่อผู้เล่นที่สงสัย — ทุกคนจะโหวตพร้อมกัน</div>
-            <div class="sf-tip">• ถ้าโหวตเห็นด้วยเกินครึ่ง ผู้ถูกกล่าวหาแพ้ สปายได้เดาสถานที่ 1 ครั้ง</div>
-            <div class="sf-tip">• ถ้าโหวตไม่ผ่าน เกมเล่นต่อ และผู้ถูกกล่าวหาได้ถามต่อ</div>
+        <div id="sf-location-list" class="sf-locs-grid"></div>
+
+        <div id="sf-guess-inline" class="sf-guess-inline hidden">
+          <div id="sf-guess-inline-timer" class="sf-guess-inline-timer hidden"></div>
+          <div class="sf-guess-actions">
+            <button id="sf-guess-cancel-btn" class="sf-guess-cancel-btn">ยกเลิก</button>
+            <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Player list -->
+      <div class="sf-players-section">
+        <div class="sf-section-label">ผู้เล่นในห้อง</div>
+        <div id="sf-player-list" class="sf-player-list"></div>
+      </div>
+
+    </div><!-- end sf-game-main -->
+
+    <!-- RIGHT: guide panel -->
+    <aside class="sf-guide">
+      <div class="sf-guide-title">📖 วิธีเล่น Spyfall</div>
+
+      <div class="sf-guide-section">
+        <div class="sf-guide-section-head">🎯 เป้าหมาย</div>
+        <p class="sf-guide-p">ผู้เล่นทุกคนรู้ <b>สถานที่</b> และ <b>บทบาท</b> ยกเว้น <b>สปาย 1 คน</b> ที่ไม่รู้ว่าอยู่ที่ไหน ทีมผู้เล่นต้องจับสปายให้ได้ก่อนหมดเวลา ส่วนสปายต้องแกล้งทำเป็นรู้สถานที่และเดาให้ถูกก่อนโดนจับ</p>
+      </div>
+
+      <div class="sf-guide-section">
+        <div class="sf-guide-section-head">🔄 ลำดับการเล่น</div>
+        <div class="sf-guide-steps">
+          <div class="sf-guide-step"><span class="sf-step-num">1</span><span>เจ้าของห้องกด <b>เริ่มเกม</b> — ทุกคนได้รับบทบาทลับในโทรศัพท์ตัวเอง</span></div>
+          <div class="sf-guide-step"><span class="sf-step-num">2</span><span>ผู้เล่นที่มีเทิร์น <b>ถาม</b> คนอื่น 1 คำถาม ผ่าน Discord แล้วกดปุ่ม <b>ถาม</b> ส่งเทิร์นให้คนนั้นตอบ</span></div>
+          <div class="sf-guide-step"><span class="sf-step-num">3</span><span>คนที่โดนถาม <b>ตอบ</b> แล้วกด <b>ถามต่อ</b> เพื่อเลือกถามคนถัดไป</span></div>
+          <div class="sf-guide-step"><span class="sf-step-num">4</span><span>เมื่อสงสัยใคร กด <b>กล่าวหา</b> — ทุกคนโหวตพร้อมกัน</span></div>
+          <div class="sf-guide-step"><span class="sf-step-num">5</span><span>ถ้าจับสปายได้ สปายต้องเดาสถานที่ — เดาถูกสปายยังชนะ เดาผิดทีมผู้เล่นชนะ</span></div>
+        </div>
+      </div>
+
+      <div class="sf-guide-section">
+        <div class="sf-guide-section-head">🎤 เทคนิคการถาม</div>
+        <div class="sf-guide-tips-list">
+          <div class="sf-guide-tip">ถามเกี่ยวกับ <b>ประสบการณ์</b> ในสถานที่ เช่น "คุณรู้สึกยังไงที่นี่?" แทนที่จะถามตรงๆ</div>
+          <div class="sf-guide-tip">ใช้คำถาม <b>ปลายเปิด</b> เช่น "อธิบายสิ่งที่เห็นรอบตัวให้ฟังหน่อย" — สปายจะตอบได้ยากกว่า</div>
+          <div class="sf-guide-tip">สังเกต <b>ความลังเล</b> หรือคำตอบที่คลุมเครือผิดปกติ — นั่นคือสัญญาณของสปาย</div>
+          <div class="sf-guide-tip">อย่าถามสิ่งที่ <b>เฉพาะเจาะจงเกินไป</b> เช่น "มีสระว่ายน้ำไหม?" เพราะจะทำให้สปายรู้สถานที่ได้ง่ายขึ้น</div>
+          <div class="sf-guide-tip">ถามให้ <b>ทุกคนตอบได้สม่ำเสมอ</b> อย่าเจาะแค่คนที่สงสัย ไม่งั้นจะโดนสปายจับทาง</div>
+        </div>
+      </div>
+
+      <div class="sf-guide-section">
+        <div class="sf-guide-section-head">🕵️ เทคนิคสปาย</div>
+        <div class="sf-guide-tips-list">
+          <div class="sf-guide-tip">ตอบให้ <b>กว้างและคลุมเครือ</b> เช่น "ก็ปกติ" "ขึ้นอยู่กับคน" — อย่าตอบตรงเกินไปจนคนอื่นรู้ว่าไม่รู้จริง</div>
+          <div class="sf-guide-tip">ฟัง <b>คำตอบของทุกคน</b> อย่างตั้งใจ — นั่นคือเบาะแสเดียวที่จะช่วยให้เดาสถานที่ได้</div>
+          <div class="sf-guide-tip">ถ้าถูกถามเรื่องที่ไม่รู้ <b>ย้อนถามกลับ</b> หรือพูดว่า "แล้วคุณล่ะ คิดว่ายังไง?"</div>
+          <div class="sf-guide-tip">อย่าพยายาม <b>ดูฉลาดเกินไป</b> — สปายที่ถามคำถามแหลมคมมักโดนจับได้ก่อน</div>
+          <div class="sf-guide-tip">เดาสถานที่ได้เลยถ้ามั่นใจ — แต่รอให้ <b>ได้ข้อมูลพอ</b> ก่อน เพราะเดาผิดแพ้ทันที</div>
+        </div>
+      </div>
+
+      <div class="sf-guide-section">
+        <div class="sf-guide-section-head">🏆 เงื่อนไขชนะ</div>
+        <div class="sf-guide-tips-list">
+          <div class="sf-guide-tip sf-guide-tip--green">ทีมผู้เล่น ชนะ ถ้าโหวตจับสปายได้และสปายเดาสถานที่ผิด</div>
+          <div class="sf-guide-tip sf-guide-tip--green">ทีมผู้เล่น ชนะ ถ้าสปายประกาศเดาและตอบผิด</div>
+          <div class="sf-guide-tip sf-guide-tip--red">สปาย ชนะ ถ้าเดาสถานที่ถูก ไม่ว่าจะตอนถูกจับหรือประกาศเองก็ตาม</div>
+          <div class="sf-guide-tip sf-guide-tip--red">สปาย ชนะ ถ้าหมดเวลาโดยยังไม่โดนจับ</div>
+        </div>
+      </div>
+    </aside>
 
   </div>
 
