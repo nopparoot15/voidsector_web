@@ -19,7 +19,7 @@
         <span class="thread-time"><%= thread.timeAgo %></span>
         <span class="thread-dot">·</span>
         <span class="thread-expire-badge <% if (thread.daysLeft <= 3) { %>thread-expire-badge--soon<% } %>">
-          ⏳ หมดอายุใน <%= thread.daysLeft %> วัน
+          ⏳ ไม่มีไหวแล้ว <%= thread.daysLeft %> วันจะลบ
         </span>
       </div>
     </div>

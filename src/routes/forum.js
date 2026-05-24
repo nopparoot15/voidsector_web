@@ -118,6 +118,9 @@ router.post('/forum/:id/comment', requireFullAccount, async (req, res) => {
        VALUES ($1, $2, $3, $4)`,
       [id, req.session.user.id, req.session.user.username, body]
     );
+    await pool.query(
+      `UPDATE threads SET expires_at = NOW() + INTERVAL '30 days' WHERE id = $1`, [id]
+    );
     res.redirect(`/forum/${id}#comments`);
   } catch (err) {
     console.error('forum comment error:', err.message);
