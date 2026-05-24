@@ -20,7 +20,8 @@
         <p>Tic-Tac-Toe 2 คน แบบ realtime</p>
         <div class="arcade-badge">2 ผู้เล่น</div>
       </div>
-      <button class="arcade-play-btn" data-game="xo">สร้างห้อง →</button>
+      <button class="arcade-play-btn" data-game="xo">เล่นเลย →</button>
+      <div class="arcade-room-panel hidden" id="panel-xo"></div>
     </div>
 
     <div class="arcade-card arcade-card--wb">
@@ -30,7 +31,8 @@
         <p>ต่อคำให้ต่อเนื่อง — ใครหมดชีวิตก่อนแพ้</p>
         <div class="arcade-badge">2–6 ผู้เล่น</div>
       </div>
-      <button class="arcade-play-btn" data-game="wordbomb">สร้างห้อง →</button>
+      <button class="arcade-play-btn" data-game="wordbomb">เล่นเลย →</button>
+      <div class="arcade-room-panel hidden" id="panel-wordbomb"></div>
     </div>
 
     <div class="arcade-card arcade-card--tq">
@@ -40,7 +42,8 @@
         <p>แข่งตอบคำถาม 10 ข้อ — เร็วและถูกได้คะแนนเยอะ</p>
         <div class="arcade-badge">2–8 ผู้เล่น</div>
       </div>
-      <button class="arcade-play-btn" data-game="trivia">สร้างห้อง →</button>
+      <button class="arcade-play-btn" data-game="trivia">เล่นเลย →</button>
+      <div class="arcade-room-panel hidden" id="panel-trivia"></div>
     </div>
 
     <div class="arcade-card arcade-card--tr">
@@ -50,7 +53,8 @@
         <p>แข่งพิมพ์ประโยค — ใครเร็วที่สุดชนะ</p>
         <div class="arcade-badge">2–6 ผู้เล่น</div>
       </div>
-      <button class="arcade-play-btn" data-game="typerace">สร้างห้อง →</button>
+      <button class="arcade-play-btn" data-game="typerace">เล่นเลย →</button>
+      <div class="arcade-room-panel hidden" id="panel-typerace"></div>
     </div>
 
     <div class="arcade-card arcade-card--rps">
@@ -60,7 +64,8 @@
         <p>เป่ายิ้งฉุบ realtime — ชนะ 3 รอบก่อนชนะ</p>
         <div class="arcade-badge">2 ผู้เล่น</div>
       </div>
-      <button class="arcade-play-btn" data-game="rps">สร้างห้อง →</button>
+      <button class="arcade-play-btn" data-game="rps">เล่นเลย →</button>
+      <div class="arcade-room-panel hidden" id="panel-rps"></div>
     </div>
 
     <div class="arcade-card arcade-card--dg">
@@ -70,7 +75,8 @@
         <p>ผลัดกันวาดรูปให้เพื่อนทาย — ยิ่งเร็วยิ่งได้คะแนนเยอะ</p>
         <div class="arcade-badge">2–8 ผู้เล่น</div>
       </div>
-      <button class="arcade-play-btn" data-game="drawguess">สร้างห้อง →</button>
+      <button class="arcade-play-btn" data-game="drawguess">เล่นเลย →</button>
+      <div class="arcade-room-panel hidden" id="panel-drawguess"></div>
     </div>
 
   </div>
@@ -81,20 +87,79 @@
 </main>
 
 <script>
+let activePanel = null;
+
+async function openPanel(btn, game) {
+  const panel = document.getElementById(`panel-${game}`);
+
+  // Toggle off if same card clicked again
+  if (activePanel === panel && !panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    btn.classList.remove('active');
+    activePanel = null;
+    return;
+  }
+
+  // Close previous
+  if (activePanel) {
+    activePanel.classList.add('hidden');
+    document.querySelectorAll('.arcade-play-btn.active').forEach(b => b.classList.remove('active'));
+  }
+
+  btn.classList.add('active');
+  activePanel = panel;
+  panel.classList.remove('hidden');
+  panel.innerHTML = '<div class="arcade-room-loading"><span class="arcade-spinner"></span> กำลังโหลด…</div>';
+
+  try {
+    const r = await fetch(`/arcade/${game}/rooms`);
+    const { rooms } = await r.json();
+    renderPanel(panel, game, rooms);
+  } catch {
+    panel.innerHTML = '<div class="arcade-room-error">โหลดไม่ได้ ลองใหม่</div>';
+  }
+}
+
+function renderPanel(panel, game, rooms) {
+  let html = '';
+  if (rooms.length === 0) {
+    html += '<p class="arcade-room-empty">ยังไม่มีห้องที่เปิดอยู่</p>';
+  } else {
+    html += '<div class="arcade-room-list">';
+    rooms.forEach(room => {
+      html += `<div class="arcade-room-item">
+        <span class="arcade-room-host">${escHtml(room.host)}</span>
+        <span class="arcade-room-count">${room.playerCount} คน</span>
+        <button class="arcade-room-join-btn" onclick="joinRoom('${game}','${room.id}')">เข้าร่วม</button>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  html += `<button class="arcade-create-btn" onclick="createRoom('${game}')">+ สร้างห้องใหม่</button>`;
+  panel.innerHTML = html;
+}
+
+async function createRoom(game) {
+  document.getElementById('arcade-creating').classList.remove('hidden');
+  try {
+    const r = await fetch(`/arcade/${game}/create`, { method: 'POST' });
+    const { roomId } = await r.json();
+    window.location.href = `/arcade/${game}/${roomId}`;
+  } catch {
+    document.getElementById('arcade-creating').classList.add('hidden');
+  }
+}
+
+function joinRoom(game, roomId) {
+  window.location.href = `/arcade/${game}/${roomId}`;
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 document.querySelectorAll('.arcade-play-btn').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const game = btn.dataset.game;
-    document.getElementById('arcade-creating').classList.remove('hidden');
-    btn.disabled = true;
-    try {
-      const r = await fetch(`/arcade/${game}/create`, { method: 'POST' });
-      const { roomId } = await r.json();
-      window.location.href = `/arcade/${game}/${roomId}`;
-    } catch {
-      btn.disabled = false;
-      document.getElementById('arcade-creating').classList.add('hidden');
-    }
-  });
+  btn.addEventListener('click', () => openPanel(btn, btn.dataset.game));
 });
 </script>
 </body>

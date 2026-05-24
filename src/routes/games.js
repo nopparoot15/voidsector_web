@@ -10,6 +10,12 @@ router.get('/arcade', requireLogin, (req, res) => {
   res.render('pages/arcade', { title: 'Arcade' });
 });
 
+router.get('/arcade/:gameType/rooms', requireLogin, (req, res) => {
+  const { gameType } = req.params;
+  if (!GAME_TYPES[gameType]) return res.status(404).json({ error: 'Unknown game' });
+  res.json({ rooms: gameStore.list(gameType) });
+});
+
 router.post('/arcade/:gameType/create', requireLogin, (req, res) => {
   const { gameType } = req.params;
   if (!GAME_TYPES[gameType]) return res.status(404).json({ error: 'Unknown game' });

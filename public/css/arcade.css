@@ -900,6 +900,59 @@
 }
 .dg-final-row.is-me { border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.06); }
 
+/* ===== ROOM BROWSER PANEL ===== */
+.arcade-room-panel {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.arcade-room-loading,
+.arcade-room-error,
+.arcade-room-empty {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+  padding: 4px 0;
+}
+.arcade-room-list { display: flex; flex-direction: column; gap: 6px; }
+.arcade-room-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.arcade-room-host { flex: 1; font-size: 0.84rem; color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arcade-room-count { font-size: 0.78rem; color: rgba(255,255,255,0.4); white-space: nowrap; }
+.arcade-room-join-btn {
+  background: color-mix(in srgb, var(--ac) 18%, transparent);
+  color: var(--ac);
+  border: 1px solid color-mix(in srgb, var(--ac) 35%, transparent);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.arcade-room-join-btn:hover { background: color-mix(in srgb, var(--ac) 30%, transparent); }
+.arcade-create-btn {
+  background: color-mix(in srgb, var(--ac) 14%, transparent);
+  color: var(--ac);
+  border: 1px dashed color-mix(in srgb, var(--ac) 40%, transparent);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.arcade-create-btn:hover { background: color-mix(in srgb, var(--ac) 25%, transparent); }
+.arcade-play-btn.active { opacity: 0.7; }
+
 /* Util */
 .hidden { display: none !important; }
 

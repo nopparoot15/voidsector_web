@@ -70,4 +70,14 @@ function clearTimer(id, key) {
   if (room.timers[key]) { clearTimeout(room.timers[key]); delete room.timers[key]; }
 }
 
-module.exports = { create, get, addPlayer, removePlayer, setTimer, clearTimer, clearAllTimers };
+function list(gameType) {
+  const result = [];
+  for (const room of rooms.values()) {
+    if (room.gameType === gameType && room.status === 'waiting') {
+      result.push({ id: room.id, playerCount: room.players.length, host: room.players[0]?.username || '?' });
+    }
+  }
+  return result;
+}
+
+module.exports = { create, get, list, addPlayer, removePlayer, setTimer, clearTimer, clearAllTimers };
