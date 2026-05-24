@@ -466,17 +466,18 @@ io.on('connection', (socket) => {
     if (st.phase !== 'voting' || !st.accusation) return;
     if (!room.players.find(p => p.userId === userId)) return;
     if (st.accusation.votes[userId] !== undefined) return;
+    if (userId === st.accusation.accuserUserId || userId === st.accusation.targetUserId) return;
 
     st.accusation.votes[userId] = !!guilty;
-    const voteCount = Object.keys(st.accusation.votes).length;
-    const total = room.players.length;
-    const guiltyVotes   = Object.values(st.accusation.votes).filter(Boolean).length;
-    const innocentVotes = voteCount - guiltyVotes;
-    const majority      = Math.floor(total / 2) + 1;
+    const voteCount      = Object.keys(st.accusation.votes).length;
+    const eligible       = room.players.filter(p => p.userId !== st.accusation.accuserUserId && p.userId !== st.accusation.targetUserId).length;
+    const guiltyVotes    = Object.values(st.accusation.votes).filter(Boolean).length;
+    const innocentVotes  = voteCount - guiltyVotes;
+    const majority       = Math.floor(eligible / 2) + 1;
 
-    io.to(`gm:${rid}`).emit('sp:vote_update', { votes: voteCount, total, guilty: guiltyVotes, innocent: innocentVotes });
+    io.to(`gm:${rid}`).emit('sp:vote_update', { votes: voteCount, total: eligible, guilty: guiltyVotes, innocent: innocentVotes });
 
-    if (guiltyVotes >= majority || innocentVotes >= majority || voteCount >= total) {
+    if (guiltyVotes >= majority || innocentVotes >= majority || voteCount >= eligible) {
       if (guiltyVotes > innocentVotes) {
         if (st.accusation.targetUserId === st.spyUserId) {
           st.phase = 'spy_guess';
