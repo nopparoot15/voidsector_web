@@ -26,8 +26,12 @@
   const cardPlayer   = $('sf-card-player');
   const myLocation   = $('sf-my-location');
   const myRole       = $('sf-my-role');
-  const locationHints= $('sf-location-hints');
-  const locationList = $('sf-location-list');
+  const locationHints    = $('sf-location-hints');
+  const locationList     = $('sf-location-list');
+  const locLabel         = $('sf-loc-label');
+  const guessInline      = $('sf-guess-inline');
+  const guessInlineTimer = $('sf-guess-inline-timer');
+  const guessConfirmBtn  = $('sf-guess-confirm-btn');
   const playerList   = $('sf-player-list');
   const turnBanner   = $('sf-turn-banner');
 
@@ -38,9 +42,6 @@
   const voteTally    = $('sf-vote-tally');
   const voteMsg      = $('sf-vote-msg');
 
-  const guessSelect    = $('sf-guess-select');
-  const guessBtn       = $('sf-guess-btn');
-  const guessTimer     = $('sf-guess-timer');
   const spyGuessBtn    = $('sf-spy-guess-btn');
 
   const endWinner    = $('sf-end-winner');
@@ -235,30 +236,44 @@
     }
   }
 
-  function showGuessPhase(locations) {
+  function showGuessPhase(locations, withTimer = false) {
     const locs = (locations && locations.length) ? locations : allLocations;
     hide(votingOverlay);
-    show(guessOverlay);
-    if (guessSelect && locs.length) {
-      guessSelect.innerHTML = locs.map(l => `<button class="sf-guess-item" data-loc="${esc(l)}">${esc(l)}</button>`).join('');
-      guessSelect.querySelectorAll('.sf-guess-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          guessSelect.querySelectorAll('.sf-guess-item').forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          guessBtn?.removeAttribute('disabled');
-          if (guessBtn) guessBtn.textContent = `ตอบ: ${btn.dataset.loc}`;
+
+    // Show inline guess mode on the location list
+    if (locLabel) locLabel.textContent = '🎯 เดาสถานที่ — แตะเพื่อเลือก';
+    show(locationHints, guessInline);
+    if (guessConfirmBtn) { guessConfirmBtn.setAttribute('disabled', ''); guessConfirmBtn.textContent = 'เลือกสถานที่ก่อน'; }
+
+    if (locationList && locs.length) {
+      locationList.innerHTML = locs.map(l =>
+        `<div class="sf-loc-item sf-loc-item--pick" data-loc="${esc(l)}">${esc(l)}</div>`
+      ).join('');
+      locationList.querySelectorAll('.sf-loc-item--pick').forEach(item => {
+        item.addEventListener('click', () => {
+          locationList.querySelectorAll('.sf-loc-item--pick').forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
+          if (guessConfirmBtn) {
+            guessConfirmBtn.removeAttribute('disabled');
+            guessConfirmBtn.textContent = `ยืนยัน: ${item.dataset.loc}`;
+          }
         });
       });
     }
-    if (guessBtn) { guessBtn.setAttribute('disabled', ''); guessBtn.textContent = 'เลือกสถานที่ก่อน'; }
-    let left = 30;
+
     clearInterval(guessCountdown);
-    if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
-    guessCountdown = setInterval(() => {
-      left--;
-      if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
-      if (left <= 0) clearInterval(guessCountdown);
-    }, 1000);
+    if (withTimer) {
+      let left = 30;
+      if (guessInlineTimer) guessInlineTimer.textContent = `เหลือ ${left} วินาที`;
+      show(guessInlineTimer);
+      guessCountdown = setInterval(() => {
+        left--;
+        if (guessInlineTimer) guessInlineTimer.textContent = `เหลือ ${left} วินาที`;
+        if (left <= 0) clearInterval(guessCountdown);
+      }, 1000);
+    } else {
+      hide(guessInlineTimer);
+    }
   }
 
   function showEnd(data) {
@@ -353,8 +368,8 @@
 
   socket.on('sp:role', ({ isSpy: spy, location, role, allLocations: locs }) => {
     isSpy = spy;
+    if (locs && locs.length) allLocations = locs; // always cache
     if (spy) {
-      allLocations = locs || [];
       show(cardSpy); hide(cardPlayer);
       if (locs && locationList) {
         show(locationHints);
@@ -398,7 +413,7 @@
   });
 
   socket.on('sp:your_turn_guess', ({ locations }) => {
-    showGuessPhase(locations);
+    showGuessPhase(locations, true);
   });
 
   socket.on('sp:vote_resolved', ({ result }) => {
@@ -415,10 +430,12 @@
     isSpy = false;
     hasVoted = false;
     currentTurnUserId = null;
+    allLocations = [];
     stopTimer();
     clearInterval(guessCountdown);
     clearAnswerCountdown();
-    hide(cardSpy, cardPlayer, locationHints, turnBanner);
+    hide(cardSpy, cardPlayer, locationHints, guessInline, turnBanner);
+    if (locLabel) locLabel.textContent = 'สถานที่ที่เป็นไปได้';
     document.querySelectorAll('.sf-spy-caught-banner').forEach(b => b.remove());
     showLobby();
     if (isHost) show(startBtn);
@@ -473,7 +490,16 @@
 
   if (spyGuessBtn) {
     spyGuessBtn.addEventListener('click', () => {
-      showGuessPhase(allLocations);
+      showGuessPhase(allLocations, false);
+    });
+  }
+
+  if (guessConfirmBtn) {
+    guessConfirmBtn.addEventListener('click', () => {
+      const loc = locationList?.querySelector('.sf-loc-item--pick.selected')?.dataset.loc;
+      if (!loc) return;
+      guessConfirmBtn.setAttribute('disabled', '');
+      socket.emit('sp:guess', { roomId, location: loc });
     });
   }
 

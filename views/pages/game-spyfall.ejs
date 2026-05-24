@@ -78,8 +78,12 @@
 
         <!-- Location list for spy -->
         <div id="sf-location-hints" class="sf-location-hints hidden">
-          <div class="sf-section-label">สถานที่ที่เป็นไปได้</div>
+          <div class="sf-section-label" id="sf-loc-label">สถานที่ที่เป็นไปได้</div>
           <div id="sf-location-list" class="sf-location-list"></div>
+          <div id="sf-guess-inline" class="sf-guess-inline hidden">
+            <div id="sf-guess-inline-timer" class="sf-guess-inline-timer"></div>
+            <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
+          </div>
         </div>
       </div>
 

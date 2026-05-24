@@ -1135,12 +1135,28 @@
   background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.14);
   font-size: 13px; color: var(--text);
   cursor: default;
-  transition: background .15s;
+  transition: background .15s, border-color .15s;
 }
 .sf-loc-item:hover { background: rgba(167,139,250,0.14); }
-.sf-loc-item.sf-loc--crossed {
-  text-decoration: line-through; opacity: .4;
+.sf-loc-item.sf-loc--crossed { text-decoration: line-through; opacity: .4; }
+.sf-loc-item--pick { cursor: pointer; }
+.sf-loc-item--pick:hover { background: rgba(167,139,250,0.18); border-color: rgba(167,139,250,0.35); }
+.sf-loc-item--pick.selected {
+  background: rgba(167,139,250,0.28); border-color: rgba(167,139,250,0.8);
+  color: #e8d9ff; font-weight: 600;
 }
+
+/* Inline guess controls */
+.sf-guess-inline { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.sf-guess-inline-timer { font-size: 12px; color: #f87171; text-align: center; }
+.sf-guess-confirm-btn {
+  width: 100%; padding: 9px; border-radius: 10px;
+  border: 1px solid rgba(167,139,250,0.5); background: rgba(167,139,250,0.15);
+  color: #c4b5fd; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.sf-guess-confirm-btn:not([disabled]):hover { background: rgba(167,139,250,0.3); }
+.sf-guess-confirm-btn[disabled] { opacity: .45; cursor: default; }
 
 /* Turn banner */
 .sf-turn-banner {
