@@ -305,37 +305,7 @@
     if (data.spyGuessedLocation) { show(endGuessRow); if (endSpyGuess) endSpyGuess.textContent = data.spyGuessedLocation; }
     else hide(endGuessRow);
 
-    // Winners / losers per player
-    if (endRoles) {
-      const winners = [];
-      const losers  = [];
-      currentPlayers.forEach(p => {
-        const isSpy = p.userId === data.spyUserId;
-        const role  = isSpy ? 'สปาย' : (data.roles?.[p.userId] || '?');
-        const won   = spyWon ? isSpy : !isSpy;
-        const isMe  = p.userId === myId;
-        const obj   = { name: p.username, role, isSpy, isMe };
-        (won ? winners : losers).push(obj);
-      });
-
-      const renderCard = (list, win) => list.map(p =>
-        `<div class="sf-result-card sf-result-card--${win ? 'win' : 'lose'}${p.isMe ? ' sf-result-card--me' : ''}">
-          <div class="sf-result-avatar">${esc(p.name[0]).toUpperCase()}</div>
-          <div class="sf-result-name">${esc(p.name)}${p.isMe ? ' <span class="sf-you-tag">คุณ</span>' : ''}</div>
-          <div class="sf-result-role">${p.isSpy ? '🕵️ สปาย' : esc(p.role)}</div>
-        </div>`
-      ).join('');
-
-      endRoles.innerHTML = `
-        <div class="sf-result-col">
-          <div class="sf-result-header sf-result-header--win">🏆 ชนะ</div>
-          ${renderCard(winners, true)}
-        </div>
-        <div class="sf-result-col">
-          <div class="sf-result-header sf-result-header--lose">💀 แพ้</div>
-          ${renderCard(losers, false)}
-        </div>`;
-    }
+    if (endRoles) endRoles.innerHTML = '';
 
     if (isHost) show(newGameBtn);
   }
