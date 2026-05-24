@@ -13,7 +13,6 @@
   const lobby        = $('sf-lobby');
   const game         = $('sf-game');
   const votingOverlay= $('sf-voting');
-  const guessOverlay = $('sf-spy-guess');
   const endOverlay   = $('sf-end');
 
   const lobbyPlayers = $('sf-lobby-players');
@@ -211,11 +210,11 @@
 
   // ── Show/hide phases ──────────────────────────────────────────────────────────
   function showLobby() {
-    show(lobby); hide(game, votingOverlay, guessOverlay, endOverlay);
+    show(lobby); hide(game, votingOverlay, endOverlay);
   }
 
   function showGame() {
-    hide(lobby, votingOverlay, guessOverlay, endOverlay); show(game);
+    hide(lobby, votingOverlay, endOverlay); show(game);
   }
 
   function showVoting(data) {
@@ -277,7 +276,7 @@
   }
 
   function showEnd(data) {
-    hide(votingOverlay, guessOverlay, turnBanner); show(endOverlay);
+    hide(votingOverlay, guessInline, turnBanner); show(endOverlay);
     stopTimer();
     clearInterval(guessCountdown);
 

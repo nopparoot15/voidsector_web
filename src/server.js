@@ -260,6 +260,16 @@ io.on('connection', (socket) => {
           gmRoom.offlinePlayers.add(userId);
           const players = gmRoom.players.map(p => ({ userId: p.userId, username: p.username, offline: gmRoom.offlinePlayers.has(p.userId) }));
           io.to(`gm:${gmRid}`).emit('gm:players', { players });
+          // Remove player permanently if they don't reconnect within 60s
+          gameStore.setTimer(gmRid, `dc_${userId}`, () => {
+            const r = gameStore.get(gmRid);
+            if (!r || !r.offlinePlayers.has(userId)) return;
+            r.players = r.players.filter(p => p.userId !== userId);
+            r.offlinePlayers.delete(userId);
+            if (r.players.length === 0) { gameStore.clearAllTimers(gmRid); return; }
+            const updated = r.players.map(p => ({ userId: p.userId, username: p.username, offline: r.offlinePlayers.has(p.userId) }));
+            io.to(`gm:${gmRid}`).emit('gm:players', { players: updated });
+          }, 60000);
         }
       }
     }
@@ -284,7 +294,10 @@ io.on('connection', (socket) => {
     socket.join(`gm:${rid}`);
 
     const wasOffline = room.offlinePlayers?.has(userId);
-    if (wasOffline) room.offlinePlayers.delete(userId);
+    if (wasOffline) {
+      room.offlinePlayers.delete(userId);
+      gameStore.clearTimer(room.id, `dc_${userId}`);
+    }
 
     const playersWithStatus = room.players.map(p => ({ userId: p.userId, username: p.username, offline: room.offlinePlayers?.has(p.userId) || false }));
     const pub = { id: room.id, gameType: room.gameType, host: room.host, status: room.status, players: playersWithStatus };
