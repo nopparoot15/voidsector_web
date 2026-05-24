@@ -991,17 +991,20 @@
 .arcade-room-join-btn:hover { background: color-mix(in srgb, var(--ac) 30%, transparent); }
 .arcade-create-btn {
   width: 100%;
-  background: var(--ac);
-  color: #0c0c18;
-  border: none;
+  background: transparent;
+  color: var(--ac);
+  border: 2px dashed color-mix(in srgb, var(--ac) 55%, transparent);
   border-radius: 10px;
-  padding: 12px;
-  font-size: 0.95rem;
-  font-weight: 700;
+  padding: 11px;
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  transition: border-color 0.15s, background 0.15s;
 }
-.arcade-create-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.arcade-create-btn:hover {
+  background: color-mix(in srgb, var(--ac) 10%, transparent);
+  border-color: color-mix(in srgb, var(--ac) 80%, transparent);
+}
 .arcade-play-btn.active { opacity: 0.7; }
 
 /* Util */
