@@ -123,7 +123,7 @@
     const isMe = askedId === myId;
     turnBanner.className = 'sf-turn-banner ' + (isMe ? 'sf-turn-banner--asked' : 'sf-turn-banner--other');
     turnBanner.innerHTML = isMe
-      ? `💬 <strong>ตาคุณตอบ!</strong> ตอบเสร็จแล้วกด <button id="sf-done-answer-btn" class="sf-done-btn">ตอบแล้ว ›</button>`
+      ? `💬 <strong>ตาคุณตอบ!</strong> ตอบเสร็จแล้วกด <button id="sf-done-answer-btn" class="sf-done-btn">จบเทิร์น ›</button>`
       : `💬 <strong>${esc(askedName)}</strong> กำลังตอบ…`;
     $('sf-done-answer-btn')?.addEventListener('click', () => {
       socket.emit('sp:done_answer', { roomId });

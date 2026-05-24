@@ -1116,11 +1116,11 @@
 .sf-start-btn:hover { background: #c4b5fd; }
 .sf-lobby-hint { text-align: center; font-size: 13px; color: #52525b; }
 
-/* Game shell — 2-column on wide screens */
+/* Game shell — 2-column layout */
 .sf-game {
-  max-width: 1100px; margin: 0 auto; padding: 16px 20px 80px;
+  width: 100%; max-width: 1060px; margin: 0 auto; padding: 16px 20px 80px;
   display: grid;
-  grid-template-columns: minmax(0, 560px) 300px;
+  grid-template-columns: 1fr 260px;
   gap: 20px;
   align-items: start;
 }
@@ -1128,8 +1128,8 @@
   display: flex; flex-direction: column; gap: 14px;
   min-width: 0;
 }
-@media (max-width: 860px) {
-  .sf-game { grid-template-columns: 1fr; max-width: 560px; }
+@media (max-width: 680px) {
+  .sf-game { grid-template-columns: 1fr; padding: 12px 14px 80px; }
 }
 
 /* Header: timer + turn */
