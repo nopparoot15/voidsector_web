@@ -5,7 +5,7 @@ const { requireLogin, requireFullAccount } = require('../middleware/requireLogin
 const { pool } = require('../config/db');
 
 router.get('/', (req, res) => {
-  res.render('pages/landing', { title: 'VoidSector' });
+  res.render('pages/home', { title: 'VoidSector' });
 });
 
 router.get('/home', (req, res) => res.redirect(301, '/'));
