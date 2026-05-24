@@ -73,3 +73,22 @@ CREATE TABLE IF NOT EXISTS user_vocab_progress (
   next_review TIMESTAMP DEFAULT NOW(),
   last_review TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS threads (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  username VARCHAR(50) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days'
+);
+
+CREATE TABLE IF NOT EXISTS thread_comments (
+  id SERIAL PRIMARY KEY,
+  thread_id INTEGER REFERENCES threads(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  username VARCHAR(50) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);

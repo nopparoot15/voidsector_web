@@ -14,6 +14,7 @@ const whiteboardApiRoutes = require('./routes/whiteboardApi');
 const watchPartyRoutes = require('./routes/watchParty');
 const watchPartyApiRoutes = require('./routes/watchPartyApi');
 const gamesRoutes = require('./routes/games');
+const forumRoutes = require('./routes/forum');
 const { viewLocals } = require('./middleware/viewLocals');
 
 function createApp() {
@@ -55,6 +56,7 @@ function createApp() {
   app.use('/', whiteboardRoutes);
   app.use('/', watchPartyRoutes);
   app.use('/', gamesRoutes);
+  app.use('/', forumRoutes);
   app.use('/', authRoutes);
   app.use('/', pageRoutes);
 

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/forum.css">
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="forum-page">
+
+  <div class="forum-header">
+    <div>
+      <a href="/forum" class="forum-back">← กลับ</a>
+      <h1 class="forum-title">✏️ ตั้งกระทู้ใหม่</h1>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div class="forum-error"><%= error %></div>
+  <% } %>
+
+  <form class="thread-form" method="POST" action="/forum">
+    <div class="thread-form-group">
+      <label class="thread-form-label">หัวข้อกระทู้</label>
+      <input
+        class="thread-form-input"
+        type="text"
+        name="title"
+        placeholder="หัวข้อของคุณ..."
+        maxlength="200"
+        required
+        autofocus
+      >
+    </div>
+    <div class="thread-form-group">
+      <label class="thread-form-label">เนื้อหา</label>
+      <textarea
+        class="thread-form-textarea"
+        name="body"
+        placeholder="เขียนอะไรก็ได้..."
+        maxlength="5000"
+        rows="8"
+        required
+      ></textarea>
+      <div class="thread-form-hint">กระทู้จะลบอัตโนมัติหลัง 30 วัน</div>
+    </div>
+    <div class="thread-form-actions">
+      <a href="/forum" class="thread-form-cancel">ยกเลิก</a>
+      <button type="submit" class="thread-form-submit">ตั้งกระทู้ →</button>
+    </div>
+  </form>
+
+</main>
+</body>
+</html>
