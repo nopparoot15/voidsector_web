@@ -16,7 +16,7 @@
 
         <div class="wb-lobby__title" style="margin-bottom: 8px;">
           <h1>WATCH PARTY</h1>
-          <p>YouTube sync · Screen Share แบบ real-time · เสียงแยกแต่ละคน</p>
+          <p>ดูวิดีโอและเว็บไซต์พร้อมกัน • ซิงก์แบบ realtime</p>
         </div>
 
         <header class="wp-top">
@@ -38,25 +38,12 @@
         <!-- Mode tabs -->
         <div class="wp-mode-tabs">
           <button class="wp-mode-tab active" id="tabYoutube" data-mode="youtube">▶ YouTube Sync</button>
-          <button class="wp-mode-tab" id="tabScreen" data-mode="screen">🖥️ Screen Share</button>
+          <button class="wp-mode-tab" id="tabWeb" data-mode="web">🌐 เว็บไซต์</button>
         </div>
 
         <div class="wp-main">
 
-          <!-- Screen share live banner (shown when someone is sharing) -->
-          <div id="ssLiveBanner" class="ss-live-banner hidden">
-            <span class="ss-live-dot"></span>
-            <span id="ssLiveLabel">กำลังแชร์หน้าจอ</span>
-          </div>
-
-          <!-- Broadcaster self-preview (shown only to broadcaster) -->
-          <div id="ssBroadcastBar" class="ss-broadcast-bar hidden">
-            <span class="ss-live-dot"></span>
-            <span>คุณกำลังแชร์หน้าจออยู่</span>
-            <button id="ssStop" class="wp-btn wp-btn--danger" type="button">หยุดแชร์</button>
-          </div>
-
-          <!-- Main area: YouTube player OR screen share video -->
+          <!-- ── YouTube tab ── -->
           <section class="wp-playerCard" id="ytSection">
             <div class="wp-urlRow">
               <input id="wpUrl" class="wp-urlInput" placeholder="วางลิงก์ YouTube (youtube.com/watch?v=... หรือ youtu.be/...)" />
@@ -75,7 +62,7 @@
               <button id="wpPause" class="wp-btn wp-btn--icon" type="button" title="Pause">❚❚</button>
               <button id="wpSync"  class="wp-btn wp-btn--ghost" type="button">Sync</button>
               <div class="wp-sep"></div>
-              <button id="wpSubTH"     class="wp-btn wp-btn--ghost" type="button">TH Sub</button>
+              <button id="wpSubTH"      class="wp-btn wp-btn--ghost" type="button">TH Sub</button>
               <button id="wpFullscreen" class="wp-btn wp-btn--ghost" type="button">Fullscreen</button>
               <div class="wp-sep"></div>
               <button id="wpMute" class="wp-btn wp-btn--icon" type="button">🔊</button>
@@ -92,23 +79,39 @@
             </div>
           </section>
 
-          <!-- Screen share section -->
-          <section class="wp-playerCard hidden" id="ssSection">
-            <div id="ssWaiting" class="ss-waiting">
-              <div class="ss-waiting-icon">🖥️</div>
-              <div class="ss-waiting-text">รอผู้แชร์เริ่มต้น…</div>
+          <!-- ── Web tab ── -->
+          <section class="wp-playerCard hidden" id="webSection">
+            <div class="wp-urlRow">
+              <input id="webUrlInput" class="wp-urlInput" placeholder="วางลิงก์เว็บที่ต้องการดูร่วมกัน เช่น https://example.com" />
+              <button id="webSetBtn" class="wp-btn" type="button">โหลด</button>
             </div>
-            <div id="ssVideoWrap" class="ss-video-wrap hidden">
-              <video id="ssVideo" class="ss-video" autoplay playsinline></video>
+            <div class="wp-help" style="margin-bottom:8px;">
+              ⚠️ บางเว็บไม่อนุญาตให้ embed (เช่น Google, Facebook, YouTube) — ถ้าขึ้นข้อผิดพลาดให้ลองเว็บอื่น
             </div>
-            <div class="ss-controls">
-              <button id="ssStartBtn" class="wp-btn ss-start-btn" type="button">🖥️ เริ่มแชร์หน้าจอ</button>
-              <span class="wp-note">กด "เริ่มแชร์" แล้วเลือกหน้าต่างหรือแท็บที่ต้องการ</span>
+
+            <div class="web-frame-wrap" id="webFrameWrap">
+              <div class="web-empty-state" id="webEmpty">
+                <div class="web-empty-icon">🌐</div>
+                <div>วางลิงก์เว็บแล้วกด "โหลด" — ทุกคนในห้องจะเห็นเว็บเดียวกัน</div>
+              </div>
+              <iframe
+                id="webFrame"
+                class="web-frame hidden"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                allowfullscreen
+                referrerpolicy="no-referrer"
+              ></iframe>
+              <div class="web-blocked hidden" id="webBlocked">
+                <div class="web-empty-icon">🚫</div>
+                <div>เว็บนี้ไม่อนุญาตให้ embed</div>
+                <a id="webOpenExternal" href="#" target="_blank" class="wp-btn wp-btn--ghost" style="margin-top:12px;">เปิดในแท็บใหม่</a>
+              </div>
             </div>
-            <div class="ss-controls" style="margin-top:8px">
-              <button id="ssMuteBtn" class="wp-btn wp-btn--ghost" type="button">🔊 เสียง</button>
-              <input id="ssVol" class="wp-vol" type="range" min="0" max="100" value="80">
-              <span id="ssVolText" class="wp-volText">80%</span>
+
+            <div class="web-controls">
+              <button id="webFullscreenBtn" class="wp-btn wp-btn--ghost" type="button">⛶ เต็มจอ</button>
+              <button id="webReloadBtn" class="wp-btn wp-btn--ghost" type="button">↺ รีโหลด</button>
+              <span class="wp-note" id="webCurrentUrl" style="font-size:11px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
             </div>
           </section>
 
@@ -123,7 +126,7 @@
           </aside>
           <% } %>
 
-        </div><!-- .wp-main -->
+        </div>
       </div>
     </div>
   </div>

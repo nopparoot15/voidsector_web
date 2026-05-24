@@ -64,6 +64,7 @@ class WatchPartyStore {
       allowed: new Set(owner ? [owner] : []),
       presence: new Map(), // socketId -> userId
       state: this._makeInitialState(),
+      webUrl: '',
       createdAt: nowMs(),
     });
 
@@ -82,6 +83,7 @@ class WatchPartyStore {
       allowed: new Set(),
       presence: new Map(),
       state: this._makeInitialState(),
+      webUrl: '',
       createdAt: nowMs(),
     });
 
@@ -184,6 +186,13 @@ class WatchPartyStore {
   // - ts updated every call
   // - if currently playing, we first "advance" base time to now (prevents drift)
   // - then apply patch, and set base time appropriately
+  setWebUrl(roomId, url) {
+    const room = this.get(roomId);
+    if (!room) return null;
+    room.webUrl = String(url || '').trim().slice(0, 2000);
+    return room.webUrl;
+  }
+
   setState(roomId, patch) {
     const room = this.get(roomId);
     if (!room) return null;

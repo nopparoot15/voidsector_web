@@ -852,6 +852,11 @@
       applyServerState(payload.state);
       startLockLoop();
     }
+    if (payload.webUrl) {
+      if (webUrlInput) webUrlInput.value = payload.webUrl;
+      loadWebUrl(payload.webUrl);
+      switchMode('web');
+    }
   });
 
   socket.on('wp:presence', (payload = {}) => {
@@ -915,227 +920,102 @@
 
   // ── Mode tabs ────────────────────────────────────────────────────────────────
   const ytSection  = document.getElementById('ytSection');
-  const ssSection  = document.getElementById('ssSection');
+  const webSection = document.getElementById('webSection');
   const tabYoutube = document.getElementById('tabYoutube');
-  const tabScreen  = document.getElementById('tabScreen');
-
-  let currentMode = 'youtube';
+  const tabWeb     = document.getElementById('tabWeb');
 
   function switchMode(mode) {
-    currentMode = mode;
     if (mode === 'youtube') {
       ytSection?.classList.remove('hidden');
-      ssSection?.classList.add('hidden');
+      webSection?.classList.add('hidden');
       tabYoutube?.classList.add('active');
-      tabScreen?.classList.remove('active');
+      tabWeb?.classList.remove('active');
     } else {
       ytSection?.classList.add('hidden');
-      ssSection?.classList.remove('hidden');
+      webSection?.classList.remove('hidden');
       tabYoutube?.classList.remove('active');
-      tabScreen?.classList.add('active');
+      tabWeb?.classList.add('active');
     }
   }
 
   tabYoutube?.addEventListener('click', () => switchMode('youtube'));
-  tabScreen?.addEventListener('click',  () => switchMode('screen'));
+  tabWeb?.addEventListener('click',     () => switchMode('web'));
 
-  // ── WebRTC Screen Share ───────────────────────────────────────────────────────
-  const ICE_CONFIG = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-    ],
-  };
+  // ── Web Embed Sync ────────────────────────────────────────────────────────────
+  const webUrlInput      = document.getElementById('webUrlInput');
+  const webSetBtn        = document.getElementById('webSetBtn');
+  const webFrame         = document.getElementById('webFrame');
+  const webEmpty         = document.getElementById('webEmpty');
+  const webBlocked       = document.getElementById('webBlocked');
+  const webCurrentUrl    = document.getElementById('webCurrentUrl');
+  const webOpenExternal  = document.getElementById('webOpenExternal');
+  const webFullscreenBtn = document.getElementById('webFullscreenBtn');
+  const webReloadBtn     = document.getElementById('webReloadBtn');
 
-  let localStream   = null;          // broadcaster's MediaStream
-  let peers         = {};            // socketId → RTCPeerConnection (broadcaster side)
-  let viewerPc      = null;          // single PC on viewer side
-  let broadcasterSid = null;         // socketId of current broadcaster
+  function loadWebUrl(url) {
+    if (!url) return;
+    const clean = url.trim();
+    if (!clean) return;
 
-  const ssStartBtn   = document.getElementById('ssStartBtn');
-  const ssStop       = document.getElementById('ssStop');
-  const ssMuteBtn    = document.getElementById('ssMuteBtn');
-  const ssVol        = document.getElementById('ssVol');
-  const ssVolText    = document.getElementById('ssVolText');
-  const ssVideo      = document.getElementById('ssVideo');
-  const ssVideoWrap  = document.getElementById('ssVideoWrap');
-  const ssWaiting    = document.getElementById('ssWaiting');
-  const ssBroadcastBar = document.getElementById('ssBroadcastBar');
-  const ssLiveBanner   = document.getElementById('ssLiveBanner');
-  const ssLiveLabel    = document.getElementById('ssLiveLabel');
+    // Ensure https:// prefix
+    const full = /^https?:\/\//i.test(clean) ? clean : 'https://' + clean;
 
-  // ── Broadcaster ───────────────────────────────────────────────────────────────
-  async function startScreenShare() {
-    try {
-      localStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always', frameRate: { ideal: 30 } },
-        audio: { echoCancellation: false, noiseSuppression: false },
-      });
-    } catch (err) {
-      if (err.name !== 'NotAllowedError') alert('ไม่สามารถแชร์หน้าจอได้: ' + err.message);
-      return;
-    }
+    webEmpty?.classList.add('hidden');
+    webBlocked?.classList.add('hidden');
+    webFrame?.classList.remove('hidden');
 
-    socket.emit('ss:start');
-    ssBroadcastBar?.classList.remove('hidden');
-    ssStartBtn && (ssStartBtn.disabled = true);
+    if (webFrame) webFrame.src = full;
+    if (webCurrentUrl) webCurrentUrl.textContent = full;
+    if (webOpenExternal) webOpenExternal.href = full;
 
-    // When user stops via browser UI (click the stop button in browser chrome)
-    localStream.getVideoTracks()[0].addEventListener('ended', stopScreenShare);
-  }
-
-  function stopScreenShare() {
-    if (!localStream) return;
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-
-    Object.values(peers).forEach(pc => { try { pc.close(); } catch (_) {} });
-    peers = {};
-
-    socket.emit('ss:stop');
-    ssBroadcastBar?.classList.add('hidden');
-    ssStartBtn && (ssStartBtn.disabled = false);
-  }
-
-  async function createOfferForViewer(viewerSocketId) {
-    if (!localStream) return;
-    if (peers[viewerSocketId]) { try { peers[viewerSocketId].close(); } catch (_) {} }
-
-    const pc = new RTCPeerConnection(ICE_CONFIG);
-    peers[viewerSocketId] = pc;
-
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate) socket.emit('ss:ice', { to: viewerSocketId, candidate });
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-        delete peers[viewerSocketId];
-      }
-    };
-
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit('ss:offer', { to: viewerSocketId, sdp: pc.localDescription });
-    } catch (err) {
-      console.warn('[ss] offer failed:', err);
-      delete peers[viewerSocketId];
+    // Detect X-Frame-Options block via load error heuristic
+    if (webFrame) {
+      webFrame.onerror = () => showBlocked(full);
+      // Some browsers fire load even when blocked — check via timeout
+      webFrame.onload = () => {
+        try {
+          // If contentDocument is accessible and empty, likely blocked
+          const doc = webFrame.contentDocument;
+          if (doc && doc.body && doc.body.innerHTML === '') showBlocked(full);
+        } catch (_) {
+          // Cross-origin: cannot read — that's normal for embedded sites
+        }
+      };
     }
   }
 
-  // ── Viewer ────────────────────────────────────────────────────────────────────
-  function cleanupViewer() {
-    if (viewerPc) { try { viewerPc.close(); } catch (_) {} viewerPc = null; }
-    broadcasterSid = null;
-    if (ssVideo) ssVideo.srcObject = null;
-    ssVideoWrap?.classList.add('hidden');
-    ssWaiting?.classList.remove('hidden');
-    ssLiveBanner?.classList.add('hidden');
+  function showBlocked(url) {
+    webFrame?.classList.add('hidden');
+    webEmpty?.classList.add('hidden');
+    webBlocked?.classList.remove('hidden');
+    if (webOpenExternal) webOpenExternal.href = url;
   }
 
-  async function connectToSharer(sharerSocketId) {
-    cleanupViewer();
-    broadcasterSid = sharerSocketId;
-
-    const pc = new RTCPeerConnection(ICE_CONFIG);
-    viewerPc = pc;
-
-    pc.ontrack = ({ streams }) => {
-      if (!streams[0]) return;
-      if (ssVideo) {
-        ssVideo.srcObject = streams[0];
-        ssVideo.volume = Number(ssVol?.value || 80) / 100;
-      }
-      ssVideoWrap?.classList.remove('hidden');
-      ssWaiting?.classList.add('hidden');
-      // auto-switch to screen tab
-      switchMode('screen');
-    };
-
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate) socket.emit('ss:ice', { to: sharerSocketId, candidate });
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed') {
-        cleanupViewer();
-        if (ssWaiting) ssWaiting.querySelector('.ss-waiting-text').textContent = 'การเชื่อมต่อล้มเหลว กด Sync ใหม่';
-      }
-    };
-
-    // Ask broadcaster to send offer
-    socket.emit('ss:request_offer', { to: sharerSocketId });
+  function setWebUrl() {
+    const url = webUrlInput?.value?.trim();
+    if (!url) return;
+    socket.emit('wp:web_set', { url });
   }
 
-  // ── Socket events ──────────────────────────────────────────────────────────────
-  socket.on('ss:started', ({ from, username }) => {
-    broadcasterSid = from;
-    if (ssLiveBanner) ssLiveBanner.classList.remove('hidden');
-    if (ssLiveLabel)  ssLiveLabel.textContent = `🔴 ${escapeHtml(username)} กำลังแชร์หน้าจอ`;
-    switchMode('screen');
-    connectToSharer(from);
+  webSetBtn?.addEventListener('click', setWebUrl);
+  webUrlInput?.addEventListener('keydown', e => { if (e.key === 'Enter') setWebUrl(); });
+
+  webFullscreenBtn?.addEventListener('click', () => {
+    const wrap = document.getElementById('webFrameWrap');
+    if (!wrap) return;
+    if (!document.fullscreenElement) wrap.requestFullscreen?.();
+    else document.exitFullscreen?.();
   });
 
-  socket.on('ss:stopped', () => {
-    cleanupViewer();
-    if (ssWaiting) ssWaiting.querySelector && (ssWaiting.querySelector('.ss-waiting-text').textContent = 'รอผู้แชร์เริ่มต้น…');
-    ssLiveBanner?.classList.add('hidden');
+  webReloadBtn?.addEventListener('click', () => {
+    if (webFrame?.src) { webFrame.src = webFrame.src; }
   });
 
-  // Broadcaster receives: new viewer wants to join
-  socket.on('ss:viewer_joined', async ({ from }) => {
-    if (!localStream) return;
-    await createOfferForViewer(from);
-  });
-
-  // Viewer receives offer from broadcaster
-  socket.on('ss:offer', async ({ from, sdp }) => {
-    if (!viewerPc) return;
-    try {
-      await viewerPc.setRemoteDescription(new RTCSessionDescription(sdp));
-      const answer = await viewerPc.createAnswer();
-      await viewerPc.setLocalDescription(answer);
-      socket.emit('ss:answer', { to: from, sdp: viewerPc.localDescription });
-    } catch (err) {
-      console.warn('[ss] answer failed:', err);
-    }
-  });
-
-  // Broadcaster receives answer from viewer
-  socket.on('ss:answer', async ({ from, sdp }) => {
-    const pc = peers[from];
-    if (!pc) return;
-    try { await pc.setRemoteDescription(new RTCSessionDescription(sdp)); } catch (_) {}
-  });
-
-  // ICE candidates — both directions
-  socket.on('ss:ice', async ({ from, candidate }) => {
-    if (!candidate) return;
-    // Broadcaster side
-    const bpc = peers[from];
-    if (bpc) { try { await bpc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {} return; }
-    // Viewer side
-    if (viewerPc) { try { await viewerPc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {} }
-  });
-
-  // ── Screen share UI events ────────────────────────────────────────────────────
-  ssStartBtn?.addEventListener('click', startScreenShare);
-  ssStop?.addEventListener('click', stopScreenShare);
-
-  // Viewer volume control
-  ssVol?.addEventListener('input', () => {
-    const v = Number(ssVol.value) / 100;
-    if (ssVideo) ssVideo.volume = v;
-    if (ssVolText) ssVolText.textContent = `${ssVol.value}%`;
-  });
-  ssMuteBtn?.addEventListener('click', () => {
-    if (!ssVideo) return;
-    ssVideo.muted = !ssVideo.muted;
-    ssMuteBtn.textContent = ssVideo.muted ? '🔇 เสียง' : '🔊 เสียง';
+  socket.on('wp:web_url', ({ url }) => {
+    if (!url) return;
+    if (webUrlInput) webUrlInput.value = url;
+    loadWebUrl(url);
+    switchMode('web');
   });
 
   // keep fresh
