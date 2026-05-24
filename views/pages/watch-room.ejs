@@ -14,56 +14,51 @@
     <div class="card vs-card">
       <div class="wp-shell wp-shell--inCard" data-roomtype="<%= isPublic ? 'public' : 'private' %>">
 
-        <div class="wb-lobby__title" style="margin-bottom: 8px;">
-          <h1>WATCH PARTY</h1>
-          <p>ดูวิดีโอและเว็บไซต์พร้อมกัน • ซิงก์แบบ realtime</p>
-        </div>
-
         <header class="wp-top">
           <div class="wp-top__left">
             <a class="wp-back" href="/watch">← Lobby</a>
             <div class="wp-meta">
-              <div class="wp-title"><%= isPublic ? 'Public Room' : 'Private Room' %></div>
-              <div class="wp-sub">room: <%= roomId %> · online: <span id="wpOnline">-</span></div>
+              <div class="wp-title">WATCH PARTY · <%= isPublic ? 'Public' : 'Private' %></div>
+              <div class="wp-sub">room: <span class="wp-room-id"><%= roomId %></span> · <span id="wpOnline">0</span> online</div>
             </div>
           </div>
           <div class="wp-top__right">
             <div class="wp-share">
               <input id="wpShare" class="wp-share__input" readonly value=""/>
-              <button id="wpCopy" class="wp-btn wp-btn--ghost" type="button">Copy</button>
+              <button id="wpCopy" class="wp-btn wp-btn--ghost" type="button">Copy Link</button>
             </div>
           </div>
         </header>
 
-        <!-- Mode tabs -->
-        <div class="wp-mode-tabs">
-          <button class="wp-mode-tab active" id="tabYoutube" data-mode="youtube">▶ YouTube Sync</button>
-          <button class="wp-mode-tab" id="tabWeb" data-mode="web">🌐 เว็บไซต์</button>
-        </div>
+        <div class="wp-main has-side">
 
-        <div class="wp-main">
-
-          <!-- ── YouTube tab ── -->
+          <!-- ── Player ── -->
           <section class="wp-playerCard" id="ytSection">
             <div class="wp-urlRow">
-              <input id="wpUrl" class="wp-urlInput" placeholder="วางลิงก์ YouTube (youtube.com/watch?v=... หรือ youtu.be/...)" />
-              <button id="wpSet" class="wp-btn" type="button">Set</button>
+              <input id="wpUrl" class="wp-urlInput" placeholder="วางลิงก์ YouTube เช่น youtube.com/watch?v=... หรือ youtu.be/..." />
+              <button id="wpSet" class="wp-btn" type="button">▶ Set</button>
             </div>
             <div id="wpUrlError" class="wp-help wp-help--error" style="display:none;"></div>
+            <div id="wpVideoTitle" class="wp-video-title" style="display:none;"></div>
 
             <div id="wpPlayerWrap" class="wp-playerWrap">
               <div id="wpPlayer" class="wp-yt"></div>
               <div id="wpPlayerBlock" class="wp-playerBlock" aria-hidden="true"></div>
-              <div id="wpEmpty" class="wp-emptyState">วางลิงก์ YouTube แล้วกด Set เพื่อเริ่มดูร่วมกัน</div>
+              <div id="wpEmpty" class="wp-emptyState">
+                <div class="wp-emptyIcon">▶</div>
+                <div>วางลิงก์ YouTube แล้วกด Set</div>
+                <div style="font-size:11px;margin-top:4px;opacity:.55;">ทุกคนในห้องจะเห็นและซิงก์พร้อมกันทันที</div>
+              </div>
+              <div id="wpReactionField" class="wp-reactionField"></div>
             </div>
 
             <div id="wpControls" class="wp-controls">
               <button id="wpPlay"  class="wp-btn wp-btn--icon" type="button" title="Play">▶</button>
               <button id="wpPause" class="wp-btn wp-btn--icon" type="button" title="Pause">❚❚</button>
-              <button id="wpSync"  class="wp-btn wp-btn--ghost" type="button">Sync</button>
+              <button id="wpSync"  class="wp-btn wp-btn--ghost" type="button">⟳ Sync</button>
               <div class="wp-sep"></div>
               <button id="wpSubTH"      class="wp-btn wp-btn--ghost" type="button">TH Sub</button>
-              <button id="wpFullscreen" class="wp-btn wp-btn--ghost" type="button">Fullscreen</button>
+              <button id="wpFullscreen" class="wp-btn wp-btn--ghost" type="button">⛶ Fullscreen</button>
               <div class="wp-sep"></div>
               <button id="wpMute" class="wp-btn wp-btn--icon" type="button">🔊</button>
               <input  id="wpVol"  class="wp-vol" type="range" min="0" max="100" value="80" />
@@ -79,52 +74,43 @@
             </div>
           </section>
 
-          <!-- ── Web tab ── -->
-          <section class="wp-playerCard hidden" id="webSection">
-            <div class="wp-urlRow">
-              <input id="webUrlInput" class="wp-urlInput" placeholder="วางลิงก์เว็บที่ต้องการดูร่วมกัน เช่น https://example.com" />
-              <button id="webSetBtn" class="wp-btn" type="button">โหลด</button>
-            </div>
-            <div class="wp-help" style="margin-bottom:8px;">
-              ⚠️ บางเว็บไม่อนุญาตให้ embed (เช่น Google, Facebook, YouTube) — ถ้าขึ้นข้อผิดพลาดให้ลองเว็บอื่น
-            </div>
-
-            <div class="web-frame-wrap" id="webFrameWrap">
-              <div class="web-empty-state" id="webEmpty">
-                <div class="web-empty-icon">🌐</div>
-                <div>วางลิงก์เว็บแล้วกด "โหลด" — ทุกคนในห้องจะเห็นเว็บเดียวกัน</div>
-              </div>
-              <iframe
-                id="webFrame"
-                class="web-frame hidden"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
-                allowfullscreen
-                referrerpolicy="no-referrer"
-              ></iframe>
-              <div class="web-blocked hidden" id="webBlocked">
-                <div class="web-empty-icon">🚫</div>
-                <div>เว็บนี้ไม่อนุญาตให้ embed</div>
-                <a id="webOpenExternal" href="#" target="_blank" class="wp-btn wp-btn--ghost" style="margin-top:12px;">เปิดในแท็บใหม่</a>
-              </div>
-            </div>
-
-            <div class="web-controls">
-              <button id="webFullscreenBtn" class="wp-btn wp-btn--ghost" type="button">⛶ เต็มจอ</button>
-              <button id="webReloadBtn" class="wp-btn wp-btn--ghost" type="button">↺ รีโหลด</button>
-              <span class="wp-note" id="webCurrentUrl" style="font-size:11px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-            </div>
-          </section>
-
-          <% if (!isPublic) { %>
+          <!-- ── Sidebar ── -->
           <aside class="wp-side">
+
+            <!-- Reactions -->
+            <div class="wp-sideCard" style="margin-bottom:10px;">
+              <div class="wp-sideTitle" style="margin-bottom:8px;">Reactions</div>
+              <div class="wp-reactions">
+                <button class="wp-react-btn" data-emoji="😂">😂</button>
+                <button class="wp-react-btn" data-emoji="😮">😮</button>
+                <button class="wp-react-btn" data-emoji="❤️">❤️</button>
+                <button class="wp-react-btn" data-emoji="🔥">🔥</button>
+                <button class="wp-react-btn" data-emoji="👏">👏</button>
+                <button class="wp-react-btn" data-emoji="💀">💀</button>
+              </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="wp-sideCard" style="margin-bottom:10px;">
+              <div class="wp-sideTitle" style="margin-bottom:8px;">Chat</div>
+              <div id="wpChatLog" class="wp-chat-log"></div>
+              <div class="wp-chat-input-row">
+                <input id="wpChatInput" class="wp-chat-input" placeholder="พิมพ์ข้อความ..." maxlength="200" />
+                <button id="wpChatSend" class="wp-btn wp-btn--icon" type="button" style="font-family:system-ui;">➤</button>
+              </div>
+            </div>
+
+            <% if (!isPublic) { %>
+            <!-- Invite friends -->
             <div class="wp-sideCard">
-              <div class="wp-sideTitle">Invite friends</div>
+              <div class="wp-sideTitle">Invite Friends</div>
               <div class="wp-sideSub">เลือกเพื่อนแล้วกด Invite</div>
               <div id="wpFriends" class="wp-friends"></div>
               <button id="wpInvite" class="wp-btn" type="button">Invite</button>
             </div>
+            <% } %>
+
           </aside>
-          <% } %>
 
         </div>
       </div>

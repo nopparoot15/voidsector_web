@@ -32,8 +32,10 @@
     url: document.getElementById('wpUrl'),
     set: document.getElementById('wpSet'),
     urlError: document.getElementById('wpUrlError'),
+    videoTitle: document.getElementById('wpVideoTitle'),
 
     playerWrap: document.getElementById('wpPlayerWrap'),
+    reactionField: document.getElementById('wpReactionField'),
 
     play: document.getElementById('wpPlay'),
     pause: document.getElementById('wpPause'),
@@ -52,6 +54,10 @@
 
     friends: document.getElementById('wpFriends'),
     invite: document.getElementById('wpInvite'),
+
+    chatLog: document.getElementById('wpChatLog'),
+    chatInput: document.getElementById('wpChatInput'),
+    chatSend: document.getElementById('wpChatSend'),
   };
 
   // -------------------------
@@ -518,6 +524,7 @@
 
     currentVideoId = vid;
     document.body.classList.add('wp-hasVideo');
+    fetchVideoTitle(vid).catch(() => {});
 
     await ensurePlayer();
     await waitUntilReady(7000);
@@ -682,6 +689,7 @@
     showUrlError('');
     __pendingSetPlay = { vid: id, startedAt: Date.now() };
     socket.emit('wp:set_url', { url: normalizeYouTubeUrl(id), provider: 'youtube' });
+    appendChat({ system: true, text: '🎬 กำลังโหลดวิดีโอ...' });
   }
 
   function requestFullscreen() {
@@ -847,15 +855,11 @@
 
   socket.on('wp:joined', (payload = {}) => {
     setOnlineCount(payload.membersOnline ?? payload.online);
+    appendChat({ system: true, text: `เข้าร่วมห้องแล้ว · ${payload.membersOnline ?? payload.online ?? 0} คนออนไลน์` });
     if (payload.state) {
       applyServerState.__last = payload.state;
       applyServerState(payload.state);
       startLockLoop();
-    }
-    if (payload.webUrl) {
-      if (webUrlInput) webUrlInput.value = payload.webUrl;
-      loadWebUrl(payload.webUrl);
-      switchMode('web');
     }
   });
 
@@ -918,105 +922,80 @@
     if (els.invite) els.invite.addEventListener('click', inviteSelected);
   }
 
-  // ── Mode tabs ────────────────────────────────────────────────────────────────
-  const ytSection  = document.getElementById('ytSection');
-  const webSection = document.getElementById('webSection');
-  const tabYoutube = document.getElementById('tabYoutube');
-  const tabWeb     = document.getElementById('tabWeb');
+  // ── Chat ──────────────────────────────────────────────────────────────────────
+  const MAX_CHAT = 120;
 
-  function switchMode(mode) {
-    if (mode === 'youtube') {
-      ytSection?.classList.remove('hidden');
-      webSection?.classList.add('hidden');
-      tabYoutube?.classList.add('active');
-      tabWeb?.classList.remove('active');
+  function appendChat(msg) {
+    if (!els.chatLog) return;
+    const div = document.createElement('div');
+    div.className = 'wp-chat-msg' + (msg.system ? ' wp-chat-msg--system' : '') + (msg.react ? ' wp-chat-msg--react' : '');
+    if (msg.system) {
+      div.textContent = msg.text;
     } else {
-      ytSection?.classList.add('hidden');
-      webSection?.classList.remove('hidden');
-      tabYoutube?.classList.remove('active');
-      tabWeb?.classList.add('active');
+      const name = document.createElement('span');
+      name.className = 'wp-chat-name';
+      name.textContent = escapeHtml(msg.username || 'Guest') + ':';
+      div.appendChild(name);
+      div.appendChild(document.createTextNode(' ' + escapeHtml(msg.text)));
     }
+    els.chatLog.appendChild(div);
+    while (els.chatLog.children.length > MAX_CHAT) els.chatLog.removeChild(els.chatLog.firstChild);
+    els.chatLog.scrollTop = els.chatLog.scrollHeight;
   }
 
-  tabYoutube?.addEventListener('click', () => switchMode('youtube'));
-  tabWeb?.addEventListener('click',     () => switchMode('web'));
-
-  // ── Web Embed Sync ────────────────────────────────────────────────────────────
-  const webUrlInput      = document.getElementById('webUrlInput');
-  const webSetBtn        = document.getElementById('webSetBtn');
-  const webFrame         = document.getElementById('webFrame');
-  const webEmpty         = document.getElementById('webEmpty');
-  const webBlocked       = document.getElementById('webBlocked');
-  const webCurrentUrl    = document.getElementById('webCurrentUrl');
-  const webOpenExternal  = document.getElementById('webOpenExternal');
-  const webFullscreenBtn = document.getElementById('webFullscreenBtn');
-  const webReloadBtn     = document.getElementById('webReloadBtn');
-
-  function loadWebUrl(url) {
-    if (!url) return;
-    const clean = url.trim();
-    if (!clean) return;
-
-    // Ensure https:// prefix
-    const full = /^https?:\/\//i.test(clean) ? clean : 'https://' + clean;
-
-    webEmpty?.classList.add('hidden');
-    webBlocked?.classList.add('hidden');
-    webFrame?.classList.remove('hidden');
-
-    if (webFrame) webFrame.src = full;
-    if (webCurrentUrl) webCurrentUrl.textContent = full;
-    if (webOpenExternal) webOpenExternal.href = full;
-
-    // Detect X-Frame-Options block via load error heuristic
-    if (webFrame) {
-      webFrame.onerror = () => showBlocked(full);
-      // Some browsers fire load even when blocked — check via timeout
-      webFrame.onload = () => {
-        try {
-          // If contentDocument is accessible and empty, likely blocked
-          const doc = webFrame.contentDocument;
-          if (doc && doc.body && doc.body.innerHTML === '') showBlocked(full);
-        } catch (_) {
-          // Cross-origin: cannot read — that's normal for embedded sites
-        }
-      };
-    }
+  function sendChat() {
+    const text = els.chatInput?.value?.trim();
+    if (!text) return;
+    socket.emit('wp:chat', { text });
+    if (els.chatInput) els.chatInput.value = '';
   }
 
-  function showBlocked(url) {
-    webFrame?.classList.add('hidden');
-    webEmpty?.classList.add('hidden');
-    webBlocked?.classList.remove('hidden');
-    if (webOpenExternal) webOpenExternal.href = url;
-  }
+  if (els.chatSend) els.chatSend.addEventListener('click', sendChat);
+  if (els.chatInput) els.chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 
-  function setWebUrl() {
-    const url = webUrlInput?.value?.trim();
-    if (!url) return;
-    socket.emit('wp:web_set', { url });
-  }
-
-  webSetBtn?.addEventListener('click', setWebUrl);
-  webUrlInput?.addEventListener('keydown', e => { if (e.key === 'Enter') setWebUrl(); });
-
-  webFullscreenBtn?.addEventListener('click', () => {
-    const wrap = document.getElementById('webFrameWrap');
-    if (!wrap) return;
-    if (!document.fullscreenElement) wrap.requestFullscreen?.();
-    else document.exitFullscreen?.();
+  socket.on('wp:chat', (msg = {}) => {
+    appendChat(msg);
   });
 
-  webReloadBtn?.addEventListener('click', () => {
-    if (webFrame?.src) { webFrame.src = webFrame.src; }
+  // ── Reactions ────────────────────────────────────────────────────────────────
+  function spawnEmoji(emoji) {
+    const field = els.reactionField;
+    if (!field) return;
+    const span = document.createElement('span');
+    span.className = 'wp-float-emoji';
+    span.textContent = emoji;
+    span.style.left = (10 + Math.random() * 75) + '%';
+    field.appendChild(span);
+    setTimeout(() => span.remove(), 2500);
+  }
+
+  document.querySelectorAll('.wp-react-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const emoji = btn.dataset.emoji;
+      if (!emoji) return;
+      socket.emit('wp:react', { emoji });
+    });
   });
 
-  socket.on('wp:web_url', ({ url }) => {
-    if (!url) return;
-    if (webUrlInput) webUrlInput.value = url;
-    loadWebUrl(url);
-    switchMode('web');
+  socket.on('wp:react', ({ username, emoji } = {}) => {
+    spawnEmoji(emoji);
+    appendChat({ username, text: emoji, react: true });
   });
+
+  // ── Video title fetch ────────────────────────────────────────────────────────
+  async function fetchVideoTitle(videoId) {
+    if (!els.videoTitle || !videoId) return;
+    try {
+      const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&format=json`);
+      if (!r.ok) return;
+      const data = await r.json();
+      const title = data?.title || '';
+      if (title) {
+        els.videoTitle.textContent = '▶ ' + title;
+        els.videoTitle.style.display = 'block';
+      }
+    } catch (_) {}
+  }
 
   // keep fresh
   doTimeSync(8);

@@ -173,7 +173,7 @@ io.on('connection', (socket) => {
     socket.data.wpRoomId = rid;
     socket.join(`wp:${rid}`);
     watchPartyStore.addPresence(rid, socket.id, userId);
-    socket.emit('wp:joined', { roomId: rid, isPublic: !!room.isPublic, membersOnline: room.presence.size, state: room.state, webUrl: room.webUrl || '' });
+    socket.emit('wp:joined', { roomId: rid, isPublic: !!room.isPublic, membersOnline: room.presence.size, state: room.state });
     io.to(`wp:${rid}`).emit('wp:presence', { membersOnline: room.presence.size });
   });
 
@@ -217,11 +217,19 @@ io.on('connection', (socket) => {
     if (room) socket.emit('wp:state', room.state);
   }));
 
-  // ── Web Embed Sync ───────────────────────────────────────────────────────────
-  socket.on('wp:web_set', guardWP((rid, { url } = {}) => {
-    const clean = String(url || '').trim().slice(0, 2000);
-    watchPartyStore.setWebUrl(rid, clean);
-    io.to(`wp:${rid}`).emit('wp:web_url', { url: clean });
+  socket.on('wp:chat', guardWP((rid, { text } = {}) => {
+    const msg = String(text || '').trim().slice(0, 200);
+    if (!msg) return;
+    const username = socket.data.username || 'Guest';
+    io.to(`wp:${rid}`).emit('wp:chat', { username, text: msg, ts: Date.now() });
+  }));
+
+  socket.on('wp:react', guardWP((rid, { emoji } = {}) => {
+    const ALLOWED = ['😂','😮','❤️','🔥','👏','💀'];
+    const e = String(emoji || '').trim();
+    if (!ALLOWED.includes(e)) return;
+    const username = socket.data.username || 'Guest';
+    io.to(`wp:${rid}`).emit('wp:react', { username, emoji: e, ts: Date.now() });
   }));
 
   // ── Disconnect ──────────────────────────────────────────────────────────────
