@@ -122,9 +122,7 @@ async function openPanel(btn, game) {
 
 function renderPanel(panel, game, rooms) {
   let html = '';
-  if (rooms.length === 0) {
-    html += '<p class="arcade-room-empty">ยังไม่มีห้องที่เปิดอยู่</p>';
-  } else {
+  if (rooms.length > 0) {
     html += '<div class="arcade-room-list">';
     rooms.forEach(room => {
       html += `<div class="arcade-room-item">
