@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <title>VOIDSECTOR | YouTube Watch Party</title>
+  <title>VOIDSECTOR | Watch Party</title>
   <%- include('../partials/head') %>
   <link rel="stylesheet" href="/css/whiteboard.css" />
   <link rel="stylesheet" href="/css/watch-party.css" />
@@ -10,104 +10,136 @@
   <div class="background"></div>
   <%- include('../partials/topbar') %>
 
-  
-
   <div class="container vs-page">
     <div class="card vs-card">
       <div class="wp-shell wp-shell--inCard" data-roomtype="<%= isPublic ? 'public' : 'private' %>">
 
         <div class="wb-lobby__title" style="margin-bottom: 8px;">
-          <h1>YOUTUBE WATCH PARTY</h1>
-          <p>ควบคุมด้วยเมนูของ VOIDSECTOR • ซิงก์ play/pause/seek แบบ realtime • เสียงแยกแต่ละคน</p>
+          <h1>WATCH PARTY</h1>
+          <p>YouTube sync · Screen Share แบบ real-time · เสียงแยกแต่ละคน</p>
         </div>
 
         <header class="wp-top">
-      <div class="wp-top__left">
-        <a class="wp-back" href="/watch">← Lobby</a>
-        <div class="wp-meta">
-          <div class="wp-title"><%= isPublic ? 'Public Room' : 'Private Room' %></div>
-          <div class="wp-sub">room: <%= roomId %> · online: <span id="wpOnline">-</span></div>
+          <div class="wp-top__left">
+            <a class="wp-back" href="/watch">← Lobby</a>
+            <div class="wp-meta">
+              <div class="wp-title"><%= isPublic ? 'Public Room' : 'Private Room' %></div>
+              <div class="wp-sub">room: <%= roomId %> · online: <span id="wpOnline">-</span></div>
+            </div>
+          </div>
+          <div class="wp-top__right">
+            <div class="wp-share">
+              <input id="wpShare" class="wp-share__input" readonly value=""/>
+              <button id="wpCopy" class="wp-btn wp-btn--ghost" type="button">Copy</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Mode tabs -->
+        <div class="wp-mode-tabs">
+          <button class="wp-mode-tab active" id="tabYoutube" data-mode="youtube">▶ YouTube Sync</button>
+          <button class="wp-mode-tab" id="tabScreen" data-mode="screen">🖥️ Screen Share</button>
         </div>
+
+        <div class="wp-main">
+
+          <!-- Screen share live banner (shown when someone is sharing) -->
+          <div id="ssLiveBanner" class="ss-live-banner hidden">
+            <span class="ss-live-dot"></span>
+            <span id="ssLiveLabel">กำลังแชร์หน้าจอ</span>
+          </div>
+
+          <!-- Broadcaster self-preview (shown only to broadcaster) -->
+          <div id="ssBroadcastBar" class="ss-broadcast-bar hidden">
+            <span class="ss-live-dot"></span>
+            <span>คุณกำลังแชร์หน้าจออยู่</span>
+            <button id="ssStop" class="wp-btn wp-btn--danger" type="button">หยุดแชร์</button>
+          </div>
+
+          <!-- Main area: YouTube player OR screen share video -->
+          <section class="wp-playerCard" id="ytSection">
+            <div class="wp-urlRow">
+              <input id="wpUrl" class="wp-urlInput" placeholder="วางลิงก์ YouTube (youtube.com/watch?v=... หรือ youtu.be/...)" />
+              <button id="wpSet" class="wp-btn" type="button">Set</button>
+            </div>
+            <div id="wpUrlError" class="wp-help wp-help--error" style="display:none;"></div>
+
+            <div id="wpPlayerWrap" class="wp-playerWrap">
+              <div id="wpPlayer" class="wp-yt"></div>
+              <div id="wpPlayerBlock" class="wp-playerBlock" aria-hidden="true"></div>
+              <div id="wpEmpty" class="wp-emptyState">วางลิงก์ YouTube แล้วกด Set เพื่อเริ่มดูร่วมกัน</div>
+            </div>
+
+            <div id="wpControls" class="wp-controls">
+              <button id="wpPlay"  class="wp-btn wp-btn--icon" type="button" title="Play">▶</button>
+              <button id="wpPause" class="wp-btn wp-btn--icon" type="button" title="Pause">❚❚</button>
+              <button id="wpSync"  class="wp-btn wp-btn--ghost" type="button">Sync</button>
+              <div class="wp-sep"></div>
+              <button id="wpSubTH"     class="wp-btn wp-btn--ghost" type="button">TH Sub</button>
+              <button id="wpFullscreen" class="wp-btn wp-btn--ghost" type="button">Fullscreen</button>
+              <div class="wp-sep"></div>
+              <button id="wpMute" class="wp-btn wp-btn--icon" type="button">🔊</button>
+              <input  id="wpVol"  class="wp-vol" type="range" min="0" max="100" value="80" />
+              <span   id="wpVolText" class="wp-volText">80%</span>
+              <div class="wp-spacer"></div>
+              <div class="wp-note">เสียงเป็นของแต่ละคน</div>
+            </div>
+
+            <div id="wpScrubWrap" class="wp-scrub">
+              <span id="wpTimeCur" class="wp-time">0:00</span>
+              <input id="wpScrub" class="wp-scrub__bar" type="range" min="0" max="1000" value="0" />
+              <span id="wpTimeDur" class="wp-time">0:00</span>
+            </div>
+          </section>
+
+          <!-- Screen share section -->
+          <section class="wp-playerCard hidden" id="ssSection">
+            <div id="ssWaiting" class="ss-waiting">
+              <div class="ss-waiting-icon">🖥️</div>
+              <div class="ss-waiting-text">รอผู้แชร์เริ่มต้น…</div>
+            </div>
+            <div id="ssVideoWrap" class="ss-video-wrap hidden">
+              <video id="ssVideo" class="ss-video" autoplay playsinline></video>
+            </div>
+            <div class="ss-controls">
+              <button id="ssStartBtn" class="wp-btn ss-start-btn" type="button">🖥️ เริ่มแชร์หน้าจอ</button>
+              <span class="wp-note">กด "เริ่มแชร์" แล้วเลือกหน้าต่างหรือแท็บที่ต้องการ</span>
+            </div>
+            <div class="ss-controls" style="margin-top:8px">
+              <button id="ssMuteBtn" class="wp-btn wp-btn--ghost" type="button">🔊 เสียง</button>
+              <input id="ssVol" class="wp-vol" type="range" min="0" max="100" value="80">
+              <span id="ssVolText" class="wp-volText">80%</span>
+            </div>
+          </section>
+
+          <% if (!isPublic) { %>
+          <aside class="wp-side">
+            <div class="wp-sideCard">
+              <div class="wp-sideTitle">Invite friends</div>
+              <div class="wp-sideSub">เลือกเพื่อนแล้วกด Invite</div>
+              <div id="wpFriends" class="wp-friends"></div>
+              <button id="wpInvite" class="wp-btn" type="button">Invite</button>
+            </div>
+          </aside>
+          <% } %>
+
+        </div><!-- .wp-main -->
       </div>
-
-      <div class="wp-top__right">
-        <div class="wp-share">
-          <input id="wpShare" class="wp-share__input" readonly
-            value=""/>
-          <button id="wpCopy" class="wp-btn wp-btn--ghost" type="button">Copy</button>
-        </div>
-      </div>
-    </header>
-
-    <div class="wp-main <%= (!isPublic) ? "has-side" : "" %>">
-      <section class="wp-playerCard">
-        <div class="wp-urlRow">
-          <input id="wpUrl" class="wp-urlInput" placeholder="วางลิงก์ YouTube เท่านั้น (เช่น https://www.youtube.com/watch?v=... หรือ https://youtu.be/...)" />
-          <button id="wpSet" class="wp-btn" type="button">Set</button>
-        </div>
-        <div id="wpUrlError" class="wp-help wp-help--error" style="display:none;"></div>
-
-        <div id="wpPlayerWrap" class="wp-playerWrap">
-          <div id="wpPlayer" class="wp-yt"></div>
-          <div id="wpPlayerBlock" class="wp-playerBlock" aria-hidden="true"></div>
-          <div id="wpEmpty" class="wp-emptyState">วางลิงก์ YouTube แล้วกด Set เพื่อเริ่มดูร่วมกัน</div>
-</div>
-
-        <div id="wpControls" class="wp-controls">
-          <button id="wpPlay" class="wp-btn wp-btn--icon" type="button" title="Play">▶</button>
-          <button id="wpPause" class="wp-btn wp-btn--icon" type="button" title="Pause">❚❚</button>
-          <button id="wpSync" class="wp-btn wp-btn--ghost" type="button" title="Sync">Sync</button>
-
-          <div class="wp-sep"></div>
-          <button id="wpSubTH" class="wp-btn wp-btn--ghost" type="button" title="TH Sub">TH Sub</button>
-          <button id="wpFullscreen" class="wp-btn wp-btn--ghost" type="button" title="Fullscreen">Fullscreen</button>
-
-          <div class="wp-sep"></div>
-
-          <button id="wpMute" class="wp-btn wp-btn--icon" type="button" title="Mute/Unmute">🔊</button>
-          <input id="wpVol" class="wp-vol" type="range" min="0" max="100" value="80" />
-          <span id="wpVolText" class="wp-volText">80%</span>
-
-          <div class="wp-spacer"></div>
-          <div class="wp-note">เสียงเป็นของแต่ละคน (ไม่ซิงค์)</div>
-        </div>
-
-        <div id="wpScrubWrap" class="wp-scrub">
-          <span id="wpTimeCur" class="wp-time">0:00</span>
-          <input id="wpScrub" class="wp-scrub__bar" type="range" min="0" max="1000" value="0" />
-          <span id="wpTimeDur" class="wp-time">0:00</span>
-        </div>
-      </section>
-
-      <% if (!isPublic) { %>
-      <aside class="wp-side">
-        <div class="wp-sideCard">
-          <div class="wp-sideTitle">Invite friends</div>
-          <div class="wp-sideSub">เลือกเพื่อนแล้วกด Invite · คนที่ได้รับเชิญจะเข้าห้องนี้ได้</div>
-          <div id="wpFriends" class="wp-friends"></div>
-          <button id="wpInvite" class="wp-btn" type="button">Invite</button>
-        </div>
-      </aside>
-      <% } %>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    window.WP_ROOM_ID = <%- JSON.stringify(roomId) %>;
+    window.WP_ROOM_ID   = <%- JSON.stringify(roomId) %>;
     window.WP_IS_PUBLIC = <%- JSON.stringify(!!isPublic) %>;
-    window.WP_JOIN_KEY = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
-    window.__USER__ = <%- JSON.stringify(user || null) %>;
-    window.VS_SOCKET = window.io({
+    window.WP_JOIN_KEY  = <%- JSON.stringify(typeof joinKey !== 'undefined' ? (joinKey || '') : '') %>;
+    window.__USER__     = <%- JSON.stringify(user || null) %>;
+    window.VS_SOCKET    = window.io({
       auth: window.__USER__
         ? { userId: window.__USER__.id, username: window.__USER__.username }
         : {}
     });
   </script>
-</div>
-    </div>
-  </div>
-
   <script defer src="/js/watch-party.js"></script>
 </body>
 </html>

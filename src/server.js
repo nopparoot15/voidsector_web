@@ -217,6 +217,44 @@ io.on('connection', (socket) => {
     if (room) socket.emit('wp:state', room.state);
   }));
 
+  // ── WebRTC Screen Share Signaling ───────────────────────────────────────────
+  socket.on('ss:start', guardWP((rid) => {
+    socket.data.ssSharing = rid;
+    io.to(`wp:${rid}`).except(socket.id).emit('ss:started', {
+      from: socket.id,
+      username: socket.handshake.auth?.username || 'ผู้ใช้',
+    });
+  }));
+
+  socket.on('ss:stop', guardWP((rid) => {
+    socket.data.ssSharing = null;
+    io.to(`wp:${rid}`).except(socket.id).emit('ss:stopped', { from: socket.id });
+  }));
+
+  // Viewer requests offer from broadcaster
+  socket.on('ss:request_offer', ({ to } = {}) => {
+    if (!to) return;
+    io.to(to).emit('ss:viewer_joined', { from: socket.id });
+  });
+
+  // Relay offer broadcaster→viewer
+  socket.on('ss:offer', ({ to, sdp } = {}) => {
+    if (!to || !sdp) return;
+    io.to(to).emit('ss:offer', { from: socket.id, sdp });
+  });
+
+  // Relay answer viewer→broadcaster
+  socket.on('ss:answer', ({ to, sdp } = {}) => {
+    if (!to || !sdp) return;
+    io.to(to).emit('ss:answer', { from: socket.id, sdp });
+  });
+
+  // Relay ICE candidates (both directions)
+  socket.on('ss:ice', ({ to, candidate } = {}) => {
+    if (!to) return;
+    io.to(to).emit('ss:ice', { from: socket.id, candidate });
+  });
+
   // ── Disconnect ──────────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
     const wbRid = socket.data.wbRoomId;
@@ -227,6 +265,9 @@ io.on('connection', (socket) => {
     }
     const wpRid = socket.data.wpRoomId;
     if (wpRid) {
+      if (socket.data.ssSharing === wpRid) {
+        io.to(`wp:${wpRid}`).emit('ss:stopped', { from: socket.id });
+      }
       watchPartyStore.removePresence(wpRid, socket.id);
       const room = watchPartyStore.get(wpRid);
       io.to(`wp:${wpRid}`).emit('wp:presence', { membersOnline: room?.presence?.size || 0 });
