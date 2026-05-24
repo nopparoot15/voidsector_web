@@ -300,7 +300,11 @@
     }
     if (endReason) endReason.textContent = data.reason || '';
 
-    if (endSpy) endSpy.textContent = data.spyUsername || '?';
+    if (endSpy) {
+      const spyRow = endSpy.closest('.sf-end-row');
+      if (spyWon) { endSpy.textContent = data.spyUsername || '?'; if (spyRow) show(spyRow); }
+      else { if (spyRow) hide(spyRow); }
+    }
 
     // Location + spy guess
     if (endLocation) endLocation.textContent = data.location || '?';
