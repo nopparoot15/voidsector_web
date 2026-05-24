@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="dg-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">🎨</div>
+      <h2>Draw &amp; Guess — ห้อง <span><%- roomId %></span></h2>
+      <p id="lobby-status" class="gm-lobby-sub">รอผู้เล่นเข้าร่วม…</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="dg-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="dg-game" class="hidden">
+    <div class="dg-layout">
+
+      <!-- Left: canvas -->
+      <div class="dg-canvas-col">
+        <div class="dg-canvas-header">
+          <div class="dg-round-info" id="dg-round-info">รอบ 1</div>
+          <div class="dg-word-display" id="dg-word-display">_ _ _</div>
+          <div class="dg-timer" id="dg-timer">60</div>
+        </div>
+        <canvas id="dg-canvas" class="dg-canvas" width="600" height="420"></canvas>
+        <!-- Tools (only visible to drawer) -->
+        <div class="dg-tools hidden" id="dg-tools">
+          <div class="dg-colors" id="dg-colors">
+            <button class="dg-color active" style="--c:#ffffff" data-color="#ffffff"></button>
+            <button class="dg-color" style="--c:#f87171" data-color="#f87171"></button>
+            <button class="dg-color" style="--c:#fb923c" data-color="#fb923c"></button>
+            <button class="dg-color" style="--c:#facc15" data-color="#facc15"></button>
+            <button class="dg-color" style="--c:#4ade80" data-color="#4ade80"></button>
+            <button class="dg-color" style="--c:#60a5fa" data-color="#60a5fa"></button>
+            <button class="dg-color" style="--c:#a78bfa" data-color="#a78bfa"></button>
+            <button class="dg-color" style="--c:#f472b6" data-color="#f472b6"></button>
+            <button class="dg-color" style="--c:#000000" data-color="#000000"></button>
+          </div>
+          <div class="dg-tool-row">
+            <label class="dg-size-label">ขนาด <input type="range" id="dg-size" min="2" max="30" value="4"></label>
+            <button class="dg-tool-btn" id="dg-eraser-btn">🧹 ยาง</button>
+            <button class="dg-tool-btn dg-tool-btn--clear" id="dg-clear-btn">🗑️ ล้าง</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: scores + chat -->
+      <div class="dg-side-col">
+        <div class="dg-scores" id="dg-scores"></div>
+        <div class="dg-chat-box" id="dg-chat-box"></div>
+        <div class="dg-guess-row" id="dg-guess-row">
+          <input id="dg-guess-input" class="dg-guess-input" placeholder="พิมพ์คำตอบ…" autocomplete="off">
+          <button id="dg-guess-btn" class="dg-guess-btn">ส่ง</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Overlay: round reveal -->
+    <div class="dg-overlay hidden" id="dg-overlay">
+      <div class="dg-overlay-card">
+        <div class="dg-overlay-label">คำตอบคือ</div>
+        <div class="dg-overlay-word" id="dg-overlay-word"></div>
+        <div class="dg-overlay-sub" id="dg-overlay-sub">รอบถัดไปเริ่มเลย…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final results -->
+  <div id="dg-results" class="hidden">
+    <div class="dg-results-wrap">
+      <div class="dg-results-icon">🎨</div>
+      <h2>เกมจบแล้ว!</h2>
+      <div id="dg-final-table" class="dg-final-table"></div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-drawguess.js"></script>
+</body>
+</html>

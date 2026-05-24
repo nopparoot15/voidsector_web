@@ -273,7 +273,10 @@ io.on('connection', (socket) => {
     const room = gameStore.get(rid);
     if (!room || room.host !== userId || room.status !== 'waiting') return;
     if (room.gameType === 'xo' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมี 2 คน' });
+    if (room.gameType === 'rps' && room.players.length !== 2) return socket.emit('gm:error', { msg: 'ต้องมีผู้เล่นพอดี 2 คน' });
     if ((room.gameType === 'wordbomb' || room.gameType === 'trivia') && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
+    if (room.gameType === 'typerace' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
+    if (room.gameType === 'drawguess' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
 
     room.status = 'playing';
 
@@ -309,6 +312,55 @@ io.on('connection', (socket) => {
       const pub = publicTriviaState(room.state);
       io.to(`gm:${rid}`).emit('gm:started', { state: pub });
       startTriviaTimer(rid);
+
+    } else if (room.gameType === 'typerace') {
+      const text = TYPERACE_TEXTS[Math.floor(Math.random() * TYPERACE_TEXTS.length)];
+      room.state = {
+        text,
+        phase: 'typing',
+        progress: Object.fromEntries(room.players.map(p => [p.userId, 0])),
+        finished: {},
+        rank: 0,
+        timerEndsAt: Date.now() + 60000,
+      };
+      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
+      gameStore.setTimer(rid, 'trend', () => endTypeRace(rid), 60000);
+
+    } else if (room.gameType === 'rps') {
+      room.state = {
+        phase: 'choosing',
+        scores: Object.fromEntries(room.players.map(p => [p.userId, 0])),
+        choices: {},
+        round: 1,
+        maxRounds: 9,
+        history: [],
+        timerEndsAt: Date.now() + 10000,
+      };
+      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
+      gameStore.setTimer(rid, 'rpsround', () => resolveRPS(rid, true), 10000);
+
+    } else if (room.gameType === 'drawguess') {
+      const word = DG_WORDS[Math.floor(Math.random() * DG_WORDS.length)];
+      const totalRounds = Math.min(room.players.length, 4);
+      room.state = {
+        phase: 'drawing',
+        drawerIdx: 0,
+        drawer: room.players[0].userId,
+        word,
+        timerEndsAt: Date.now() + 60000,
+        round: 1,
+        totalRounds,
+        scores: Object.fromEntries(room.players.map(p => [p.userId, 0])),
+        guessedBy: [],
+        chat: [],
+      };
+      io.to(`gm:${rid}`).emit('gm:started', { state: publicDGState(room.state) });
+      io.in(`gm:${rid}`).fetchSockets().then(sockets => {
+        sockets.forEach(s => {
+          if (Number(s.data.userId) === room.players[0].userId) s.emit('dg:word', { word });
+        });
+      });
+      gameStore.setTimer(rid, 'dground', () => endDGRound(rid), 60000);
     }
   });
 
@@ -411,6 +463,97 @@ io.on('connection', (socket) => {
       revealTriviaResult(rid);
     }
   });
+
+  // ── TYPING RACE ───────────────────────────────────────────────────────────
+  socket.on('tr:progress', ({ roomId, chars } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'typerace' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'typing' || st.finished[userId] !== undefined) return;
+    const c = Math.max(0, Math.min(Number(chars) || 0, st.text.length));
+    st.progress[userId] = c;
+    if (c >= st.text.length) {
+      st.rank++;
+      st.finished[userId] = st.rank;
+      io.to(`gm:${rid}`).emit('tr:progress', { progress: st.progress, finished: st.finished });
+      if (Object.keys(st.finished).length >= room.players.length) endTypeRace(rid);
+    } else {
+      io.to(`gm:${rid}`).emit('tr:progress', { progress: st.progress, finished: st.finished });
+    }
+  });
+
+  // ── ROCK PAPER SCISSORS ──────────────────────────────────────────────────
+  socket.on('rps:choose', ({ roomId, choice } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'rps' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'choosing' || st.choices[userId] !== undefined) return;
+    if (!['rock', 'paper', 'scissors'].includes(choice)) return;
+    st.choices[userId] = choice;
+    socket.emit('rps:chose', {});
+    if (room.players.every(p => st.choices[p.userId] !== undefined)) {
+      gameStore.clearTimer(rid, 'rpsround');
+      resolveRPS(rid, false);
+    }
+  });
+
+  // ── DRAW & GUESS ─────────────────────────────────────────────────────────
+  socket.on('dg:stroke', ({ roomId, pts, color, size, tool } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'drawguess' || room.status !== 'playing') return;
+    if (room.state.drawer !== userId || room.state.phase !== 'drawing') return;
+    socket.to(`gm:${rid}`).emit('dg:stroke', {
+      pts: Array.isArray(pts) ? pts.slice(0, 256) : [],
+      color: String(color || '#ffffff').slice(0, 16),
+      size: Math.max(1, Math.min(Number(size) || 4, 40)),
+      tool: String(tool || 'pen').slice(0, 8),
+    });
+  });
+
+  socket.on('dg:clear', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'drawguess' || room.status !== 'playing') return;
+    if (room.state.drawer !== userId) return;
+    io.to(`gm:${rid}`).emit('dg:clear');
+  });
+
+  socket.on('dg:guess', ({ roomId, text } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'drawguess' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'drawing' || userId === st.drawer || st.guessedBy.includes(userId)) return;
+    const guess = String(text || '').trim().slice(0, 60);
+    if (!guess) return;
+    const correct = guess.toLowerCase() === st.word.toLowerCase();
+    if (correct) {
+      const timeLeft = Math.max(0, st.timerEndsAt - Date.now());
+      const points = Math.round(100 + (timeLeft / 60000) * 400);
+      st.scores[userId] = (st.scores[userId] || 0) + points;
+      st.scores[st.drawer] = (st.scores[st.drawer] || 0) + 50;
+      st.guessedBy.push(userId);
+      io.to(`gm:${rid}`).emit('dg:correct', { userId, username: socket.data.username, points, scores: st.scores });
+      const nonDrawers = room.players.filter(p => p.userId !== st.drawer);
+      if (nonDrawers.every(p => st.guessedBy.includes(p.userId))) {
+        gameStore.clearTimer(rid, 'dground');
+        endDGRound(rid);
+      }
+    } else {
+      const entry = { userId, username: socket.data.username, text: guess };
+      st.chat.push(entry);
+      if (st.chat.length > 60) st.chat.shift();
+      io.to(`gm:${rid}`).emit('dg:chat', entry);
+    }
+  });
 });
 
 // ─── /api/run-code proxy (fix Piston 401, use Codex API) ─────────────────────
@@ -446,6 +589,32 @@ app.post('/api/run-code', (req, res) => {
 });
 
 // ─── GAMES ────────────────────────────────────────────────────────────────────
+
+const TYPERACE_TEXTS = [
+  'The quick brown fox jumps over the lazy dog near the riverbank at sunset',
+  'Programming is the art of telling another human what one wants the computer to do',
+  'Code is like humor when you have to explain it it is bad so keep it simple',
+  'Every great developer you know got there by solving problems they were unqualified to solve',
+  'แมวกระโดดข้ามรั้วบ้านอย่างคล่องแคล่ว ทำให้เจ้าของต้องวิ่งตาม',
+  'การเรียนรู้ไม่มีวันสิ้นสุด ยิ่งรู้มากยิ่งพบว่าตัวเองยังรู้น้อยมาก',
+  'โปรแกรมมิ่งคือการแก้ปัญหาด้วยตรรกะและความคิดสร้างสรรค์ผสมกัน',
+  'First solve the problem then write the code to solve it clearly',
+  'Simplicity is the soul of efficiency so always prefer the simpler solution',
+  'Talk is cheap show me the code and I will tell you if it works correctly',
+];
+
+const DG_WORDS = [
+  'แมว','หมา','ช้าง','เสือ','ลิง','นก','ปลา','กบ','จระเข้','กระต่าย',
+  'หมู','วัว','ม้า','แกะ','ไก่','เป็ด','หมี','ยีราฟ','งู','นกฮูก',
+  'ข้าว','ก๋วยเตี๋ยว','ส้มตำ','ไก่ทอด','พิซซ่า','เบอร์เกอร์','ไอศกรีม',
+  'เค้ก','ซูชิ','ราเมน','ต้มยำ','ผัดไทย','มะม่วง','กล้วย','แตงโม','สตรอว์เบอร์รี',
+  'บ้าน','รถ','เครื่องบิน','จักรยาน','โทรศัพท์','คอมพิวเตอร์','ทีวี',
+  'หนังสือ','กระเป๋า','ร่ม','เก้าอี้','โต๊ะ','กุญแจ','นาฬิกา','แว่นตา',
+  'ดวงอาทิตย์','ดวงจันทร์','ดาว','ต้นไม้','ดอกไม้','ภูเขา','ทะเล',
+  'สายรุ้ง','เมฆ','ฝน','หิมะ','ไฟ','น้ำ','กระดาษ','ดินสอ','กรรไกร',
+  'วิ่ง','กระโดด','ว่ายน้ำ','บิน','นอนหลับ','กิน','อ่านหนังสือ','เล่นกีฬา',
+  'เก้าอี้เด็ก','พัดลม','ตู้เย็น','เตาไฟ','กาน้ำ','ถ้วย','ช้อน','มีด',
+];
 
 const TRIVIA_QUESTIONS = [
   // ── IT & Programming ──────────────────────────────────────────────────────
@@ -656,6 +825,100 @@ function nextTriviaQuestion(rid) {
     return;
   }
   startTriviaTimer(rid);
+}
+
+// ── Typing Race helpers ────────────────────────────────────────────────────
+function endTypeRace(rid) {
+  const room = gameStore.get(rid);
+  if (!room || room.gameType !== 'typerace') return;
+  const st = room.state;
+  st.phase = 'ended';
+  room.status = 'ended';
+  gameStore.clearTimer(rid, 'trend');
+  let rank = Object.keys(st.finished).length + 1;
+  room.players.forEach(p => { if (st.finished[p.userId] === undefined) st.finished[p.userId] = rank++; });
+  io.to(`gm:${rid}`).emit('tr:ended', { state: st });
+}
+
+// ── Rock Paper Scissors helpers ────────────────────────────────────────────
+const RPS_BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+const RPS_EMOJI = { rock: '✊', paper: '🖐️', scissors: '✌️' };
+
+function resolveRPS(rid, timeout) {
+  const room = gameStore.get(rid);
+  if (!room || room.gameType !== 'rps' || room.status !== 'playing') return;
+  const st = room.state;
+  if (st.phase === 'reveal' || st.phase === 'ended') return;
+  gameStore.clearTimer(rid, 'rpsround');
+  const [p1, p2] = room.players;
+  const choices = ['rock', 'paper', 'scissors'];
+  const c1 = st.choices[p1.userId] ?? (timeout ? choices[Math.floor(Math.random() * 3)] : 'rock');
+  const c2 = st.choices[p2.userId] ?? (timeout ? choices[Math.floor(Math.random() * 3)] : 'rock');
+  let winnerId = null;
+  if (c1 === c2) winnerId = 'draw';
+  else if (RPS_BEATS[c1] === c2) { winnerId = p1.userId; st.scores[p1.userId]++; }
+  else { winnerId = p2.userId; st.scores[p2.userId]++; }
+  st.history.push({ round: st.round, c1, c2, winnerId });
+  st.phase = 'reveal';
+  io.to(`gm:${rid}`).emit('rps:reveal', { round: st.round, choices: { [p1.userId]: c1, [p2.userId]: c2 }, winnerId, scores: st.scores });
+  const gameWinner = room.players.find(p => st.scores[p.userId] >= 3);
+  const gameOver = !!gameWinner || st.round >= st.maxRounds;
+  gameStore.setTimer(rid, 'rpsreveal', () => {
+    if (gameOver) {
+      room.status = 'ended'; st.phase = 'ended';
+      const finalWinner = room.players.reduce((a, b) => st.scores[a.userId] >= st.scores[b.userId] ? a : b).userId;
+      io.to(`gm:${rid}`).emit('rps:ended', { scores: st.scores, winner: finalWinner });
+    } else {
+      st.round++; st.choices = {}; st.phase = 'choosing';
+      st.timerEndsAt = Date.now() + 10000;
+      io.to(`gm:${rid}`).emit('rps:round', { round: st.round, timerEndsAt: st.timerEndsAt });
+      gameStore.setTimer(rid, 'rpsround', () => resolveRPS(rid, true), 10000);
+    }
+  }, 3000);
+}
+
+// ── Draw & Guess helpers ───────────────────────────────────────────────────
+function publicDGState(st) {
+  return {
+    phase: st.phase,
+    drawerIdx: st.drawerIdx,
+    drawer: st.drawer,
+    wordLength: st.word ? st.word.length : 0,
+    timerEndsAt: st.timerEndsAt,
+    round: st.round,
+    totalRounds: st.totalRounds,
+    scores: st.scores,
+    guessedBy: st.guessedBy,
+    chat: st.chat,
+  };
+}
+
+function endDGRound(rid) {
+  const room = gameStore.get(rid);
+  if (!room || room.gameType !== 'drawguess') return;
+  const st = room.state;
+  if (st.phase === 'reveal' || st.phase === 'ended') return;
+  st.phase = 'reveal';
+  io.to(`gm:${rid}`).emit('dg:roundend', { word: st.word, scores: st.scores });
+  gameStore.setTimer(rid, 'dgreveal', () => {
+    if (st.round >= st.totalRounds) {
+      room.status = 'ended'; st.phase = 'ended';
+      io.to(`gm:${rid}`).emit('dg:ended', { scores: st.scores });
+      return;
+    }
+    st.round++;
+    st.drawerIdx = (st.drawerIdx + 1) % room.players.length;
+    st.drawer = room.players[st.drawerIdx].userId;
+    st.word = DG_WORDS[Math.floor(Math.random() * DG_WORDS.length)];
+    st.guessedBy = []; st.chat = []; st.phase = 'drawing';
+    st.timerEndsAt = Date.now() + 60000;
+    io.to(`gm:${rid}`).emit('dg:newround', publicDGState(st));
+    io.to(`gm:${rid}`).emit('dg:clear');
+    io.in(`gm:${rid}`).fetchSockets().then(sockets => {
+      sockets.forEach(s => { if (Number(s.data.userId) === st.drawer) s.emit('dg:word', { word: st.word }); });
+    });
+    gameStore.setTimer(rid, 'dground', () => endDGRound(rid), 60000);
+  }, 5000);
 }
 
 // ─── Start ────────────────────────────────────────────────────────────────────

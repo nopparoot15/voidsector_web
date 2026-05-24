@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="rps-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">✊</div>
+      <h2>Rock Paper Scissors — ห้อง <span><%- roomId %></span></h2>
+      <p class="gm-lobby-sub">ชนะ 3 รอบก่อนแพ้ — เร็วและสนุก</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="rps-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="rps-game" class="hidden">
+    <div class="rps-wrap">
+      <div class="rps-scoreboard" id="rps-scoreboard"></div>
+      <div class="rps-round-label" id="rps-round-label">รอบที่ 1</div>
+      <div class="rps-timer" id="rps-timer">10</div>
+
+      <div class="rps-arena" id="rps-arena">
+        <div class="rps-side" id="rps-left"></div>
+        <div class="rps-vs">VS</div>
+        <div class="rps-side" id="rps-right"></div>
+      </div>
+
+      <div class="rps-choices" id="rps-choices">
+        <button class="rps-btn" data-c="rock">✊<span>Rock</span></button>
+        <button class="rps-btn" data-c="paper">🖐️<span>Paper</span></button>
+        <button class="rps-btn" data-c="scissors">✌️<span>Scissors</span></button>
+      </div>
+      <p class="rps-hint" id="rps-hint">เลือกได้เลย!</p>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="rps-results" class="hidden">
+    <div class="rps-results-wrap">
+      <div id="rps-winner-display"></div>
+      <div id="rps-final-scores" class="rps-final-scores"></div>
+      <div id="rps-history" class="rps-history"></div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-rps.js"></script>
+</body>
+</html>

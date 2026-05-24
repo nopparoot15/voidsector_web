@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="tr-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">⌨️</div>
+      <h2>Typing Race — ห้อง <span><%- roomId %></span></h2>
+      <p id="lobby-status">รอผู้เล่นเข้าร่วม…</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="tr-start-btn" class="btn-primary btn-lg hidden">เริ่มแข่ง ▶</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="tr-game" class="hidden">
+    <div class="tr-wrap">
+      <div class="tr-timer-bar"><div class="tr-timer-fill" id="tr-timer-fill"></div></div>
+      <div class="tr-text-display" id="tr-text-display"></div>
+      <input id="tr-input" class="tr-input" placeholder="พิมพ์ที่นี่…" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="off">
+      <div id="tr-progress-list" class="tr-progress-list"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="tr-results" class="hidden">
+    <div class="tr-results-wrap">
+      <div class="tr-result-icon">🏁</div>
+      <h2>ผลการแข่งขัน</h2>
+      <div id="tr-result-table" class="tr-result-table"></div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-typerace.js"></script>
+</body>
+</html>

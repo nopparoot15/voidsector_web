@@ -4,7 +4,7 @@ const router = express.Router();
 const { requireLogin } = require('../middleware/requireLogin');
 const gameStore = require('../games/store');
 
-const GAME_TYPES = { xo: 'XO', wordbomb: 'Word Bomb', trivia: 'Trivia' };
+const GAME_TYPES = { xo: 'XO', wordbomb: 'Word Bomb', trivia: 'Trivia', typerace: 'Typing Race', rps: 'Rock Paper Scissors', drawguess: 'Draw & Guess' };
 
 router.get('/arcade', requireLogin, (req, res) => {
   res.render('pages/arcade', { title: 'Arcade' });
