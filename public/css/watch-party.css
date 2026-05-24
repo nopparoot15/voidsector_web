@@ -11,8 +11,8 @@
 
 .wp-shell{
   max-width: 1600px;
-  margin: 18px auto 40px;
-  padding: 0 20px;
+  margin: 0 auto 40px;
+  padding: 80px 20px 20px; /* 80px = topbar height */
 }
 .wp-top{
   display:flex;align-items:center;justify-content:space-between;gap:14px;
@@ -59,7 +59,8 @@
 .wp-playerWrap{
   margin-top:12px;position:relative;border-radius:18px;overflow:hidden;
   border:1px solid rgba(0,255,255,0.16);background: rgba(0,0,0,0.25);
-  aspect-ratio:16/9;min-height:480px;width:100%;
+  width:100%;
+  height: clamp(380px, calc(100vh - 340px), 780px);
 }
 .wp-yt{position:absolute;inset:0;}
 .wp-yt iframe{
@@ -144,7 +145,7 @@
 .wp-time{color:var(--wp-muted);font-size:12px;min-width:46px;text-align:center;}
 .wp-scrub__bar{flex:1;accent-color:#56f0ff;}
 
-.wp-side{position:sticky;top: 92px;}
+.wp-side{position:sticky;top: 80px;max-height:calc(100vh - 100px);overflow-y:auto;}
 .wp-sideCard{
   border:1px solid var(--wp-line2);
   background: rgba(10,14,20,0.62);
