@@ -30,7 +30,7 @@
 
   const cardSpy       = $('sf-card-spy');
   const locationList  = $('sf-location-list');
-  const locLabel      = $('sf-loc-label');
+  const spyGuessBtn   = $('sf-spy-guess-btn');
   const guessInline   = $('sf-guess-inline');
   const guessTimer    = $('sf-guess-inline-timer');
   const guessConfirm  = $('sf-guess-confirm-btn');
@@ -68,6 +68,7 @@
   let currentTurnUserId = null;
   let allLocations      = [];
   let inForcedGuess     = false;
+  let pendingAccuseUid  = null;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function esc(s) {
@@ -151,27 +152,49 @@
       const isMe    = p.userId === myId;
       const offline = !!p.offline;
       const active  = currentTurnUserId === p.userId;
+      const pending = pendingAccuseUid === p.userId;
 
-      const accuseBtn = (!isMe && !offline)
-        ? `<button class="sf-btn-accuse" data-uid="${p.userId}" data-name="${esc(p.username)}">กล่าวหา</button>` : '';
+      let btns = '';
+      if (!isMe && !offline) {
+        if (pending) {
+          btns = `<button class="sf-btn-accuse-cancel" data-uid="${p.userId}">ยกเลิก</button>
+                  <button class="sf-btn-accuse-confirm" data-uid="${p.userId}">ยืนยัน!</button>`;
+        } else {
+          btns = `<button class="sf-btn-accuse" data-uid="${p.userId}" data-name="${esc(p.username)}">กล่าวหา</button>`;
+        }
+      }
 
-      return `<div class="sf-prow${active ? ' sf-prow--active' : ''}${offline ? ' sf-prow--offline' : ''}">
+      return `<div class="sf-prow${active ? ' sf-prow--active' : ''}${offline ? ' sf-prow--offline' : ''}${pending ? ' sf-prow--pending' : ''}">
         <div class="sf-prow-left">
           <span class="sf-prow-avatar">${esc(p.username[0] || '?').toUpperCase()}</span>
           <span class="sf-prow-name">${esc(p.username)}
             ${isMe ? '<span class="sf-you-tag">คุณ</span>' : ''}
             ${active ? '<span class="sf-active-tag">กำลังตอบ</span>' : ''}
             ${offline ? '<span class="sf-offline-tag">ออฟไลน์</span>' : ''}
+            ${pending ? '<span class="sf-accuse-tag">กล่าวหา?</span>' : ''}
           </span>
         </div>
-        <div class="sf-prow-btns">${accuseBtn}</div>
+        <div class="sf-prow-btns">${btns}</div>
       </div>`;
     }).join('');
 
     playerList.querySelectorAll('.sf-btn-accuse').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (!confirm(`กล่าวหาว่า "${btn.dataset.name}" เป็นสปาย?`)) return;
-        socket.emit('sp:accuse', { roomId, targetUserId: Number(btn.dataset.uid) });
+        pendingAccuseUid = Number(btn.dataset.uid);
+        renderPlayerList(currentPlayers);
+      });
+    });
+    playerList.querySelectorAll('.sf-btn-accuse-cancel').forEach(btn => {
+      btn.addEventListener('click', () => {
+        pendingAccuseUid = null;
+        renderPlayerList(currentPlayers);
+      });
+    });
+    playerList.querySelectorAll('.sf-btn-accuse-confirm').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const uid = Number(btn.dataset.uid);
+        pendingAccuseUid = null;
+        socket.emit('sp:accuse', { roomId, targetUserId: uid });
       });
     });
   }
@@ -180,8 +203,14 @@
   function buildSpyGrid() {
     if (!locationList || !allLocations.length) return;
     locationList.innerHTML = allLocations.map(l =>
-      `<div class="sf-loc-chip sf-loc-chip--pick" data-loc="${esc(l)}">${esc(l)}</div>`
+      `<div class="sf-loc-chip" data-loc="${esc(l)}">${esc(l)}</div>`
     ).join('');
+    locationList.onclick = null;
+  }
+
+  function makeGridSelectable() {
+    if (!locationList) return;
+    locationList.querySelectorAll('[data-loc]').forEach(c => c.classList.add('sf-loc-chip--pick'));
     locationList.onclick = (e) => {
       const chip = e.target.closest('[data-loc]');
       if (!chip) return;
@@ -192,17 +221,31 @@
         guessConfirm.textContent = `ยืนยัน: ${chip.dataset.loc}`;
         guessConfirm.dataset.loc = chip.dataset.loc;
       }
-      show(guessInline);
     };
+  }
+
+  function resetGuessConfirm() {
+    if (guessConfirm) { guessConfirm.setAttribute('disabled', ''); guessConfirm.textContent = 'เลือกสถานที่ก่อน'; delete guessConfirm.dataset.loc; }
+    locationList?.querySelectorAll('[data-loc]').forEach(c => c.classList.remove('picked'));
+  }
+
+  function enterVoluntaryGuessMode() {
+    makeGridSelectable();
+    resetGuessConfirm();
+    show(guessInline);
+    show(guessCancel);
+    hide(spyGuessBtn, guessTimer);
   }
 
   function enterForcedGuessMode() {
     inForcedGuess = true;
-    buildSpyGrid();
+    makeGridSelectable();
+    resetGuessConfirm();
     clearInterval(guessCountdown);
     let left = 30;
     if (guessTimer) { guessTimer.textContent = `เหลือ ${left} วินาที`; show(guessTimer); }
     show(guessInline);
+    hide(guessCancel, spyGuessBtn);
     guessCountdown = setInterval(() => {
       left--;
       if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
@@ -214,8 +257,9 @@
     clearInterval(guessCountdown);
     inForcedGuess = false;
     hide(guessInline, guessTimer);
-    locationList?.querySelectorAll('[data-loc]').forEach(c => c.classList.remove('picked'));
-    if (guessConfirm) { guessConfirm.setAttribute('disabled', ''); guessConfirm.textContent = 'เลือกสถานที่ก่อน'; delete guessConfirm.dataset.loc; }
+    show(spyGuessBtn);
+    buildSpyGrid();
+    resetGuessConfirm();
   }
 
   // ── Phases ─────────────────────────────────────────────────────────────────
@@ -335,7 +379,6 @@
     showGame();
     startTimerDisplay(state.timerEndsAt);
     renderPlayerList(state.players || currentPlayers);
-    if (state.askedUserId) setAskedBanner(state.askedUserId, state.askedUsername);
   });
 
   socket.on('sp:role', ({ isSpy: spy, location, role, allLocations: locs }) => {
@@ -376,19 +419,20 @@
     enterForcedGuessMode();
   });
 
-  socket.on('sp:vote_resolved', () => {
+  socket.on('sp:vote_resolved', ({ timerEndsAt: newEnd }) => {
     hide(votingOverlay);
     document.querySelectorAll('.sf-caught-banner').forEach(b => b.remove());
-    if (timerEndsAt) startTimerDisplay(timerEndsAt);
+    if (newEnd) startTimerDisplay(newEnd);
   });
 
   socket.on('sp:ended', data => { showEnd(data); });
 
   socket.on('sp:reset', () => {
-    isSpy = false; hasVoted = false; inForcedGuess = false;
+    isSpy = false; hasVoted = false; inForcedGuess = false; pendingAccuseUid = null;
     currentTurnUserId = null; allLocations = [];
     stopTimer(); clearInterval(guessCountdown); clearAnswerCountdown();
     hide(cardSpy, cardPlayer, guessInline, guessTimer, turnBanner);
+    show(spyGuessBtn);
     document.querySelectorAll('.sf-caught-banner').forEach(b => b.remove());
     showLobby();
     renderLobbyPlayers(currentPlayers);
@@ -421,6 +465,8 @@
     voteYes?.setAttribute('disabled', ''); voteNo.setAttribute('disabled', '');
     socket.emit('sp:vote', { roomId, guilty: false });
   });
+
+  spyGuessBtn?.addEventListener('click', () => { enterVoluntaryGuessMode(); });
 
   guessCancel?.addEventListener('click', () => { cancelSelection(); });
 

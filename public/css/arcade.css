@@ -1274,6 +1274,20 @@
   color: #fca5a5; cursor: pointer; transition: background .15s;
 }
 .sf-btn-accuse:hover { background: rgba(248,113,113,0.2); }
+.sf-btn-accuse-confirm {
+  padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  border: 1px solid rgba(248,113,113,0.7); background: rgba(248,113,113,0.25);
+  color: #fff; cursor: pointer; transition: background .15s;
+}
+.sf-btn-accuse-confirm:hover { background: rgba(248,113,113,0.45); }
+.sf-btn-accuse-cancel {
+  padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.12); background: transparent;
+  color: #71717a; cursor: pointer; transition: background .15s;
+}
+.sf-btn-accuse-cancel:hover { background: rgba(255,255,255,0.06); }
+.sf-prow--pending { border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.06); }
+.sf-accuse-tag { font-size: 10px; font-weight: 600; color: #f87171; padding: 1px 6px; border-radius: 4px; background: rgba(248,113,113,0.15); }
 
 /* Tags */
 .sf-you-tag { font-size: 10px; font-weight: 600; color: #a78bfa; padding: 1px 6px; border-radius: 4px; background: rgba(167,139,250,0.15); }

@@ -87,14 +87,16 @@
         <div class="sf-rolecard-spy-sub">หาให้ออกว่าอยู่ที่ไหน — อย่าให้ใครจับได้</div>
 
         <div class="sf-locs-header">
-          <span id="sf-loc-label" class="sf-locs-label">กดเลือกสถานที่เพื่อเดา</span>
+          <span class="sf-locs-label">สถานที่ที่เป็นไปได้</span>
         </div>
         <div id="sf-location-list" class="sf-locs-grid"></div>
+
+        <button id="sf-spy-guess-btn" class="sf-spy-guess-btn">🎯 ประกาศเดาสถานที่</button>
 
         <div id="sf-guess-inline" class="sf-guess-inline hidden">
           <div id="sf-guess-inline-timer" class="sf-guess-inline-timer hidden"></div>
           <div class="sf-guess-actions">
-            <button id="sf-guess-cancel-btn" class="sf-guess-cancel-btn">ยกเลิก</button>
+            <button id="sf-guess-cancel-btn" class="sf-guess-cancel-btn hidden">ยกเลิก</button>
             <button id="sf-guess-confirm-btn" class="sf-guess-confirm-btn" disabled>เลือกสถานที่ก่อน</button>
           </div>
         </div>
@@ -188,6 +190,6 @@
 
 </div>
 <script src="/socket.io/socket.io.js"></script>
-<script defer src="/js/spyfall.js?v=3"></script>
+<script defer src="/js/spyfall.js?v=4"></script>
 </body>
 </html>
