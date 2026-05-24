@@ -249,10 +249,17 @@ io.on('connection', (socket) => {
     const gmRid = socket.data.gameRoomId;
     if (gmRid) {
       const userId = Number(socket.data.userId);
-      if (gameStore.get(gmRid)?.status === 'waiting') {
-        const remaining = gameStore.removePlayer(gmRid, userId);
-        if (remaining) {
-          io.to(`gm:${gmRid}`).emit('gm:players', { players: remaining.players.map(p => ({ userId: p.userId, username: p.username })) });
+      const gmRoom = gameStore.get(gmRid);
+      if (gmRoom) {
+        if (gmRoom.status === 'waiting') {
+          const remaining = gameStore.removePlayer(gmRid, userId);
+          if (remaining) {
+            io.to(`gm:${gmRid}`).emit('gm:players', { players: remaining.players.map(p => ({ userId: p.userId, username: p.username })) });
+          }
+        } else if (gmRoom.status === 'playing') {
+          gmRoom.offlinePlayers.add(userId);
+          const players = gmRoom.players.map(p => ({ userId: p.userId, username: p.username, offline: gmRoom.offlinePlayers.has(p.userId) }));
+          io.to(`gm:${gmRid}`).emit('gm:players', { players });
         }
       }
     }
@@ -276,10 +283,26 @@ io.on('connection', (socket) => {
     socket.data.gameRoomId = rid;
     socket.join(`gm:${rid}`);
 
-    const pub = { id: room.id, gameType: room.gameType, host: room.host, status: room.status,
-      players: room.players.map(p => ({ userId: p.userId, username: p.username })) };
+    const wasOffline = room.offlinePlayers?.has(userId);
+    if (wasOffline) room.offlinePlayers.delete(userId);
+
+    const playersWithStatus = room.players.map(p => ({ userId: p.userId, username: p.username, offline: room.offlinePlayers?.has(p.userId) || false }));
+    const pub = { id: room.id, gameType: room.gameType, host: room.host, status: room.status, players: playersWithStatus };
     socket.emit('gm:joined', { room: pub, state: room.state });
-    socket.to(`gm:${rid}`).emit('gm:players', { players: pub.players });
+    socket.to(`gm:${rid}`).emit('gm:players', { players: playersWithStatus });
+
+    // Restore Spyfall state for reconnecting player
+    if (room.gameType === 'spyfall' && room.status === 'playing' && room.state?.phase) {
+      const st = room.state;
+      const isSpy = userId === st.spyUserId;
+      socket.emit('sp:role', {
+        isSpy,
+        location: isSpy ? null : st.location,
+        role: isSpy ? null : (st.roles?.[userId] || '?'),
+        allLocations: st.allLocationNames,
+      });
+      if (st.turnUserId) socket.emit('sp:turn', { turnUserId: st.turnUserId, turnUsername: st.turnUsername });
+    }
   });
 
   socket.on('gm:start', ({ roomId } = {}) => {

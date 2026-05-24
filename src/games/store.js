@@ -18,6 +18,7 @@ function create(gameType, hostUserId, hostUsername) {
     status: 'waiting',
     state: {},
     timers: {},
+    offlinePlayers: new Set(),
     createdAt: Date.now(),
   };
   rooms.set(id, room);

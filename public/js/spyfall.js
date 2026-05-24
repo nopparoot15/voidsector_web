@@ -178,14 +178,17 @@
 
     playerList.innerHTML = players.map(p => {
       const isMe = p.userId === myId;
-      const askBtn    = (!isMe && isMyTurn)
+      const offline = !!p.offline;
+      const askBtn    = (!isMe && isMyTurn && !offline)
         ? `<button class="sf-ask-btn" data-uid="${p.userId}" data-name="${esc(p.username)}">ถาม</button>`
         : '';
-      const accuseBtn = !isMe
+      const accuseBtn = (!isMe && !offline)
         ? `<button class="sf-accuse-btn" data-uid="${p.userId}" data-name="${esc(p.username)}">กล่าวหา</button>`
         : '';
-      return `<div class="sf-player-row${currentTurnUserId === p.userId ? ' sf-player-row--active' : ''}" data-uid="${p.userId}">
-        <span class="sf-player-name">${esc(p.username)}${isMe ? ' <span class="sf-you-tag">คุณ</span>' : ''}</span>
+      const offlineBadge = offline ? '<span class="sf-offline-tag">ออฟไลน์</span>' : '';
+      const youBadge = isMe ? ' <span class="sf-you-tag">คุณ</span>' : '';
+      return `<div class="sf-player-row${currentTurnUserId === p.userId ? ' sf-player-row--active' : ''}${offline ? ' sf-player-row--offline' : ''}" data-uid="${p.userId}">
+        <span class="sf-player-name">${esc(p.username)}${youBadge}${offlineBadge}</span>
         <div class="sf-player-actions">${askBtn}${accuseBtn}</div>
       </div>`;
     }).join('');
@@ -236,10 +239,18 @@
     const locs = (locations && locations.length) ? locations : allLocations;
     hide(votingOverlay);
     show(guessOverlay);
-    guessBtn?.removeAttribute('disabled');
     if (guessSelect && locs.length) {
-      guessSelect.innerHTML = locs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+      guessSelect.innerHTML = locs.map(l => `<button class="sf-guess-item" data-loc="${esc(l)}">${esc(l)}</button>`).join('');
+      guessSelect.querySelectorAll('.sf-guess-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          guessSelect.querySelectorAll('.sf-guess-item').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          guessBtn?.removeAttribute('disabled');
+          if (guessBtn) guessBtn.textContent = `ตอบ: ${btn.dataset.loc}`;
+        });
+      });
     }
+    if (guessBtn) { guessBtn.setAttribute('disabled', ''); guessBtn.textContent = 'เลือกสถานที่ก่อน'; }
     let left = 30;
     clearInterval(guessCountdown);
     if (guessTimer) guessTimer.textContent = `เหลือ ${left} วินาที`;
@@ -323,6 +334,10 @@
 
   socket.on('gm:players', ({ players }) => {
     renderLobbyPlayers(players);
+    // Also update in-game player list if game is active
+    if (!game.classList.contains('hidden')) {
+      renderPlayerList(players);
+    }
   });
 
   socket.on('gm:error', ({ msg }) => {
@@ -449,7 +464,7 @@
 
   if (guessBtn) {
     guessBtn.addEventListener('click', () => {
-      const loc = guessSelect?.value;
+      const loc = guessSelect?.querySelector('.sf-guess-item.selected')?.dataset.loc;
       if (!loc) return;
       guessBtn.setAttribute('disabled', '');
       socket.emit('sp:guess', { roomId, location: loc });
