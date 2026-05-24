@@ -9,7 +9,11 @@
   --wp-radius: 16px;
 }
 
-.wp-shell{max-width:1320px;margin:18px auto 40px;padding:0 14px;}
+.wp-shell{
+  max-width: 1600px;
+  margin: 18px auto 40px;
+  padding: 0 20px;
+}
 .wp-top{
   display:flex;align-items:center;justify-content:space-between;gap:14px;
   border:1px solid var(--wp-line);
@@ -37,7 +41,7 @@
 }
 
 .wp-main{margin-top:14px;display:grid;grid-template-columns:1fr;gap:14px;align-items:start;}
-.wp-main.has-side{grid-template-columns:1fr 360px;}
+.wp-main.has-side{grid-template-columns:1fr 300px;}
 
 .wp-playerCard{
   border:1px solid var(--wp-line);background:var(--wp-card);
@@ -55,7 +59,7 @@
 .wp-playerWrap{
   margin-top:12px;position:relative;border-radius:18px;overflow:hidden;
   border:1px solid rgba(0,255,255,0.16);background: rgba(0,0,0,0.25);
-  aspect-ratio:16/9;min-height:320px;width:100%;
+  aspect-ratio:16/9;min-height:480px;width:100%;
 }
 .wp-yt{position:absolute;inset:0;}
 .wp-yt iframe{
@@ -243,32 +247,6 @@
 }
 
 
-/* --- Centered panel like whiteboard lobby --- */
-.wp-centerCard{ /* uses global .card/.vs-card frame */ }
-.wp-shell--inCard{
-  max-width: none;
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-
-/* v4 tweaks: centered + public smaller + hard block YT UI + empty state */
-.wp-shell[data-roomtype="public"] .wp-main{
-  /* slightly smaller than private layout, centered */
-  max-width: 860px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.wp-shell[data-roomtype="public"] .wp-playerWrap{
-  min-height: 260px;
-}
-@media (max-width: 1100px){
-  .wp-shell[data-roomtype="public"] .wp-main{ max-width: 100%; }
-}
 
 /* Make iframe always fill wrap */
 .wp-yt iframe{
