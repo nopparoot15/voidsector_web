@@ -1,7 +1,7 @@
 'use strict';
 const express = require('express');
 const router = express.Router();
-const { requireLogin } = require('../middleware/requireLogin');
+const { requireLogin, requireFullAccount } = require('../middleware/requireLogin');
 const { pool } = require('../config/db');
 
 router.get('/', (req, res) => {
@@ -47,30 +47,30 @@ router.get('/music', (req, res) => {
 });
 
 router.get('/login', (req, res) => {
-  if (req.session && req.session.user) return res.redirect('/home');
+  if (req.session?.user && !req.session.user.isGuest) return res.redirect('/home');
   res.render('pages/login', { title: 'เข้าสู่ระบบ', error: req.query.error || null });
 });
 
 router.get('/register', (req, res) => {
-  if (req.session && req.session.user) return res.redirect('/home');
+  if (req.session?.user && !req.session.user.isGuest) return res.redirect('/home');
   res.render('pages/register', { title: 'สมัครสมาชิก', error: req.query.error || null });
 });
 
-router.get('/learn/:langCode', requireLogin, (req, res) => {
+router.get('/learn/:langCode', requireFullAccount, (req, res) => {
   const { langCode } = req.params;
   const names = { en: 'English', ja: 'Japanese', zh: 'Chinese', math: 'คณิตศาสตร์', py: 'Python', js: 'JavaScript', cs: 'C#' };
   if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
   res.render('pages/learn', { title: 'เรียน ' + names[langCode], langCode });
 });
 
-router.get('/placement/:langCode', requireLogin, (req, res) => {
+router.get('/placement/:langCode', requireFullAccount, (req, res) => {
   const { langCode } = req.params;
   const names = { en: 'English', ja: 'Japanese', zh: 'Chinese' };
   if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
   res.render('pages/placement', { title: 'Placement Test — ' + names[langCode], langCode });
 });
 
-router.get('/lesson/:lessonId', requireLogin, async (req, res) => {
+router.get('/lesson/:lessonId', requireFullAccount, async (req, res) => {
   try {
     const lessonId = parseInt(req.params.lessonId);
     const { rows } = await pool.query(
@@ -90,34 +90,34 @@ router.get('/lesson/:lessonId', requireLogin, async (req, res) => {
   }
 });
 
-router.get('/flashcards/:langCode', requireLogin, (req, res) => {
+router.get('/flashcards/:langCode', requireFullAccount, (req, res) => {
   const { langCode } = req.params;
   const names = { en: 'English', ja: 'Japanese', zh: 'Chinese' };
   if (!names[langCode]) return res.status(404).render('pages/notfound', { title: '404' });
   res.render('pages/flashcards', { title: 'Flashcard ' + names[langCode], langCode });
 });
 
-router.get('/tools', requireLogin, (req, res) => {
+router.get('/tools', requireFullAccount, (req, res) => {
   res.render('pages/tools', { title: 'Tools' });
 });
 
-router.get('/tools/terminal', requireLogin, (req, res) => {
+router.get('/tools/terminal', requireFullAccount, (req, res) => {
   res.render('pages/terminal', { title: 'Terminal' });
 });
 
-router.get('/tools/calculator', requireLogin, (req, res) => {
+router.get('/tools/calculator', requireFullAccount, (req, res) => {
   res.render('pages/calculator', { title: 'Calculator' });
 });
 
-router.get('/tools/codeeditor', requireLogin, (req, res) => {
+router.get('/tools/codeeditor', requireFullAccount, (req, res) => {
   res.render('pages/codeeditor', { title: 'Code Editor' });
 });
 
-router.get('/leaderboard', requireLogin, (req, res) => {
+router.get('/leaderboard', requireFullAccount, (req, res) => {
   res.render('pages/leaderboard', { title: 'Leaderboard' });
 });
 
-router.get('/profile', requireLogin, async (req, res) => {
+router.get('/profile', requireFullAccount, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const { rows: [userData] } = await pool.query(

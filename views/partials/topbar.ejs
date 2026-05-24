@@ -10,10 +10,14 @@
     <a href="/leaderboard" class="nav-link">Leaderboard</a>
   </nav>
   <div class="topbar-right">
-    <% if (user) { %>
+    <% if (user && !user.isGuest) { %>
       <span class="streak-badge"><%= user.streak || 0 %> day streak</span>
       <span class="xp-badge"><%= (user.xp || 0).toLocaleString() %> XP</span>
       <a href="/profile" class="nav-link user-link"><%= user.username %></a>
+      <a href="/logout" class="btn-outline btn-sm">ออก</a>
+    <% } else if (user && user.isGuest) { %>
+      <span class="guest-badge">👤 <%= user.username %></span>
+      <a href="/register" class="btn-primary btn-sm">สมัครฟรี</a>
       <a href="/logout" class="btn-outline btn-sm">ออก</a>
     <% } else { %>
       <a href="/login" class="btn-outline btn-sm">เข้าสู่ระบบ</a>
