@@ -20,6 +20,7 @@
   let players = [];
   let timerAf = null;
   let finished = false;
+  let trOptions = { lang: 'en', difficulty: 'easy' };
 
   document.getElementById('copy-link-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href).then(() => {
@@ -34,7 +35,9 @@
   socket.on('gm:joined', ({ room, state: st }) => {
     roomData = room; players = room.players;
     renderLobby(room);
-    if (room.host === me.id) startBtn.classList.remove('hidden');
+    const isHost = room.host === me.id;
+    if (isHost) startBtn.classList.remove('hidden');
+    initOptions(isHost);
     if (room.status === 'playing' && st && st.text) startGame(st);
   });
 
@@ -45,6 +48,12 @@
   });
 
   socket.on('gm:started', ({ state: st }) => startGame(st));
+
+  socket.on('tr:options', ({ lang, difficulty }) => {
+    trOptions = { lang, difficulty };
+    updateOptionUI('tr-lang-group', '[data-lang]', '[data-lang="' + lang + '"]');
+    updateOptionUI('tr-diff-group', '[data-diff]', '[data-diff="' + difficulty + '"]');
+  });
 
   socket.on('tr:progress', ({ progress, finished: fin }) => {
     if (state) { state.progress = progress; state.finished = fin; }
@@ -172,6 +181,39 @@
   function updateChips(pl) {
     document.getElementById('gm-players').innerHTML = pl.map(p =>
       `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`).join('');
+  }
+
+  function initOptions(isHost) {
+    const langGroup = document.getElementById('tr-lang-group');
+    const diffGroup = document.getElementById('tr-diff-group');
+    if (!langGroup) return;
+    if (!isHost) {
+      langGroup.querySelectorAll('.gm-option-btn').forEach(b => b.disabled = true);
+      diffGroup.querySelectorAll('.gm-option-btn').forEach(b => b.disabled = true);
+      return;
+    }
+    langGroup.addEventListener('click', e => {
+      const btn = e.target.closest('.gm-option-btn');
+      if (!btn) return;
+      trOptions.lang = btn.dataset.lang;
+      updateOptionUI('tr-lang-group', '[data-lang]', '[data-lang="' + trOptions.lang + '"]');
+      socket.emit('tr:setoptions', { roomId, lang: trOptions.lang, difficulty: trOptions.difficulty });
+    });
+    diffGroup.addEventListener('click', e => {
+      const btn = e.target.closest('.gm-option-btn');
+      if (!btn) return;
+      trOptions.difficulty = btn.dataset.diff;
+      updateOptionUI('tr-diff-group', '[data-diff]', '[data-diff="' + trOptions.difficulty + '"]');
+      socket.emit('tr:setoptions', { roomId, lang: trOptions.lang, difficulty: trOptions.difficulty });
+    });
+  }
+
+  function updateOptionUI(groupId, allSel, activeSel) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    group.querySelectorAll(allSel).forEach(b => b.classList.remove('active'));
+    const active = group.querySelector(activeSel);
+    if (active) active.classList.add('active');
   }
 
   window.playAgain = async (gameType) => {

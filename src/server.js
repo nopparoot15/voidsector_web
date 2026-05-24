@@ -286,11 +286,14 @@ io.on('connection', (socket) => {
       io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
 
     } else if (room.gameType === 'wordbomb') {
+      const wbLang = room.state?.options?.lang || 'en';
       room.state = {
         players: room.players.map(p => ({ userId: p.userId, username: p.username, lives: 3, alive: true })),
         currentIdx: 0,
         usedWords: [],
         lastLetter: '',
+        lastWord: '',
+        lang: wbLang,
         phase: 'turn',
         timerEndsAt: Date.now() + 12000,
         roundNum: 0,
@@ -314,9 +317,13 @@ io.on('connection', (socket) => {
       startTriviaTimer(rid);
 
     } else if (room.gameType === 'typerace') {
-      const text = TYPERACE_TEXTS[Math.floor(Math.random() * TYPERACE_TEXTS.length)];
+      const { lang = 'en', difficulty = 'medium' } = room.state?.options || {};
+      const pool = TYPERACE_POOL[lang]?.[difficulty] || TYPERACE_POOL.en.medium;
+      const text = pool[Math.floor(Math.random() * pool.length)];
       room.state = {
         text,
+        lang,
+        difficulty,
         phase: 'typing',
         progress: Object.fromEntries(room.players.map(p => [p.userId, 0])),
         finished: {},
@@ -403,6 +410,17 @@ io.on('connection', (socket) => {
     io.to(`gm:${rid}`).emit('xo:state', room.state);
   });
 
+  socket.on('wb:setoptions', ({ roomId, lang } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'wordbomb' || room.status !== 'waiting') return;
+    if (room.host !== userId) return;
+    if (!['en', 'th'].includes(lang)) return;
+    room.state.options = { lang };
+    io.to(`gm:${rid}`).emit('wb:options', { lang });
+  });
+
   socket.on('wb:word', async ({ roomId, word } = {}) => {
     const rid = String(roomId || '').toUpperCase();
     const userId = Number(socket.data.userId);
@@ -412,29 +430,53 @@ io.on('connection', (socket) => {
     const curPlayer = st.players[st.currentIdx];
     if (!curPlayer || curPlayer.userId !== userId || !curPlayer.alive) return;
 
-    const w = String(word || '').trim().toLowerCase().replace(/[^a-z]/g, '');
-    if (!w) return;
-
-    if (st.lastLetter && !w.startsWith(st.lastLetter)) {
-      socket.emit('wb:invalid', { reason: `คำต้องขึ้นต้นด้วย "${st.lastLetter.toUpperCase()}"` });
-      return;
+    if (st.lang === 'th') {
+      const w = String(word || '').trim();
+      if (!w) return;
+      if (st.lastLetter && !w.startsWith(st.lastLetter)) {
+        socket.emit('wb:invalid', { reason: `คำต้องขึ้นต้นด้วย "${st.lastLetter}"` });
+        return;
+      }
+      if (st.usedWords.includes(w)) {
+        socket.emit('wb:invalid', { reason: 'คำนี้ถูกใช้ไปแล้ว' });
+        return;
+      }
+      if (!TH_WORDS.has(w)) {
+        socket.emit('wb:invalid', { reason: `"${w}" ไม่อยู่ในรายการคำศัพท์ไทย` });
+        return;
+      }
+      const nextLetter = thLastConsonant(w);
+      if (!nextLetter) {
+        socket.emit('wb:invalid', { reason: 'คำต้องลงท้ายด้วยพยัญชนะ' });
+        return;
+      }
+      gameStore.clearTimer(rid, 'wbturn');
+      st.usedWords.push(w);
+      st.lastLetter = nextLetter;
+      st.lastWord = w;
+      advanceWBTurn(rid);
+    } else {
+      const w = String(word || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+      if (!w) return;
+      if (st.lastLetter && !w.startsWith(st.lastLetter)) {
+        socket.emit('wb:invalid', { reason: `คำต้องขึ้นต้นด้วย "${st.lastLetter.toUpperCase()}"` });
+        return;
+      }
+      if (st.usedWords.includes(w)) {
+        socket.emit('wb:invalid', { reason: 'คำนี้ถูกใช้ไปแล้ว' });
+        return;
+      }
+      const isReal = await checkEnglishWord(w);
+      if (!isReal) {
+        socket.emit('wb:invalid', { reason: `"${w}" ไม่ใช่คำภาษาอังกฤษที่ถูกต้อง` });
+        return;
+      }
+      gameStore.clearTimer(rid, 'wbturn');
+      st.usedWords.push(w);
+      st.lastLetter = w[w.length - 1];
+      st.lastWord = w;
+      advanceWBTurn(rid);
     }
-    if (st.usedWords.includes(w)) {
-      socket.emit('wb:invalid', { reason: 'คำนี้ถูกใช้ไปแล้ว' });
-      return;
-    }
-
-    const isReal = await checkEnglishWord(w);
-    if (!isReal) {
-      socket.emit('wb:invalid', { reason: `"${w}" ไม่ใช่คำภาษาอังกฤษที่ถูกต้อง` });
-      return;
-    }
-
-    gameStore.clearTimer(rid, 'wbturn');
-    st.usedWords.push(w);
-    st.lastLetter = w[w.length - 1];
-    st.lastWord = w;
-    advanceWBTurn(rid);
   });
 
   socket.on('tq:answer', ({ roomId, idx } = {}) => {
@@ -482,6 +524,18 @@ io.on('connection', (socket) => {
     } else {
       io.to(`gm:${rid}`).emit('tr:progress', { progress: st.progress, finished: st.finished });
     }
+  });
+
+  socket.on('tr:setoptions', ({ roomId, lang, difficulty } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'typerace' || room.status !== 'waiting') return;
+    if (room.host !== userId) return;
+    if (!['en', 'th'].includes(lang)) return;
+    if (!['easy', 'medium', 'hard'].includes(difficulty)) return;
+    room.state.options = { lang, difficulty };
+    io.to(`gm:${rid}`).emit('tr:options', { lang, difficulty });
   });
 
   // ── ROCK PAPER SCISSORS ──────────────────────────────────────────────────
@@ -590,18 +644,124 @@ app.post('/api/run-code', (req, res) => {
 
 // ─── GAMES ────────────────────────────────────────────────────────────────────
 
-const TYPERACE_TEXTS = [
-  'The quick brown fox jumps over the lazy dog near the riverbank at sunset',
-  'Programming is the art of telling another human what one wants the computer to do',
-  'Code is like humor when you have to explain it it is bad so keep it simple',
-  'Every great developer you know got there by solving problems they were unqualified to solve',
-  'แมวกระโดดข้ามรั้วบ้านอย่างคล่องแคล่ว ทำให้เจ้าของต้องวิ่งตาม',
-  'การเรียนรู้ไม่มีวันสิ้นสุด ยิ่งรู้มากยิ่งพบว่าตัวเองยังรู้น้อยมาก',
-  'โปรแกรมมิ่งคือการแก้ปัญหาด้วยตรรกะและความคิดสร้างสรรค์ผสมกัน',
-  'First solve the problem then write the code to solve it clearly',
-  'Simplicity is the soul of efficiency so always prefer the simpler solution',
-  'Talk is cheap show me the code and I will tell you if it works correctly',
-];
+const TYPERACE_POOL = {
+  en: {
+    easy: [
+      'The cat sat on the mat',
+      'I love to eat pizza with friends',
+      'The sun is bright and warm today',
+      'She runs fast every morning',
+      'Dogs are loyal and friendly pets',
+      'I drink coffee every day',
+      'He reads books at night',
+      'We play games on weekends',
+      'The sky is blue and clear',
+      'Good food makes people happy',
+    ],
+    medium: [
+      'The quick brown fox jumps over the lazy dog near the river',
+      'Programming is the art of telling a computer what you want it to do',
+      'First solve the problem then write the code to solve it clearly',
+      'Simplicity is the soul of efficiency so always prefer simpler solutions',
+      'Talk is cheap show me the code and I will tell you if it works',
+      'Every great developer got there by solving problems they seemed unqualified to solve',
+      'Code is like humor when you have to explain it it is probably not good',
+      'The best way to predict the future is to invent it yourself today',
+      'Learning never exhausts the mind it only ignites curiosity further each day',
+      'Practice makes perfect so write code every single day without exception',
+    ],
+    hard: [
+      'Any fool can write code that a computer can understand but good programmers write code that humans can understand',
+      'The most disastrous thing that you can ever learn is your first programming language because it shapes how you think',
+      'Debugging is twice as hard as writing the code in the first place so if you write the code as cleverly as possible you are not smart enough to debug it',
+      'Programs must be written for people to read and only incidentally for machines to execute otherwise nobody will maintain them',
+      'The function of good software is to make the complex appear to be simple and the difficult appear to be easy for all users',
+      'One of the most important skills you can develop as a programmer is the ability to read other peoples code and understand their intent',
+      'Software testing is not about finding bugs it is about gaining confidence that the system works correctly under all expected conditions',
+      'The art of programming is the art of organizing complexity and managing that complexity so that the human mind can grasp the whole picture',
+    ],
+  },
+  th: {
+    easy: [
+      'แมวกระโดดข้ามรั้วบ้าน',
+      'ฉันชอบกินข้าวกับเพื่อน',
+      'วันนี้ฟ้าใสและอากาศดีมาก',
+      'หมาวิ่งเล่นในสวนสนุก',
+      'เด็กๆชอบกินไอศกรีม',
+      'ดอกไม้บานสะพรั่งในสวน',
+      'พ่อแม่รักลูกอย่างไม่มีเงื่อนไข',
+      'ฝนตกทำให้อากาศเย็นสบาย',
+      'นกร้องเพลงยามเช้าเสมอ',
+      'ต้นไม้ใหญ่ให้ร่มเงาในยามร้อน',
+    ],
+    medium: [
+      'การเรียนรู้ไม่มีวันสิ้นสุด ยิ่งรู้มากยิ่งพบว่าตัวเองยังรู้น้อยมาก',
+      'โปรแกรมมิ่งคือการแก้ปัญหาด้วยตรรกะและความคิดสร้างสรรค์ผสมกัน',
+      'ความสำเร็จไม่ได้มาจากโชค แต่มาจากความพยายามและความอดทนอย่างต่อเนื่อง',
+      'เทคโนโลยีเปลี่ยนโลกให้เล็กลง แต่ทำให้ความรู้กว้างขวางขึ้นกว่าเดิม',
+      'คนที่อ่านหนังสือมากจะมีโลกทัศน์กว้างและเข้าใจคนอื่นได้ดีกว่า',
+      'ภาษาโปรแกรมมิ่งเปรียบเสมือนเครื่องมือ เลือกใช้ให้ถูกกับงานที่ทำ',
+      'ความรักที่แท้จริงคือการยอมรับในสิ่งที่อีกฝ่ายเป็น โดยไม่พยายามเปลี่ยนแปลง',
+      'การออกกำลังกายสม่ำเสมอช่วยให้ร่างกายแข็งแรงและจิตใจแจ่มใส',
+      'มิตรภาพที่แท้จริงต้องผ่านการทดสอบของเวลาและความยากลำบาก',
+      'อาหารไทยมีรสชาติหลากหลายทั้งเผ็ด หวาน เปรี้ยว และเค็มในคำเดียวกัน',
+    ],
+    hard: [
+      'ในยุคดิจิทัลที่ข้อมูลข่าวสารไหลเวียนอย่างรวดเร็ว ทักษะการคัดกรองข้อมูลและการคิดวิเคราะห์อย่างมีวิจารณญาณจึงสำคัญยิ่งกว่าการท่องจำข้อเท็จจริงใดๆ',
+      'ความฉลาดทางอารมณ์ไม่ใช่สิ่งที่ติดตัวมาตั้งแต่เกิด แต่สามารถฝึกฝนและพัฒนาได้ผ่านการสังเกตตนเองและการเรียนรู้จากประสบการณ์ในชีวิตจริง',
+      'การเขียนโปรแกรมที่ดีไม่ใช่แค่การทำให้คอมพิวเตอร์เข้าใจ แต่คือการเขียนโค้ดที่มนุษย์คนอื่นสามารถอ่านเข้าใจและดูแลรักษาได้ในระยะยาว',
+      'ประเทศไทยมีวัฒนธรรมอันหลากหลายและงดงาม ทั้งศิลปะ ดนตรี อาหาร และประเพณีที่สืบทอดมาจากบรรพบุรุษหลายร้อยปี ซึ่งสะท้อนถึงเอกลักษณ์ของชาติไทยอย่างชัดเจน',
+      'การพัฒนาซอฟต์แวร์ที่มีคุณภาพสูงต้องอาศัยความร่วมมือจากทีมงานที่มีทักษะหลากหลาย ทั้งนักพัฒนา นักออกแบบ นักทดสอบ และผู้จัดการโครงการที่มีความเข้าใจร่วมกัน',
+    ],
+  },
+};
+
+const THAI_CONSONANTS = new Set('กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ');
+function thLastConsonant(word) {
+  const w = word.trim();
+  if (w[w.length - 1] === 'ำ') return 'ม';
+  for (let i = w.length - 1; i >= 0; i--) {
+    if (THAI_CONSONANTS.has(w[i])) return w[i];
+  }
+  return null;
+}
+
+const TH_WORDS = new Set([
+  'กบ','กระต่าย','กระโดด','กล้วย','กอล์ฟ','กาแฟ','กาน้ำ','กำแพง','กิน','กีฬา',
+  'กีวี','กุ้ง','กุญแจ','ก่อน','ก้อน','เก่า','เก้าอี้','เกม','เกาะ','แกง',
+  'แกะ','โกรธ','ไก่','ขนม','ขนมปัง','ขมิ้น','ขาว','ขิง','ขึ้น','ข้าว',
+  'ข่าว','เขียน','เขียว','แขน','โขน','ไข่','คน','คม','คอ','คอมพิวเตอร์',
+  'ควาย','คิด','คีม','คุณ','คู่','เค็ม','เคาะ','แคน','โคม','ไคล',
+  'งาน','งู','เงิน','จมูก','จระเข้','จักรยาน','จาน','จิ้งจก','จิน',
+  'จีน','จุด','เจ็บ','เจ็ด','เจ้าของ','แจก','โจร','ใจ','ชม','ชมพู่',
+  'ชา','ชาน','ชาม','ชาย','ชาติ','ช้าง','ช็อกโกแลต','ช่วย','เช้า','เชียงใหม่',
+  'แชมพู','โชค','ใช่','ซื้อ','ดนตรี','ดวงอาทิตย์','ดอกไม้','ดิน','ดิ่ง',
+  'ดินสอ','ดีใจ','ดึง','ดู','เด็ก','เดิน','เดือน','แดง','โดม','ใด',
+  'ตลาด','ตอน','ตา','ตาม','ตำรวจ','ตำบล','ติ','ตี','ตุ๊กตา','ต้นไม้',
+  'ต้ม','ต้มยำ','เตียง','เต่า','แต่','โต๊ะ','ไต','ถนน','ถ้วน','ถ้ำ',
+  'ทดลอง','ทราย','ทหาร','ทะเล','ทะเลสาบ','ทอง','ทอด','ทำ','ทำงาน',
+  'ท่าเรือ','ทีวี','ทุเรียน','เทนนิส','แทน','ธนาคาร','นก','นกแก้ว',
+  'นม','นวด','นอน','นักเรียน','นาฬิกา','นาที','น้อง','น้ำ','น้ำตก',
+  'น้ำตาล','น้ำผลไม้','น้ำแข็ง','เนื้อ','บน','บวก','บ้าน','บาสเกตบอล',
+  'บิน','เบา','เบียร์','แบดมินตัน','ปลา','ปลาทอด','ปลาวาฬ','ปวด',
+  'ปาก','ปี','ปีใหม่','เป็ด','เปรี้ยว','แปด','โปรแกรม','ผลไม้','ผัก',
+  'ผัดไทย','ผึ้ง','ผีเสื้อ','ผู้ชาย','ผู้หญิง','แผน','พ่อ','พัน','พี่',
+  'พิพิธภัณฑ์','พิมพ์','เพชร','เพลง','เพื่อน','แพง','ฟัน','ฟ้า','ฝน',
+  'ฝรั่ง','ฝัน','ภาพ','ภูเขา','ภูเก็ต','มวย','มะนาว','มะม่วง','มะละกอ',
+  'มังคุด','มาก','มิตร','มีด','มือ','แมลง','แมว','แม่','แม่น้ำ','โมง',
+  'ไมค์','ยา','ยักษ์','ยาย','ยิ้ม','ยีราฟ','ยุง','เยือน','รถ','รถไฟ',
+  'รถเมล์','รสชาติ','รัก','ราคา','ริน','รีสอร์ท','รูป','เรียน','เรือ',
+  'แรง','โรค','โรงพยาบาล','โรงเรียน','โรงแรม','โรงภาพยนตร์','ไร่','ลม',
+  'ลอย','ลิง','ลิ้นจี่','ลุง','ลูก','เล็ก','เล่น','ลำไย','วัด','วัน',
+  'วาด','วิ่ง','วิทยุ','วิ่น','วินาที','เวลา','แวน','สนามบิน','สบู่',
+  'สวน','สวนสนุก','สวนสัตว์','สวย','สอง','สอน','สาม','สามี','ส้ม',
+  'ส้มตำ','สีเขียว','สุข','สูง','เสือ','เสียง','เสียใจ','แสง','โสด',
+  'หก','หนัก','หนัง','หนู','หมอ','หมาป่า','หมี','หมีขาว','หมีขาว',
+  'หมู','หลัง','หลัก','หวาน','หัว','หัวใจ','หัวเราะ','หาย','หิน',
+  'หู','เห็ด','เหล็ก','เหลือง','แหวน','โหน','ไหน','อ่าน','อาทิตย์',
+  'อาหาร','อินเทอร์เน็ต','อุ่น','แอปเปิ้ล','แอร์','โอ่ง','ไอศกรีม',
+]);
+
 
 const DG_WORDS = [
   'แมว','หมา','ช้าง','เสือ','ลิง','นก','ปลา','กบ','จระเข้','กระต่าย',

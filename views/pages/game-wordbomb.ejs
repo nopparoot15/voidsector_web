@@ -28,6 +28,13 @@
       <h2>Word Bomb — ห้อง <span><%- roomId %></span></h2>
       <p class="gm-lobby-rules">ต่อคำ — คำถัดไปต้องขึ้นต้นด้วยตัวสุดท้ายของคำก่อน<br>มี 3 ชีวิต หมดเวลาหรือคำซ้ำ = เสียชีวิต</p>
       <div id="lobby-players" class="lobby-player-list"></div>
+      <div class="gm-options" id="wb-options-row">
+        <span class="gm-options-label">ภาษา:</span>
+        <div class="gm-option-group" id="wb-lang-group">
+          <button class="gm-option-btn active" data-lang="en">🇬🇧 English</button>
+          <button class="gm-option-btn" data-lang="th">🇹🇭 ไทย</button>
+        </div>
+      </div>
       <button id="wb-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
     </div>
   </div>

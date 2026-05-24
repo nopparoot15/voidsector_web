@@ -25,6 +25,7 @@
   let players  = [];
   let timerInterval = null;
   let state = null;
+  let wbLang = 'en';
 
   document.getElementById('copy-link-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href).then(() => {
@@ -40,8 +41,19 @@
     roomData = room;
     players = room.players;
     renderLobbyPlayers(room);
-    if (room.host === me.id) startBtn.classList.remove('hidden');
+    const isHost = room.host === me.id;
+    if (isHost) startBtn.classList.remove('hidden');
+    initWBOptions(isHost);
     updateChips(players);
+  });
+
+  socket.on('wb:options', ({ lang }) => {
+    wbLang = lang;
+    const group = document.getElementById('wb-lang-group');
+    if (!group) return;
+    group.querySelectorAll('.gm-option-btn').forEach(b => b.classList.remove('active'));
+    const active = group.querySelector(`[data-lang="${lang}"]`);
+    if (active) active.classList.add('active');
   });
 
   socket.on('gm:players', ({ players: pl }) => {
@@ -52,6 +64,8 @@
 
   socket.on('gm:started', ({ state: st }) => {
     state = st;
+    wbLang = st.lang || 'en';
+    inputEl.placeholder = wbLang === 'th' ? 'พิมพ์คำไทย…' : 'type a word…';
     lobby.classList.add('hidden');
     game.classList.remove('hidden');
     applyState(st);
@@ -143,19 +157,28 @@
   function showResult(st) {
     clearInterval(timerInterval);
     game.classList.add('hidden');
-    const winner = st.players.find(p => p.alive && p.userId);
+    const winner = st.players.find(p => p.alive);
     const isWinner = winner?.userId === me.id;
     resultEl.classList.remove('hidden');
     resultEl.innerHTML = `
       <div class="gm-result-card">
-        <h2>${winner ? (isWinner ? '🎉 คุณชนะ!' : `🏆 ${esc(winner.username)} ชนะ!`) : '🤝 เสมอ'}</h2>
-        <p>คำที่ใช้ไปทั้งหมด ${st.usedWords.length} คำ</p>
+        <div class="gm-result-icon">${isWinner ? '🏆' : winner ? '🎮' : '🤝'}</div>
+        <h2>${winner ? (isWinner ? 'คุณชนะ!' : `${esc(winner.username)} ชนะ!`) : 'เสมอ!'}</h2>
+        <p class="gm-result-sub">คำที่ใช้ไปทั้งหมด <strong>${st.usedWords.length}</strong> คำ</p>
         <div class="gm-result-actions">
-          <a href="/arcade/wordbomb" class="btn-outline">เล่นใหม่</a>
+          <button class="btn-primary" onclick="playAgain('wordbomb')">เล่นใหม่ 🔄</button>
           <a href="/arcade" class="btn-outline">Arcade</a>
         </div>
       </div>`;
   }
+
+  window.playAgain = async (gameType) => {
+    try {
+      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
+      const { roomId } = await r.json();
+      window.location.href = `/arcade/${gameType}/${roomId}`;
+    } catch { window.location.href = '/arcade'; }
+  };
 
   function renderLobbyPlayers({ players: pl, host }) {
     lobbyPlayers.innerHTML = pl.map(p => `
@@ -169,6 +192,23 @@
     document.getElementById('gm-players').innerHTML = pl.map(p =>
       `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`
     ).join('');
+  }
+
+  function initWBOptions(isHost) {
+    const group = document.getElementById('wb-lang-group');
+    if (!group) return;
+    if (!isHost) {
+      group.querySelectorAll('.gm-option-btn').forEach(b => b.disabled = true);
+      return;
+    }
+    group.addEventListener('click', e => {
+      const btn = e.target.closest('.gm-option-btn');
+      if (!btn) return;
+      wbLang = btn.dataset.lang;
+      group.querySelectorAll('.gm-option-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      socket.emit('wb:setoptions', { roomId, lang: wbLang });
+    });
   }
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

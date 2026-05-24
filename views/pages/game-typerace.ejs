@@ -28,6 +28,23 @@
       <h2>Typing Race — ห้อง <span><%- roomId %></span></h2>
       <p id="lobby-status">รอผู้เล่นเข้าร่วม…</p>
       <div id="lobby-players" class="lobby-player-list"></div>
+      <div class="gm-options" id="tr-options-row">
+        <div class="gm-options-line">
+          <span class="gm-options-label">ภาษา:</span>
+          <div class="gm-option-group" id="tr-lang-group">
+            <button class="gm-option-btn active" data-lang="en">🇬🇧 English</button>
+            <button class="gm-option-btn" data-lang="th">🇹🇭 ไทย</button>
+          </div>
+        </div>
+        <div class="gm-options-line">
+          <span class="gm-options-label">ระดับ:</span>
+          <div class="gm-option-group" id="tr-diff-group">
+            <button class="gm-option-btn active" data-diff="easy">ง่าย</button>
+            <button class="gm-option-btn" data-diff="medium">กลาง</button>
+            <button class="gm-option-btn" data-diff="hard">ยาก</button>
+          </div>
+        </div>
+      </div>
       <button id="tr-start-btn" class="btn-primary btn-lg hidden">เริ่มแข่ง ▶</button>
     </div>
   </div>
