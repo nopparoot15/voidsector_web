@@ -19,7 +19,7 @@
         <span class="thread-time"><%= thread.timeAgo %></span>
         <span class="thread-dot">·</span>
         <span class="thread-expire-badge <% if (thread.daysLeft <= 3) { %>thread-expire-badge--soon<% } %>">
-          ⏳ ไม่มีไหวแล้ว <%= thread.daysLeft %> วันจะลบ
+          ⏳ หมดอายุใน <%= thread.daysLeft %> วัน
         </span>
         <% if (myId && myId === thread.user_id) { %>
           <form method="POST" action="/forum/<%= thread.id %>/delete" style="margin-left:auto" onsubmit="return confirm('ลบกระทู้นี้?')">
