@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="sf-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">🕵️</div>
+      <h2>Spyfall — ห้อง <span><%- roomId %></span></h2>
+      <p class="gm-lobby-rules">
+        ทุกคนได้รับบทบาทในสถานที่เดียวกัน — ยกเว้น <b>สปาย 1 คน</b> ที่ไม่รู้ว่าอยู่ที่ไหน<br>
+        ถามกันทีละคน หาให้ออกว่าใครคือสปาย — หรือถ้าเป็นสปาย ก็เดาสถานที่ให้ถูก
+      </p>
+      <div id="sf-lobby-players" class="lobby-player-list"></div>
+      <div class="gm-options" id="sf-options-row">
+        <span class="gm-options-label">เวลา:</span>
+        <div class="gm-option-group" id="sf-time-group">
+          <button class="gm-option-btn" data-minutes="5">5 นาที</button>
+          <button class="gm-option-btn active" data-minutes="8">8 นาที</button>
+          <button class="gm-option-btn" data-minutes="10">10 นาที</button>
+        </div>
+      </div>
+      <button id="sf-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+      <div id="sf-lobby-hint" class="gm-muted" style="margin-top:10px;">รอเจ้าของห้องเริ่มเกม…</div>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="sf-game" class="hidden">
+    <div class="sf-game-layout">
+
+      <!-- Left: card + timer -->
+      <div class="sf-left">
+        <div class="sf-timer-wrap">
+          <div class="sf-timer" id="sf-timer">8:00</div>
+          <div class="sf-timer-label">เหลือเวลา</div>
+        </div>
+
+        <div class="sf-card" id="sf-card">
+          <!-- Spy card -->
+          <div id="sf-card-spy" class="sf-card-face sf-card--spy hidden">
+            <div class="sf-card-emoji">🕵️</div>
+            <div class="sf-card-tag">คุณคือ</div>
+            <div class="sf-card-main">สปาย</div>
+            <div class="sf-card-sub">หาให้ออกว่าอยู่ที่ไหน แล้วอย่าให้ใครจับได้</div>
+          </div>
+          <!-- Player card -->
+          <div id="sf-card-player" class="sf-card-face sf-card--player hidden">
+            <div class="sf-card-emoji">📍</div>
+            <div class="sf-card-tag">สถานที่</div>
+            <div class="sf-card-main" id="sf-my-location">—</div>
+            <div class="sf-card-divider"></div>
+            <div class="sf-card-tag">บทบาทของคุณ</div>
+            <div class="sf-card-role" id="sf-my-role">—</div>
+          </div>
+        </div>
+
+        <!-- Location list for spy -->
+        <div id="sf-location-hints" class="sf-location-hints hidden">
+          <div class="sf-section-label">สถานที่ที่เป็นไปได้</div>
+          <div id="sf-location-list" class="sf-location-list"></div>
+        </div>
+      </div>
+
+      <!-- Right: players + accuse -->
+      <div class="sf-right">
+        <div class="sf-section-label">ผู้เล่น</div>
+        <div id="sf-player-list" class="sf-player-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Voting overlay -->
+  <div id="sf-voting" class="sf-overlay hidden">
+    <div class="sf-overlay-card">
+      <div class="sf-overlay-title">🗳 โหวตกล่าวหา</div>
+      <div class="sf-accuse-info">
+        <span id="sf-accuse-by" class="sf-name-tag"></span>
+        กล่าวหาว่า
+        <span id="sf-accuse-target" class="sf-name-tag sf-name-tag--target"></span>
+        เป็นสปาย
+      </div>
+      <div class="sf-vote-btns">
+        <button id="sf-vote-yes" class="sf-vote-btn sf-vote-btn--yes">✓ ผิดจริง</button>
+        <button id="sf-vote-no"  class="sf-vote-btn sf-vote-btn--no">✗ ไม่ใช่</button>
+      </div>
+      <div id="sf-vote-tally" class="sf-vote-tally"></div>
+      <div id="sf-vote-msg" class="sf-vote-msg"></div>
+    </div>
+  </div>
+
+  <!-- Spy guess overlay -->
+  <div id="sf-spy-guess" class="sf-overlay hidden">
+    <div class="sf-overlay-card">
+      <div class="sf-overlay-title">🕵️ โดนจับแล้ว!</div>
+      <div class="sf-guess-prompt">เดาสถานที่ให้ถูกเพื่อชนะ (30 วินาที)</div>
+      <select id="sf-guess-select" class="sf-guess-select"></select>
+      <button id="sf-guess-btn" class="btn-primary" style="margin-top:12px;width:100%;">ตอบ</button>
+      <div class="sf-guess-timer" id="sf-guess-timer"></div>
+    </div>
+  </div>
+
+  <!-- End overlay -->
+  <div id="sf-end" class="sf-overlay hidden">
+    <div class="sf-overlay-card sf-end-card">
+      <div id="sf-end-winner" class="sf-end-winner"></div>
+      <div id="sf-end-reason" class="sf-end-reason"></div>
+      <div class="sf-end-reveal">
+        <div class="sf-end-row"><span class="sf-end-label">สปาย:</span><span id="sf-end-spy" class="sf-name-tag sf-name-tag--target"></span></div>
+        <div class="sf-end-row"><span class="sf-end-label">สถานที่:</span><span id="sf-end-location" class="sf-name-tag"></span></div>
+        <div id="sf-end-guess-row" class="sf-end-row hidden"><span class="sf-end-label">สปายเดา:</span><span id="sf-end-spy-guess" class="sf-name-tag"></span></div>
+      </div>
+      <div id="sf-end-roles" class="sf-end-roles"></div>
+      <button id="sf-new-game-btn" class="btn-primary hidden" style="margin-top:16px;">เล่นอีกรอบ</button>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script defer src="/js/spyfall.js"></script>
+</body>
+</html>

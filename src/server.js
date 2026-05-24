@@ -292,6 +292,7 @@ io.on('connection', (socket) => {
     if ((room.gameType === 'wordbomb' || room.gameType === 'trivia') && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
     if (room.gameType === 'typerace' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
     if (room.gameType === 'drawguess' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
+    if (room.gameType === 'spyfall' && room.players.length < 3) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 3 คน' });
 
     room.status = 'playing';
 
@@ -361,6 +362,31 @@ io.on('connection', (socket) => {
       io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
       gameStore.setTimer(rid, 'rpsround', () => resolveRPS(rid, true), 10000);
 
+    } else if (room.gameType === 'spyfall') {
+      const loc      = SPYFALL_LOCATIONS[Math.floor(Math.random() * SPYFALL_LOCATIONS.length)];
+      const spyIdx   = Math.floor(Math.random() * room.players.length);
+      const spyUserId = room.players[spyIdx].userId;
+      const rolePool = shuffle([...loc.roles]);
+      const roles    = {};
+      let roleIdx    = 0;
+      room.players.forEach(p => { if (p.userId !== spyUserId) roles[p.userId] = rolePool[roleIdx++ % rolePool.length]; });
+      const minutes  = Number(room.state?.options?.minutes) || 8;
+      const duration = minutes * 60 * 1000;
+      const allLocationNames = SPYFALL_LOCATIONS.map(l => l.name);
+
+      room.state = { phase: 'playing', location: loc.name, spyUserId, roles, allLocationNames, timerEndsAt: Date.now() + duration, accusation: null, winner: null, spyGuessedLocation: null };
+
+      io.to(`gm:${rid}`).emit('gm:started', { state: { phase: 'playing', timerEndsAt: room.state.timerEndsAt, players: room.players.map(p => ({ userId: p.userId, username: p.username })), accusation: null } });
+
+      io.in(`gm:${rid}`).fetchSockets().then(sockets => {
+        sockets.forEach(s => {
+          const uid = Number(s.data.userId);
+          const spy = uid === spyUserId;
+          s.emit('sp:role', { isSpy: spy, location: spy ? null : loc.name, role: spy ? null : (roles[uid] || '?'), allLocations: allLocationNames });
+        });
+      });
+      gameStore.setTimer(rid, 'sptimer', () => endSpyfall(rid, 'spy', 'หมดเวลา — สปายรอดไปได้!'), duration);
+
     } else if (room.gameType === 'drawguess') {
       const word = DG_WORDS[Math.floor(Math.random() * DG_WORDS.length)];
       const totalRounds = Math.min(room.players.length, 4);
@@ -384,6 +410,103 @@ io.on('connection', (socket) => {
       });
       gameStore.setTimer(rid, 'dground', () => endDGRound(rid), 60000);
     }
+  });
+
+  // ── SPYFALL EVENTS ─────────────────────────────────────────────────────────────
+  socket.on('gm:set_option', ({ roomId, key, value } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const room = gameStore.get(rid);
+    if (!room || room.status !== 'waiting') return;
+    if (!room.state) room.state = {};
+    if (!room.state.options) room.state.options = {};
+    room.state.options[key] = value;
+  });
+
+  socket.on('sp:accuse', ({ roomId, targetUserId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'playing') return;
+    const accuser = room.players.find(p => p.userId === userId);
+    const target  = room.players.find(p => p.userId === Number(targetUserId));
+    if (!accuser || !target || target.userId === userId) return;
+
+    gameStore.clearTimer(rid, 'sptimer');
+    const timeLeft = Math.max(0, st.timerEndsAt - Date.now());
+    st.phase = 'voting';
+    st.accusation = { accuserUserId: userId, accuserUsername: accuser.username, targetUserId: target.userId, targetUsername: target.username, votes: {}, timeLeft };
+
+    io.to(`gm:${rid}`).emit('sp:accusation', { accuserUserId: userId, accuserUsername: accuser.username, targetUserId: target.userId, targetUsername: target.username });
+  });
+
+  socket.on('sp:vote', ({ roomId, guilty } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'voting' || !st.accusation) return;
+    if (!room.players.find(p => p.userId === userId)) return;
+    if (st.accusation.votes[userId] !== undefined) return;
+
+    st.accusation.votes[userId] = !!guilty;
+    const voteCount = Object.keys(st.accusation.votes).length;
+    const total = room.players.length;
+    const guiltyVotes   = Object.values(st.accusation.votes).filter(Boolean).length;
+    const innocentVotes = voteCount - guiltyVotes;
+    const majority      = Math.floor(total / 2) + 1;
+
+    io.to(`gm:${rid}`).emit('sp:vote_update', { votes: voteCount, total, guilty: guiltyVotes, innocent: innocentVotes });
+
+    if (guiltyVotes >= majority || innocentVotes >= majority || voteCount >= total) {
+      if (guiltyVotes > innocentVotes) {
+        if (st.accusation.targetUserId === st.spyUserId) {
+          st.phase = 'spy_guess';
+          const spyUser = room.players.find(p => p.userId === st.spyUserId);
+          io.to(`gm:${rid}`).emit('sp:spy_caught', { spyUserId: st.spyUserId, spyUsername: spyUser?.username || '?' });
+          io.in(`gm:${rid}`).fetchSockets().then(sockets => {
+            sockets.forEach(s => {
+              if (Number(s.data.userId) === st.spyUserId) s.emit('sp:your_turn_guess', { locations: st.allLocationNames });
+            });
+          });
+          gameStore.setTimer(rid, 'spguess', () => endSpyfall(rid, 'players', 'สปายไม่ยอมเดา — ผู้เล่นชนะ!'), 30000);
+        } else {
+          endSpyfall(rid, 'spy', `กล่าวหาผิดตัว! ${st.accusation.targetUsername} ไม่ใช่สปาย`);
+        }
+      } else {
+        st.phase = 'playing';
+        st.timerEndsAt = Date.now() + st.accusation.timeLeft;
+        st.accusation  = null;
+        io.to(`gm:${rid}`).emit('sp:vote_resolved', { result: 'innocent' });
+        gameStore.setTimer(rid, 'sptimer', () => endSpyfall(rid, 'spy', 'หมดเวลา — สปายรอดไปได้!'), st.timerEndsAt - Date.now());
+      }
+    }
+  });
+
+  socket.on('sp:guess', ({ roomId, location } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.phase !== 'spy_guess' || userId !== st.spyUserId) return;
+    gameStore.clearTimer(rid, 'spguess');
+    st.spyGuessedLocation = String(location || '');
+    endSpyfall(rid, st.spyGuessedLocation === st.location ? 'spy' : 'players',
+      st.spyGuessedLocation === st.location ? `สปายเดาถูก! ที่นั่นคือ "${st.location}"` : `สปายเดาผิด! ที่จริงคือ "${st.location}"`);
+  });
+
+  socket.on('sp:new_game', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'spyfall' || room.host !== userId) return;
+    gameStore.clearAllTimers(rid);
+    room.status = 'waiting';
+    room.state  = {};
+    io.to(`gm:${rid}`).emit('sp:reset');
   });
 
   socket.on('xo:move', ({ roomId, cell } = {}) => {
@@ -739,6 +862,59 @@ function thLastConsonant(word) {
     if (THAI_CONSONANTS.has(w[i])) return w[i];
   }
   return null;
+}
+
+// ── SPYFALL DATA ───────────────────────────────────────────────────────────────
+const SPYFALL_LOCATIONS = [
+  { name: 'โรงพยาบาล',      roles: ['แพทย์','พยาบาล','คนไข้','ผู้เยี่ยมไข้','พนักงานทำความสะอาด','เจ้าหน้าที่รับผู้ป่วย'] },
+  { name: 'สนามบิน',        roles: ['นักบิน','ลูกเรือ','ผู้โดยสาร','เจ้าหน้าที่รักษาความปลอดภัย','พนักงานเคาน์เตอร์','ช่างซ่อมเครื่องบิน'] },
+  { name: 'ร้านอาหาร',      roles: ['เชฟ','พนักงานเสิร์ฟ','ลูกค้า','เจ้าของร้าน','แคชเชียร์','คนล้างจาน'] },
+  { name: 'โรงเรียน',       roles: ['ครู','นักเรียน','ผู้ปกครอง','ผู้อำนวยการ','พนักงานโรงเรียน','ยาม'] },
+  { name: 'ชายหาด',         roles: ['นักท่องเที่ยว','เจ้าหน้าที่กู้ภัย','ชาวประมง','พ่อค้าขายของ','นักกีฬาทางน้ำ','ช่างภาพ'] },
+  { name: 'ธนาคาร',         roles: ['พนักงานธนาคาร','ลูกค้า','ยาม','ผู้จัดการสาขา','เจ้าหน้าที่สินเชื่อ','โจรปล้นธนาคาร'] },
+  { name: 'ตลาด',           roles: ['พ่อค้า','แม่ค้า','ลูกค้า','เจ้าหน้าที่ตลาด','คนขับรถส่งของ','เจ้าหน้าที่สุขาภิบาล'] },
+  { name: 'สวนสนุก',        roles: ['นักท่องเที่ยว','คนดูแลเครื่องเล่น','พ่อค้าขายของ','เจ้าหน้าที่รักษาความปลอดภัย','ช่างซ่อม','นักแสดงตัวการ์ตูน'] },
+  { name: 'พิพิธภัณฑ์',     roles: ['ผู้เยี่ยมชม','ไกด์นำชม','ภัณฑารักษ์','เจ้าหน้าที่รักษาความปลอดภัย','นักวิจัย','นักเรียนทัศนศึกษา'] },
+  { name: 'สวนสัตว์',       roles: ['นักท่องเที่ยว','ผู้ดูแลสัตว์','สัตวแพทย์','พ่อค้าขายของ','เจ้าหน้าที่รักษาความปลอดภัย','ช่างภาพธรรมชาติ'] },
+  { name: 'ค่ายทหาร',       roles: ['ทหาร','นายทหาร','แพทย์ทหาร','พ่อครัว','พนักงานซักผ้า','ครูฝึก'] },
+  { name: 'วัด',             roles: ['พระ','เณร','นักท่องเที่ยว','คนมาไหว้พระ','พนักงานทำความสะอาด','ช่างก่อสร้าง'] },
+  { name: 'โรงหนัง',        roles: ['ผู้ชม','คนขายตั๋ว','คนขายป๊อปคอร์น','ผู้จัดการโรง','เจ้าหน้าที่ทำความสะอาด','นักวิจารณ์หนัง'] },
+  { name: 'สนามกีฬา',       roles: ['นักกีฬา','โค้ช','แฟนกีฬา','กรรมการ','ผู้บรรยาย','ช่างภาพ'] },
+  { name: 'ห้างสรรพสินค้า', roles: ['ลูกค้า','พนักงานขาย','เจ้าหน้าที่รักษาความปลอดภัย','แคชเชียร์','ผู้จัดการร้าน','พนักงานทำความสะอาด'] },
+  { name: 'เรือสำราญ',      roles: ['ผู้โดยสาร','กัปตัน','ลูกเรือ','พนักงานร้านอาหาร','นักบันเทิง','ผู้อำนวยการฝ่ายกิจกรรม'] },
+  { name: 'รถไฟ',           roles: ['ผู้โดยสาร','พนักงานตรวจตั๋ว','พนักงานขับรถไฟ','พนักงานร้านอาหาร','ช่างซ่อมบำรุง','ตำรวจรถไฟ'] },
+  { name: 'โรงแรม',         roles: ['แขก','พนักงานต้อนรับ','แม่บ้าน','พ่อครัว','คนส่งของ','ผู้จัดการโรงแรม'] },
+  { name: 'ห้องปฏิบัติการ', roles: ['นักวิทยาศาสตร์','ผู้ช่วยนักวิจัย','ผู้ดูแลห้องแลป','เจ้าหน้าที่ความปลอดภัย','นักศึกษาฝึกงาน','ผู้ตรวจสอบ'] },
+  { name: 'ค่ายพักแรม',     roles: ['นักเดินป่า','ไกด์นำทาง','ช่างภาพธรรมชาติ','เจ้าหน้าที่อุทยาน','นักเรียน','ครู'] },
+  { name: 'เรือดำน้ำ',      roles: ['กัปตัน','นักวิทยาศาสตร์','ลูกเรือ','วิศวกร','แพทย์','สายลับ'] },
+  { name: 'ยานอวกาศ',       roles: ['นักบินอวกาศ','นักวิทยาศาสตร์','วิศวกร','นักสื่อสาร','ผู้บัญชาการ','หุ่นยนต์'] },
+  { name: 'ร้านเสริมสวย',   roles: ['ช่างทำผม','ลูกค้า','ผู้ช่วย','พนักงานต้อนรับ','เจ้าของร้าน','นักเรียนฝึกงาน'] },
+  { name: 'คลินิก',         roles: ['แพทย์','พยาบาล','คนไข้','พนักงานต้อนรับ','เภสัชกร','นักเรียนแพทย์'] },
+  { name: 'โรงงาน',         roles: ['คนงาน','ผู้จัดการ','วิศวกร','พนักงานควบคุมคุณภาพ','เจ้าหน้าที่ความปลอดภัย','ตัวแทนขาย'] },
+  { name: 'ห้องสมุด',       roles: ['บรรณารักษ์','นักเรียน','นักวิจัย','อาจารย์','พนักงานทำความสะอาด','ผู้เยี่ยมชม'] },
+  { name: 'สปา',            roles: ['ลูกค้า','นักบำบัด','พนักงานต้อนรับ','ผู้จัดการ','ช่างทำเล็บ','นักโภชนาการ'] },
+  { name: 'มหาวิทยาลัย',    roles: ['อาจารย์','นักศึกษา','พนักงานธุรการ','ผู้อำนวยการ','นักวิจัย','เจ้าหน้าที่รักษาความปลอดภัย'] },
+  { name: 'ไร่องุ่น',       roles: ['เจ้าของไร่','คนงาน','นักท่องเที่ยว','ผู้เชี่ยวชาญไวน์','ช่างภาพ','ผู้ซื้อองุ่น'] },
+  { name: 'ร้านหนังสือ',    roles: ['ลูกค้า','พนักงานร้าน','เจ้าของร้าน','นักเขียน','บรรณาธิการ','นักสะสมหนังสือ'] },
+];
+
+function endSpyfall(rid, winner, reason) {
+  const room = gameStore.get(rid);
+  if (!room || room.gameType !== 'spyfall') return;
+  gameStore.clearAllTimers(rid);
+  room.status = 'ended';
+  const st = room.state;
+  st.phase = 'ended';
+  st.winner = winner;
+  io.to(`gm:${rid}`).emit('sp:ended', {
+    winner,
+    reason,
+    spyUserId:          st.spyUserId,
+    spyUsername:        room.players.find(p => p.userId === st.spyUserId)?.username || '?',
+    location:           st.location,
+    spyGuessedLocation: st.spyGuessedLocation || null,
+    roles:              st.roles,
+  });
 }
 
 const TH_WORDS = new Set([

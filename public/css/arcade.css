@@ -25,6 +25,7 @@
 .arcade-card--tr  { --ac: #34d399; }
 .arcade-card--rps { --ac: #fb923c; }
 .arcade-card--dg  { --ac: #e879f9; }
+.arcade-card--sf  { --ac: #a78bfa; }
 
 .arcade-card-icon {
   font-size: 2.8rem;
@@ -1065,4 +1066,157 @@
   .rps-choices { gap: 10px; }
   .rps-btn { padding: 12px 16px; }
   .tr-player-row { grid-template-columns: 100px 1fr 40px; }
+}
+
+/* ===== SPYFALL ===== */
+.sf-game-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  padding: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Timer */
+.sf-timer-wrap { text-align: center; margin-bottom: 16px; }
+.sf-timer {
+  font-family: 'Orbitron', monospace;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 2px;
+}
+.sf-timer--warn { color: #f87171; animation: sfPulse 1s infinite; }
+@keyframes sfPulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.sf-timer-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Card */
+.sf-card {
+  background: linear-gradient(135deg, #1a1040, #0e0e1e);
+  border: 2px solid rgba(167,139,250,0.35);
+  border-radius: 20px;
+  padding: 28px 22px;
+  text-align: center;
+  box-shadow: 0 0 32px rgba(167,139,250,0.12);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sf-card-face { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.sf-card-emoji { font-size: 3rem; margin-bottom: 4px; }
+.sf-card-tag { font-size: 11px; color: rgba(167,139,250,0.7); text-transform: uppercase; letter-spacing: 1px; }
+.sf-card-main { font-size: 1.7rem; font-weight: 700; color: #e8d9ff; margin: 4px 0; }
+.sf-card--spy .sf-card-main { color: #f87171; font-size: 2rem; }
+.sf-card-role { font-size: 1.2rem; font-weight: 600; color: #a78bfa; margin-top: 4px; }
+.sf-card-divider { width: 60%; height: 1px; background: rgba(167,139,250,0.2); margin: 8px 0; }
+.sf-card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* Location hints (for spy) */
+.sf-location-hints { margin-top: 14px; }
+.sf-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+.sf-location-list {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 260px; overflow-y: auto;
+}
+.sf-loc-item {
+  padding: 6px 10px; border-radius: 8px;
+  background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.14);
+  font-size: 13px; color: var(--text);
+  cursor: default;
+  transition: background .15s;
+}
+.sf-loc-item:hover { background: rgba(167,139,250,0.14); }
+.sf-loc-item.sf-loc--crossed {
+  text-decoration: line-through; opacity: .4;
+}
+
+/* Player list */
+.sf-player-list { display: flex; flex-direction: column; gap: 8px; }
+.sf-player-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+}
+.sf-player-name { font-size: 14px; color: var(--text); }
+.sf-you-tag { font-size: 10px; color: #a78bfa; margin-left: 4px; }
+.sf-accuse-btn {
+  padding: 5px 12px; border-radius: 8px;
+  border: 1px solid rgba(248,113,113,0.4); background: rgba(248,113,113,0.08);
+  color: #fca5a5; font-size: 12px; cursor: pointer;
+  transition: background .15s;
+}
+.sf-accuse-btn:hover { background: rgba(248,113,113,0.2); }
+
+/* Overlays */
+.sf-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.sf-overlay.hidden { display: none; }
+.sf-overlay-card {
+  background: #0e0e1e;
+  border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 20px;
+  padding: 32px 28px;
+  width: 100%; max-width: 440px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(167,139,250,0.15);
+}
+.sf-overlay-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 16px; color: #e8d9ff; }
+
+/* Voting */
+.sf-accuse-info { font-size: 15px; color: var(--text); margin-bottom: 20px; line-height: 1.6; }
+.sf-name-tag { font-weight: 700; color: #a78bfa; }
+.sf-name-tag--target { color: #f87171; }
+.sf-vote-btns { display: flex; gap: 12px; margin: 12px 0; }
+.sf-vote-btn {
+  flex: 1; padding: 14px; border-radius: 12px; font-size: 15px;
+  font-weight: 700; cursor: pointer; border: 1px solid;
+  transition: transform .1s, filter .1s;
+}
+.sf-vote-btn:active { transform: scale(.97); }
+.sf-vote-btn:disabled { opacity: .45; cursor: not-allowed; }
+.sf-vote-btn--yes { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.4); color: #fca5a5; }
+.sf-vote-btn--yes:hover:not(:disabled) { background: rgba(248,113,113,0.25); }
+.sf-vote-btn--no  { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.4); color: #6ee7b7; }
+.sf-vote-btn--no:hover:not(:disabled)  { background: rgba(52,211,153,0.25); }
+.sf-vote-tally { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.sf-vote-msg   { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+/* Spy guess */
+.sf-guess-prompt { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+.sf-guess-select {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(167,139,250,0.3);
+  color: var(--text); font-size: 14px; outline: none;
+}
+.sf-guess-timer { font-size: 13px; color: #f87171; margin-top: 10px; }
+
+/* Spy caught banner */
+.sf-spy-caught-banner {
+  background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3);
+  border-radius: 12px; padding: 12px 16px; text-align: center;
+  color: #fca5a5; font-size: 14px; margin: 10px 16px 0;
+}
+
+/* End screen */
+.sf-end-card { max-width: 520px; }
+.sf-end-winner { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+.sf-end-winner--spy { color: #f87171; }
+.sf-end-winner--players { color: #6ee7b7; }
+.sf-end-reason { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+.sf-end-reveal { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.sf-end-row { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.sf-end-label { font-size: 13px; color: var(--muted); }
+.sf-end-roles { border-top: 1px solid rgba(255,255,255,.08); padding-top: 14px; }
+.sf-end-roles-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+.sf-end-role-row { font-size: 13px; color: var(--text); padding: 4px 0; }
+
+@media (max-width: 700px) {
+  .sf-game-layout { grid-template-columns: 1fr; }
 }
