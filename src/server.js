@@ -328,7 +328,7 @@ io.on('connection', (socket) => {
     if ((room.gameType === 'wordbomb' || room.gameType === 'trivia') && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
     if (room.gameType === 'typerace' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
     if (room.gameType === 'drawguess' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
-    if (room.gameType === 'spyfall' && room.players.length < 3) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 3 คน' });
+    if (room.gameType === 'spyfall' && room.players.length < 4) return socket.emit('gm:error', { msg: 'ต้องมีผู้เล่นอย่างน้อย 4 คน' });
 
     room.status = 'playing';
 

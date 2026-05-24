@@ -97,6 +97,8 @@
   function stopTimer() { clearInterval(timerInterval); }
   function clearAnswerCountdown() { clearInterval(answerCountdown); answerCountdown = null; }
 
+  const MIN_PLAYERS = 4;
+
   // ── Lobby ─────────────────────────────────────────────────────────────────
   function renderLobbyPlayers(players) {
     currentPlayers = players;
@@ -112,6 +114,14 @@
       gmPlayers.innerHTML = players.map(p =>
         `<span class="gm-player-chip">${esc(p.username)}</span>`
       ).join('');
+    }
+    if (isHost) {
+      const ready = players.length >= MIN_PLAYERS;
+      if (ready) { show(startBtn); hide(lobbyHint); }
+      else { hide(startBtn); show(lobbyHint); lobbyHint.textContent = `รอผู้เล่นให้ครบ ${MIN_PLAYERS} คน… (${players.length}/${MIN_PLAYERS})`; }
+    } else {
+      hide(startBtn); show(lobbyHint);
+      lobbyHint.textContent = players.length >= MIN_PLAYERS ? 'รอเจ้าของห้องเริ่มเกม…' : `รอผู้เล่นให้ครบ ${MIN_PLAYERS} คน… (${players.length}/${MIN_PLAYERS})`;
     }
   }
 
@@ -293,7 +303,6 @@
     isHost = room.host === myId;
     currentPlayers = room.players;
     renderLobbyPlayers(room.players);
-    if (isHost) { show(startBtn); hide(lobbyHint); }
 
     if (room.status === 'playing' && state) {
       showGame();
@@ -382,7 +391,7 @@
     hide(cardSpy, cardPlayer, guessInline, guessTimer, turnBanner);
     document.querySelectorAll('.sf-caught-banner').forEach(b => b.remove());
     showLobby();
-    if (isHost) show(startBtn);
+    renderLobbyPlayers(currentPlayers);
   });
 
   // ── UI actions ─────────────────────────────────────────────────────────────
