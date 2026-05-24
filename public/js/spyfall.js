@@ -300,6 +300,8 @@
     }
     if (endReason) endReason.textContent = data.reason || '';
 
+    if (endSpy) endSpy.textContent = data.spyUsername || '?';
+
     // Location + spy guess
     if (endLocation) endLocation.textContent = data.location || '?';
     if (data.spyGuessedLocation) { show(endGuessRow); if (endSpyGuess) endSpyGuess.textContent = data.spyGuessedLocation; }
