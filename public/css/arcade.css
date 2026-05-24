@@ -1113,6 +1113,15 @@
 .sf-card-role { font-size: 1.2rem; font-weight: 600; color: #a78bfa; margin-top: 4px; }
 .sf-card-divider { width: 60%; height: 1px; background: rgba(167,139,250,0.2); margin: 8px 0; }
 .sf-card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.sf-spy-guess-trigger {
+  margin-top: 14px; width: 100%;
+  padding: 9px 0; border-radius: 10px;
+  border: 1px solid rgba(248,113,113,0.5);
+  background: rgba(248,113,113,0.12);
+  color: #fca5a5; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.sf-spy-guess-trigger:hover { background: rgba(248,113,113,0.25); }
 
 /* Location hints (for spy) */
 .sf-location-hints { margin-top: 14px; }

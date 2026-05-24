@@ -513,7 +513,8 @@ io.on('connection', (socket) => {
     const room = gameStore.get(rid);
     if (!room || room.gameType !== 'spyfall' || room.status !== 'playing') return;
     const st = room.state;
-    if (st.phase !== 'spy_guess' || userId !== st.spyUserId) return;
+    if (userId !== st.spyUserId) return;
+    if (st.phase !== 'spy_guess' && st.phase !== 'playing') return;
     gameStore.clearTimer(rid, 'spguess');
     st.spyGuessedLocation = String(location || '');
     endSpyfall(rid, st.spyGuessedLocation === st.location ? 'spy' : 'players',

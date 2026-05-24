@@ -38,9 +38,10 @@
   const voteTally    = $('sf-vote-tally');
   const voteMsg      = $('sf-vote-msg');
 
-  const guessSelect  = $('sf-guess-select');
-  const guessBtn     = $('sf-guess-btn');
-  const guessTimer   = $('sf-guess-timer');
+  const guessSelect    = $('sf-guess-select');
+  const guessBtn       = $('sf-guess-btn');
+  const guessTimer     = $('sf-guess-timer');
+  const spyGuessBtn    = $('sf-spy-guess-btn');
 
   const endWinner    = $('sf-end-winner');
   const endReason    = $('sf-end-reason');
@@ -54,15 +55,16 @@
   const gmPlayers    = $('gm-players');
 
   // ── State ────────────────────────────────────────────────────────────────────
-  let myMinutes       = 8;
-  let timerInterval   = null;
-  let timerEndsAt     = 0;
-  let guessCountdown  = null;
-  let hasVoted        = false;
-  let isHost          = false;
-  let isSpy           = false;
-  let currentPlayers  = [];
+  let myMinutes         = 8;
+  let timerInterval     = null;
+  let timerEndsAt       = 0;
+  let guessCountdown    = null;
+  let hasVoted          = false;
+  let isHost            = false;
+  let isSpy             = false;
+  let currentPlayers    = [];
   let currentTurnUserId = null;
+  let allLocations      = [];
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function esc(s) {
@@ -190,10 +192,12 @@
   }
 
   function showGuessPhase(locations) {
+    const locs = (locations && locations.length) ? locations : allLocations;
     hide(votingOverlay);
     show(guessOverlay);
     if (guessSelect) {
-      guessSelect.innerHTML = locations.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+      guessSelect.innerHTML = locs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+      guessBtn?.removeAttribute('disabled');
     }
     let left = 30;
     clearInterval(guessCountdown);
@@ -291,13 +295,14 @@
     if (state.turnUserId) updateTurnBanner(state.turnUserId, state.turnUsername);
   });
 
-  socket.on('sp:role', ({ isSpy: spy, location, role, allLocations }) => {
+  socket.on('sp:role', ({ isSpy: spy, location, role, allLocations: locs }) => {
     isSpy = spy;
     if (spy) {
+      allLocations = locs || [];
       show(cardSpy); hide(cardPlayer);
-      if (allLocations && locationList) {
+      if (locs && locationList) {
         show(locationHints);
-        locationList.innerHTML = allLocations.map(l =>
+        locationList.innerHTML = locs.map(l =>
           `<div class="sf-loc-item">${esc(l)}</div>`
         ).join('');
       }
@@ -402,6 +407,12 @@
       if (!loc) return;
       guessBtn.setAttribute('disabled', '');
       socket.emit('sp:guess', { roomId, location: loc });
+    });
+  }
+
+  if (spyGuessBtn) {
+    spyGuessBtn.addEventListener('click', () => {
+      showGuessPhase(allLocations);
     });
   }
 
