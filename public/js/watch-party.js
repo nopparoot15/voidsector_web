@@ -336,6 +336,11 @@
         },
         onStateChange: (ev) => {
           const st = ev && typeof ev.data === 'number' ? ev.data : null;
+          if (st === window.YT.PlayerState.ENDED) {
+            // Tell everyone the video finished — stops lock loop from looping
+            socket.emit('wp:pause', { t: getDuration() });
+            return;
+          }
           if (st === window.YT.PlayerState.PLAYING || st === window.YT.PlayerState.BUFFERING) {
             forceMaxQuality();
             setTimeout(forceMaxQuality, 250);
@@ -355,6 +360,7 @@
 
   async function ensurePlayingWithAutoplayWorkaround() {
     if (!ytReady || !yt) return;
+    if (getPlayerStateSafe() === window.YT.PlayerState.ENDED) return;
 
     // First attempt: normal play
     safeCall(() => yt.playVideo());
