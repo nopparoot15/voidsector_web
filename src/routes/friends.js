@@ -25,12 +25,17 @@ router.post('/friends/request', requireLogin, async (req, res) => {
   const user = await pool.query('SELECT id FROM users WHERE username=$1', [username]);
   if (!user.rows.length) return res.json({ ok: false });
 
+  const targetId = user.rows[0].id;
   await pool.query(
     `INSERT INTO friend_requests(from_user_id,to_user_id)
      VALUES ($1,$2)
      ON CONFLICT DO NOTHING`,
-    [me, user.rows[0].id]
+    [me, targetId]
   );
+  pool.query(
+    `INSERT INTO notifications(user_id,from_user_id,type) VALUES($1,$2,'friend_request')`,
+    [targetId, me]
+  ).catch(() => {});
 
   res.json({ ok: true });
 });

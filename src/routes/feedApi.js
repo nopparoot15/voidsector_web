@@ -102,12 +102,22 @@ router.delete('/feed/:id', requireFullAccount, async (req, res) => {
 router.post('/feed/:id/like', requireFullAccount, async (req, res) => {
   const me = Number(req.session.user.id);
   const id = Number(req.params.id);
-  await pool.query(
+  const { rowCount } = await pool.query(
     `INSERT INTO post_likes(post_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [id, me]
   );
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_likes WHERE post_id=$1`, [id]
   );
+  if (rowCount > 0) {
+    const { rows: [post] } = await pool.query(`SELECT user_id FROM posts WHERE id=$1`, [id]);
+    if (post && post.user_id !== me) {
+      pool.query(
+        `INSERT INTO notifications(user_id,from_user_id,type,post_id) VALUES($1,$2,'like',$3)
+         ON CONFLICT DO NOTHING`,
+        [post.user_id, me, id]
+      ).catch(() => {});
+    }
+  }
   res.json({ ok: true, count: r.count });
 });
 
@@ -144,6 +154,13 @@ router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_comments WHERE post_id=$1`, [id]
   );
+  const { rows: [post] } = await pool.query(`SELECT user_id FROM posts WHERE id=$1`, [id]);
+  if (post && post.user_id !== me) {
+    pool.query(
+      `INSERT INTO notifications(user_id,from_user_id,type,post_id) VALUES($1,$2,'comment',$3)`,
+      [post.user_id, me, id]
+    ).catch(() => {});
+  }
   res.json({ ok: true, count: r.count });
 });
 
@@ -185,6 +202,33 @@ router.get('/users/search', requireLogin, async (req, res) => {
   } catch (e) {
     res.json({ ok: false, users: [] });
   }
+});
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────
+router.get('/notifications', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
+  try {
+    const { rows } = await pool.query(
+      `SELECT n.id, n.type, n.post_id, n.is_read, n.created_at,
+              u.username AS from_username, u.avatar AS from_avatar
+       FROM notifications n
+       LEFT JOIN users u ON u.id = n.from_user_id
+       WHERE n.user_id = $1
+       ORDER BY n.created_at DESC
+       LIMIT 30`,
+      [me]
+    );
+    const unread = rows.filter(r => !r.is_read).length;
+    res.json({ ok: true, notifications: rows, unread });
+  } catch (e) {
+    res.json({ ok: false, notifications: [], unread: 0 });
+  }
+});
+
+router.post('/notifications/read', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
+  await pool.query(`UPDATE notifications SET is_read=TRUE WHERE user_id=$1`, [me]);
+  res.json({ ok: true });
 });
 
 module.exports = router;

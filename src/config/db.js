@@ -43,6 +43,16 @@ async function initDb() {
      )`,
     `CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`,
+    `CREATE TABLE IF NOT EXISTS notifications (
+       id SERIAL PRIMARY KEY,
+       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+       type VARCHAR(30) NOT NULL,
+       post_id INTEGER,
+       is_read BOOLEAN DEFAULT FALSE,
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, created_at DESC)`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});

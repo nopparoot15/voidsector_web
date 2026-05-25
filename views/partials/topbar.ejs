@@ -44,6 +44,17 @@
   <!-- RIGHT: user / auth -->
   <div class="fb-topbar__right">
     <% if (user && !user.isGuest) { %>
+      <!-- Notification bell -->
+      <button class="fb-topbar-icon-btn" id="notif-btn" title="การแจ้งเตือน">
+        <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="fb-topbar-badge hidden" id="notif-badge">0</span>
+      </button>
+      <!-- Chat button -->
+      <button class="fb-topbar-icon-btn" id="chat-btn" title="แชท">
+        <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="fb-topbar-badge hidden" id="chat-badge">0</span>
+      </button>
+      <!-- Avatar -->
       <a href="/profile" class="fb-topbar-avatar" title="<%= user.username %>">
         <% if (user.avatar) { %>
           <img src="<%= user.avatar %>" alt="<%= user.username %>">
@@ -66,8 +77,168 @@
   </div>
 
 </header>
+
+<!-- Notification dropdown -->
+<div class="fb-panel hidden" id="notif-panel">
+  <div class="fb-panel-head">
+    <span class="fb-panel-title">การแจ้งเตือน</span>
+    <button class="fb-panel-read-all" id="notif-read-all">ทำเครื่องหมายว่าอ่านแล้ว</button>
+  </div>
+  <div class="fb-panel-body" id="notif-list">
+    <div class="fb-panel-empty">ยังไม่มีการแจ้งเตือน</div>
+  </div>
+</div>
+
+<!-- Chat dropdown -->
+<div class="fb-panel hidden" id="chat-panel">
+  <div class="fb-panel-head">
+    <span class="fb-panel-title">แชท</span>
+  </div>
+  <div class="fb-panel-search">
+    <input type="text" placeholder="ค้นหา Messenger" class="fb-panel-search-inp" id="chat-search">
+  </div>
+  <div class="fb-panel-body" id="chat-friend-list">
+    <div class="fb-panel-empty">กำลังโหลด…</div>
+  </div>
+</div>
 <div class="fb-search-dropdown hidden" id="fb-search-drop"></div>
 <script>
+// ── Notification & Chat System ───────────────────────────────────
+(function(){
+  const IS_AUTH = <%- JSON.stringify(!!(locals.user && !locals.user.isGuest)) %>;
+  if (!IS_AUTH) return;
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function timeAgo(d){
+    const s=Math.floor((Date.now()-new Date(d))/1000);
+    if(s<60) return 'เมื่อกี้';
+    if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
+    if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
+    return Math.floor(s/86400)+' วันที่แล้ว';
+  }
+
+  // ── Sound ─────────────────────────────────────────────────────
+  let audioCtx;
+  function playNotifSound(){
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.3);
+    } catch(e){}
+  }
+
+  // ── Notifications ─────────────────────────────────────────────
+  const notifBtn   = document.getElementById('notif-btn');
+  const notifPanel = document.getElementById('notif-panel');
+  const notifBadge = document.getElementById('notif-badge');
+  const notifList  = document.getElementById('notif-list');
+  const readAllBtn = document.getElementById('notif-read-all');
+  let prevUnread = 0;
+
+  function notifMsg(n){
+    const map = { like: 'ถูกใจโพสต์ของคุณ', comment: 'แสดงความคิดเห็นในโพสต์ของคุณ', friend_request: 'ส่งคำขอเพิ่มเป็นเพื่อน' };
+    return `<strong>${esc(n.from_username||'ผู้ใช้')}</strong> ${map[n.type]||n.type}`;
+  }
+
+  async function loadNotifs(){
+    try{
+      const r = await fetch('/api/notifications');
+      const {ok,notifications,unread} = await r.json();
+      if(!ok) return;
+      if(unread > prevUnread && prevUnread >= 0){ playNotifSound(); }
+      prevUnread = unread;
+      if(unread > 0){ notifBadge.textContent = unread > 99 ? '99+' : unread; notifBadge.classList.remove('hidden'); }
+      else { notifBadge.classList.add('hidden'); }
+      notifList.innerHTML = notifications.length ? notifications.map(n=>`
+        <div class="fb-notif-item ${n.is_read?'':'unread'}">
+          <div class="fb-notif-avatar">
+            ${n.from_avatar ? `<img src="${n.from_avatar}" alt="">` : `<div class="fb-notif-avatar-init">${esc((n.from_username||'?').slice(0,1).toUpperCase())}</div>`}
+          </div>
+          <div class="fb-notif-text">
+            <div>${notifMsg(n)}</div>
+            <div class="fb-notif-time">${timeAgo(n.created_at)}</div>
+          </div>
+          ${!n.is_read ? '<div class="fb-notif-dot"></div>' : ''}
+        </div>`).join('') : '<div class="fb-panel-empty">ยังไม่มีการแจ้งเตือน</div>';
+    }catch(e){}
+  }
+
+  loadNotifs();
+  setInterval(loadNotifs, 30000);
+
+  notifBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    chatPanel.classList.add('hidden');
+    notifPanel.classList.toggle('hidden');
+    if(!notifPanel.classList.contains('hidden')){
+      fetch('/api/notifications/read',{method:'POST'}).then(()=>{ prevUnread=0; notifBadge.classList.add('hidden'); }).catch(()=>{});
+    }
+  });
+
+  if(readAllBtn) readAllBtn.addEventListener('click', ()=>{
+    fetch('/api/notifications/read',{method:'POST'}).then(()=>{ prevUnread=0; notifBadge.classList.add('hidden'); loadNotifs(); }).catch(()=>{});
+  });
+
+  // ── Chat ──────────────────────────────────────────────────────
+  const chatBtn    = document.getElementById('chat-btn');
+  const chatPanel  = document.getElementById('chat-panel');
+  const chatSearch = document.getElementById('chat-search');
+  const chatList   = document.getElementById('chat-friend-list');
+  let allFriends = [];
+
+  async function loadFriends(){
+    try{
+      const r = await fetch('/friends/list');
+      const {ok,friends} = await r.json();
+      if(!ok) return;
+      allFriends = friends;
+      renderFriends(friends);
+    }catch(e){}
+  }
+
+  function renderFriends(list){
+    chatList.innerHTML = list.length ? list.map(f=>`
+      <div class="fb-chat-item" onclick="openDM(${f.id})">
+        <div class="fb-chat-avatar">
+          ${f.avatar ? `<img src="${f.avatar}" alt="">` : `<div class="fb-chat-avatar-init">${esc((f.username||'?').slice(0,1).toUpperCase())}</div>`}
+        </div>
+        <div class="fb-chat-name">${esc(f.username)}</div>
+      </div>`).join('') : '<div class="fb-panel-empty">ยังไม่มีเพื่อน</div>';
+  }
+
+  window.openDM = async function(friendId){
+    const r = await fetch('/dm/open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({friend_id:friendId})});
+    const {ok,room_id} = await r.json();
+    if(ok) window.location.href = '/dm/' + room_id;
+  };
+
+  chatBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    notifPanel.classList.add('hidden');
+    chatPanel.classList.toggle('hidden');
+    if(!chatPanel.classList.contains('hidden') && !allFriends.length) loadFriends();
+  });
+
+  if(chatSearch) chatSearch.addEventListener('input', ()=>{
+    const q = chatSearch.value.trim().toLowerCase();
+    renderFriends(q ? allFriends.filter(f=>f.username.toLowerCase().includes(q)) : allFriends);
+  });
+
+  // Close panels on outside click
+  document.addEventListener('click', (e)=>{
+    if(!notifBtn.contains(e.target) && !notifPanel.contains(e.target)) notifPanel.classList.add('hidden');
+    if(!chatBtn.contains(e.target) && !chatPanel.contains(e.target)) chatPanel.classList.add('hidden');
+  });
+})();
+
+// ── Search ───────────────────────────────────────────────────────
 (function(){
   const inp = document.getElementById('globalSearch');
   const drop = document.getElementById('fb-search-drop');

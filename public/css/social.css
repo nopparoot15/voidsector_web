@@ -248,7 +248,8 @@
 .social-avatar-placeholder.xs { font-size: 11px; }
 
 /* ── Feed ──────────────────────────────────────────────────────── */
-.social-feed { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.social-feed { min-width: 0; display: flex; flex-direction: column; }
+.social-feed > * + * { margin-top: 12px; }
 
 /* Create Post */
 .create-post-card {
