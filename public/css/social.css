@@ -247,7 +247,7 @@
 .social-avatar-placeholder.xs { font-size: 11px; }
 
 /* ── Feed ──────────────────────────────────────────────────────── */
-.social-feed { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0; }
+.social-feed { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0; padding-top: 0; }
 .social-feed > * { font-size: 1rem; }
 .social-feed > * + * { margin-top: 12px; }
 
