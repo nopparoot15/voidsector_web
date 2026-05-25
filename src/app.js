@@ -15,7 +15,6 @@ const whiteboardApiRoutes = require('./routes/whiteboardApi');
 const watchPartyRoutes = require('./routes/watchParty');
 const watchPartyApiRoutes = require('./routes/watchPartyApi');
 const gamesRoutes  = require('./routes/games');
-const forumRoutes  = require('./routes/forum');
 const feedApiRoutes = require('./routes/feedApi');
 const friendsRoutes = require('./routes/friends');
 const dmRoutes = require('./routes/dm');
@@ -68,7 +67,6 @@ function createApp() {
   app.use('/', whiteboardRoutes);
   app.use('/', watchPartyRoutes);
   app.use('/', gamesRoutes);
-  app.use('/', forumRoutes);
   app.use('/api', feedApiRoutes);
   app.use('/api', notifyRoutes);
   app.use('/', dmRoutes);
