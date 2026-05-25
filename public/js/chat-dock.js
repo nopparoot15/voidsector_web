@@ -449,8 +449,27 @@
     }
   });
 
+  // ── Open DM by room ID (called from toast click) ─────────────────────────
+  async function openDmByRoom(roomId, friendName) {
+    const rid = Number(roomId);
+    if (!rid) return;
+    const existingKey = dmKeyByRoom.get(rid);
+    if (existingKey) { restoreBox(existingKey); return; }
+    const key = `dm:room:${rid}`;
+    const box = openChatBox({ key, title: friendName || 'DM', mode: 'dm' });
+    box.dataset.roomId = String(rid);
+    dmKeyByRoom.set(rid, key);
+    const s = ensureSocket();
+    if (s) s.emit('dm:join', { roomId: rid });
+    try {
+      const hist = await getJson(`/dm/rooms/${rid}/messages?limit=60`);
+      renderDmHistory(box, hist.messages || []);
+    } catch (_) {}
+    window.VS_CLEAR_CHAT_BADGE?.();
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
-  window.VS_CHAT_DOCK = { openGlobal, openDm };
+  window.VS_CHAT_DOCK = { openGlobal, openDm, openDmByRoom };
 
   // Init bubble column visibility
   refreshDock();

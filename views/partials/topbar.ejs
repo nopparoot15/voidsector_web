@@ -44,15 +44,15 @@
   <!-- RIGHT: user / auth -->
   <div class="fb-topbar__right">
     <% if (user && !user.isGuest) { %>
-      <!-- Notification bell -->
-      <button class="fb-topbar-icon-btn" id="notif-btn" title="การแจ้งเตือน">
-        <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="fb-topbar-badge hidden" id="notif-badge">0</span>
-      </button>
       <!-- Chat button -->
       <button class="fb-topbar-icon-btn" id="chat-btn" title="แชท">
         <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="fb-topbar-badge hidden" id="chat-badge">0</span>
+      </button>
+      <!-- Notification bell -->
+      <button class="fb-topbar-icon-btn" id="notif-btn" title="การแจ้งเตือน">
+        <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="fb-topbar-badge hidden" id="notif-badge">0</span>
       </button>
       <!-- Avatar -->
       <a href="/profile" class="fb-topbar-avatar" title="<%= user.username %>">
@@ -125,19 +125,114 @@
 
   // ── Sound ─────────────────────────────────────────────────────
   let audioCtx;
+  function getAudioCtx(){
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
   function playNotifSound(){
     try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-      osc.start(audioCtx.currentTime);
-      osc.stop(audioCtx.currentTime + 0.3);
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
     } catch(e){}
+  }
+  function playDmSound(){
+    try {
+      const ctx = getAudioCtx();
+      // double-ping: two short high notes
+      [0, 0.12].forEach((delay, i) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(i === 0 ? 1046 : 1318, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + delay + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.2);
+      });
+    } catch(e){}
+  }
+
+  // ── DM Toast ───────────────────────────────────────────────────
+  let dmUnread = 0;
+  const chatBadgeEl = document.getElementById('chat-badge');
+
+  function bumpChatBadge(){
+    dmUnread++;
+    chatBadgeEl.textContent = dmUnread > 99 ? '99+' : dmUnread;
+    chatBadgeEl.classList.remove('hidden');
+  }
+  function clearChatBadge(){
+    dmUnread = 0;
+    chatBadgeEl.classList.add('hidden');
+  }
+
+  // expose so chat-dock can clear badge when user opens DM
+  window.VS_CLEAR_CHAT_BADGE = clearChatBadge;
+  window.VS_REFRESH_NOTIFY = function(){ /* called by chat-dock — no-op here, badge handled separately */ };
+
+  let toastContainer = document.getElementById('vs-toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'vs-toast-container';
+    toastContainer.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;';
+    document.body.appendChild(toastContainer);
+  }
+
+  function showDmToast(from, roomId){
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      pointer-events:auto;
+      display:flex;align-items:center;gap:10px;
+      background:rgba(14,20,40,.95);
+      border:1px solid rgba(121,247,255,.25);
+      border-radius:12px;
+      padding:10px 14px;
+      box-shadow:0 8px 32px rgba(0,0,0,.6);
+      backdrop-filter:blur(12px);
+      cursor:pointer;
+      min-width:220px;max-width:300px;
+      animation:vsToastIn .25s cubic-bezier(.2,.9,.2,1) both;
+      font-family:inherit;
+    `;
+    const init = String(from||'?').trim().charAt(0).toUpperCase();
+    toast.innerHTML = `
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(121,247,255,.18);
+        border:1.5px solid rgba(121,247,255,.35);display:flex;align-items:center;
+        justify-content:center;font-weight:700;font-size:15px;color:#79f7ff;flex-shrink:0;">${esc(init)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:rgba(235,245,255,.95);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(from)}</div>
+        <div style="font-size:11.5px;color:rgba(235,245,255,.5);margin-top:2px;">ส่งข้อความถึงคุณ</div>
+      </div>
+      <div style="font-size:18px;flex-shrink:0;">💬</div>
+    `;
+    if (!document.getElementById('vs-toast-style')) {
+      const s = document.createElement('style');
+      s.id = 'vs-toast-style';
+      s.textContent = `
+        @keyframes vsToastIn { from{transform:translateX(-20px);opacity:0} to{transform:translateX(0);opacity:1} }
+        @keyframes vsToastOut { from{transform:translateX(0);opacity:1} to{transform:translateX(-20px);opacity:0} }
+      `;
+      document.head.appendChild(s);
+    }
+    toast.addEventListener('click', () => {
+      toast.remove();
+      if (window.VS_CHAT_DOCK && roomId) {
+        // open DM by friend — we use from name as fallback
+        window.VS_CHAT_DOCK.openDmByRoom && window.VS_CHAT_DOCK.openDmByRoom(roomId, from);
+      }
+    });
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'vsToastOut .2s ease forwards';
+      setTimeout(() => toast.remove(), 200);
+    }, 4500);
   }
 
   // ── Notifications ─────────────────────────────────────────────
@@ -217,7 +312,11 @@
     const s = window.VS_SOCKET;
     if (s && typeof s.on === 'function') {
       s.on('vs:notification', loadNotifs);
-      s.on('dm:notify', loadNotifs);
+      s.on('dm:notify', ({ from, roomId } = {}) => {
+        playDmSound();
+        bumpChatBadge();
+        showDmToast(from || 'เพื่อน', roomId || null);
+      });
     } else {
       setTimeout(waitNotifSocket, 300);
     }
@@ -267,7 +366,10 @@
     e.stopPropagation();
     notifPanel.classList.add('hidden');
     chatPanel.classList.toggle('hidden');
-    if(!chatPanel.classList.contains('hidden') && !allFriends.length) loadFriends();
+    if(!chatPanel.classList.contains('hidden')){
+      if(!allFriends.length) loadFriends();
+      clearChatBadge();
+    }
   });
 
   // Close chat panel when a chat item is clicked
