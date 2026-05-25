@@ -827,11 +827,12 @@ input.fb-search-input {
 }
 @media (max-width: 480px) {
   .fb-topbar { padding: 0 4px; }
-  .fb-topbar__right { gap: 4px; }
-  /* hide leaderboard + tools tabs to save space */
-  .fb-navtab:nth-child(5),
-  .fb-navtab:nth-child(6) { display: none; }
-  .fb-navtab { min-width: 36px; padding: 0 2px; }
+  .fb-topbar__right { gap: 3px; }
+  .fb-navtab { min-width: 0; padding: 0 6px; flex: 1; }
+  .fb-navtab svg { width: 20px; height: 20px; }
+  .fb-topbar-icon-btn { width: 32px; height: 32px; }
+  .fb-topbar-icon-btn svg { width: 18px; height: 18px; }
+  .fb-topbar-avatar { width: 30px; height: 30px; }
   /* hide logout — accessible via profile page */
   .fb-topbar-logout { display: none; }
 }
