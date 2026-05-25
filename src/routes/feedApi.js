@@ -27,7 +27,7 @@ router.get('/feed', requireLogin, async (req, res) => {
          LEFT JOIN post_comments c ON c.post_id = p.id
          WHERE p.user_id = $2
          GROUP BY p.id, u.username, u.avatar
-         ORDER BY p.last_activity_at DESC
+         ORDER BY p.created_at DESC
          LIMIT $3 OFFSET $4`,
         [me, targetId, limit, offset]
       ));
@@ -138,23 +138,31 @@ router.delete('/feed/:id/like', requireFullAccount, async (req, res) => {
 
 // ── COMMENTS ──────────────────────────────────────────────────────────────
 router.get('/feed/:id/comments', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
   const { rows } = await pool.query(
-    `SELECT c.id, c.user_id, c.username, u.avatar, c.text, c.created_at
-     FROM post_comments c JOIN users u ON u.id=c.user_id
-     WHERE c.post_id=$1 ORDER BY c.created_at ASC`,
-    [Number(req.params.id)]
+    `SELECT c.id, c.user_id, c.username, u.avatar, c.text, c.created_at, c.parent_id,
+            COUNT(DISTINCT cl.user_id)::int AS like_count,
+            EXISTS(SELECT 1 FROM comment_likes WHERE comment_id=c.id AND user_id=$2) AS liked
+     FROM post_comments c
+     JOIN users u ON u.id=c.user_id
+     LEFT JOIN comment_likes cl ON cl.comment_id=c.id
+     WHERE c.post_id=$1
+     GROUP BY c.id, u.avatar
+     ORDER BY c.created_at ASC`,
+    [Number(req.params.id), me]
   );
   res.json({ ok: true, comments: rows });
 });
 
 router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
-  const me   = Number(req.session.user.id);
-  const id   = Number(req.params.id);
-  const text = String(req.body.text || '').trim().slice(0, 1000);
+  const me       = Number(req.session.user.id);
+  const id       = Number(req.params.id);
+  const text     = String(req.body.text || '').trim().slice(0, 1000);
+  const parentId = req.body.parent_id ? Number(req.body.parent_id) : null;
   if (!text) return res.status(400).json({ ok: false });
-  await pool.query(
-    `INSERT INTO post_comments(post_id,user_id,username,text) VALUES($1,$2,$3,$4)`,
-    [id, me, req.session.user.username, text]
+  const { rows: [inserted] } = await pool.query(
+    `INSERT INTO post_comments(post_id,user_id,username,text,parent_id) VALUES($1,$2,$3,$4,$5) RETURNING id, created_at`,
+    [id, me, req.session.user.username, text, parentId]
   );
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_comments WHERE post_id=$1`, [id]
@@ -168,16 +176,43 @@ router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
     ).catch(() => {});
     req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification');
   }
-  req.app.get('io')?.emit('feed:comment', {
-    post_id: id,
-    count: r.count,
-    comment: {
-      user_id: me,
-      username: req.session.user.username,
-      avatar: req.session.user.avatar || null,
-      text
-    }
-  });
+  const comment = {
+    id: inserted.id,
+    user_id: me,
+    username: req.session.user.username,
+    avatar: req.session.user.avatar || null,
+    text,
+    created_at: inserted.created_at,
+    parent_id: parentId,
+    like_count: 0,
+    liked: false
+  };
+  if (!parentId) {
+    req.app.get('io')?.emit('feed:comment', { post_id: id, count: r.count, comment });
+  }
+  res.json({ ok: true, count: r.count, comment });
+});
+
+// ── COMMENT LIKES ──────────────────────────────────────────────────────────
+router.post('/comments/:cid/like', requireFullAccount, async (req, res) => {
+  const me  = Number(req.session.user.id);
+  const cid = Number(req.params.cid);
+  await pool.query(
+    `INSERT INTO comment_likes(comment_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [cid, me]
+  );
+  const { rows: [r] } = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM comment_likes WHERE comment_id=$1`, [cid]
+  );
+  res.json({ ok: true, count: r.count });
+});
+
+router.delete('/comments/:cid/like', requireFullAccount, async (req, res) => {
+  const me  = Number(req.session.user.id);
+  const cid = Number(req.params.cid);
+  await pool.query(`DELETE FROM comment_likes WHERE comment_id=$1 AND user_id=$2`, [cid, me]);
+  const { rows: [r] } = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM comment_likes WHERE comment_id=$1`, [cid]
+  );
   res.json({ ok: true, count: r.count });
 });
 

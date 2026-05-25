@@ -63,6 +63,12 @@ async function initDb() {
        last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
        PRIMARY KEY(room_id, user_id)
      )`,
+    `ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES post_comments(id) ON DELETE CASCADE`,
+    `CREATE TABLE IF NOT EXISTS comment_likes (
+       comment_id INTEGER REFERENCES post_comments(id) ON DELETE CASCADE,
+       user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+       PRIMARY KEY(comment_id, user_id)
+     )`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});

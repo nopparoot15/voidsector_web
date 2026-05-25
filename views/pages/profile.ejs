@@ -221,29 +221,86 @@ async function toggleComments(id){
     if(!list.dataset.loaded){ await loadComments(id); list.dataset.loaded='1'; }
   } else { box.classList.add('hidden'); }
 }
-async function loadComments(id){
-  const r = await fetch(`/api/feed/${id}/comments`);
-  const {comments} = await r.json();
-  const list = document.getElementById(`clist-${id}`);
-  list.innerHTML = comments.length ? comments.map(c=>`
-    <div class="comment-item">
-      <div class="social-avatar-wrap xs">${avatarHtml(c.avatar,c.username)}</div>
+
+function buildCommentHtml(c, postId, isReply=false){
+  const actionsHtml = `<div class="comment-actions">
+    <span class="comment-time">${timeAgo(c.created_at)}</span>
+    <button class="comment-action-btn${c.liked?' liked':''}" onclick="likeComment(${c.id},this)">
+      ❤ <span class="clc">${c.like_count||0}</span>
+    </button>
+    ${!isReply?`<button class="comment-action-btn" onclick="toggleReplyInput(${postId},${c.id})">ตอบกลับ</button>`:''}
+  </div>`;
+  const repliesHtml = !isReply ? `<div class="comment-replies" id="replies-${c.id}"></div>
+    <div class="reply-input-row hidden" id="reply-input-${c.id}">
+      <input class="comment-input reply-input" placeholder="ตอบกลับ ${esc(c.username)}…" maxlength="1000"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${postId},this,${c.id})}">
+    </div>` : '';
+  return `<div class="comment-item" id="comment-${c.id}">
+    <div class="social-avatar-wrap xs">${avatarHtml(c.avatar,c.username)}</div>
+    <div class="comment-body">
       <div class="comment-bubble">
         <a class="comment-author" href="/user/${encodeURIComponent(c.username)}">${esc(c.username)}</a>
         <span class="comment-text">${esc(c.text)}</span>
       </div>
-    </div>`).join('') : '<div class="comments-empty">ยังไม่มีความคิดเห็น</div>';
+      ${actionsHtml}
+      ${repliesHtml}
+    </div>
+  </div>`;
 }
-async function submitComment(id,input){
+
+async function loadComments(id){
+  const r = await fetch(`/api/feed/${id}/comments`);
+  const {comments} = await r.json();
+  const list = document.getElementById(`clist-${id}`);
+  if(!comments||!comments.length){ list.innerHTML='<div class="comments-empty">ยังไม่มีความคิดเห็น</div>'; return; }
+  const top = comments.filter(c=>!c.parent_id);
+  const byParent = {};
+  comments.filter(c=>c.parent_id).forEach(c=>{
+    (byParent[c.parent_id]||(byParent[c.parent_id]=[])).push(c);
+  });
+  list.innerHTML = top.map(c=>buildCommentHtml(c,id)).join('');
+  top.forEach(c=>{
+    const repliesEl = document.getElementById(`replies-${c.id}`);
+    if(repliesEl && byParent[c.id]) repliesEl.innerHTML = byParent[c.id].map(r=>buildCommentHtml(r,id,true)).join('');
+  });
+}
+
+async function likeComment(commentId, btn){
+  const liked = btn.classList.contains('liked');
+  const r = await fetch(`/api/comments/${commentId}/like`,{method:liked?'DELETE':'POST'});
+  const {ok,count} = await r.json();
+  if(!ok) return;
+  btn.classList.toggle('liked',!liked);
+  btn.querySelector('.clc').textContent = count;
+}
+
+function toggleReplyInput(postId, commentId){
+  const row = document.getElementById(`reply-input-${commentId}`);
+  if(!row) return;
+  const hidden = row.classList.toggle('hidden');
+  if(!hidden) row.querySelector('input').focus();
+}
+
+async function submitComment(id, input, parentId=null){
   const text = input.value.trim();
   if(!text) return;
   input.value='';
-  await fetch(`/api/feed/${id}/comments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-  const list = document.getElementById(`clist-${id}`);
-  list.dataset.loaded='0';
-  await loadComments(id);
+  const body = {text};
+  if(parentId) body.parent_id = parentId;
+  const r = await fetch(`/api/feed/${id}/comments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const {ok,count,comment} = await r.json();
+  if(!ok||!comment) return;
+  if(parentId){
+    const repliesEl = document.getElementById(`replies-${parentId}`);
+    if(repliesEl) repliesEl.insertAdjacentHTML('beforeend', buildCommentHtml(comment,id,true));
+    document.getElementById(`reply-input-${parentId}`)?.classList.add('hidden');
+  } else {
+    const list = document.getElementById(`clist-${id}`);
+    list.querySelector('.comments-empty')?.remove();
+    list.insertAdjacentHTML('beforeend', buildCommentHtml(comment,id));
+  }
   const cnt = document.getElementById(`ccount-${id}`);
-  cnt.textContent = Number(cnt.textContent)+1;
+  if(cnt) cnt.textContent = Number(cnt.textContent)+1;
 }
 async function deletePost(id){
   if(!confirm('ลบโพสต์นี้?')) return;
