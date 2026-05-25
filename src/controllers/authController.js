@@ -54,23 +54,20 @@ async function register(req, res) {
 
 async function login(req, res) {
   const { email, password } = req.body;
-  if (!email || !password) {
-    return res.redirect('/login?error=' + encodeURIComponent('กรอกข้อมูลให้ครบ'));
-  }
+  const back = (req.body.back || '').startsWith('/') ? req.body.back : null;
+  const errRedirect = (msg) => res.redirect((back || '/login') + '?error=' + encodeURIComponent(msg));
+
+  if (!email || !password) return errRedirect('กรอกข้อมูลให้ครบ');
   try {
     const identifier = email.trim().toLowerCase();
     const { rows } = await pool.query(
       'SELECT * FROM users WHERE email=$1 OR LOWER(username)=$1',
       [identifier]
     );
-    if (!rows.length) {
-      return res.redirect('/login?error=' + encodeURIComponent('ไม่พบบัญชีผู้ใช้นี้'));
-    }
+    if (!rows.length) return errRedirect('ไม่พบบัญชีผู้ใช้นี้');
     const user = rows[0];
     const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
-      return res.redirect('/login?error=' + encodeURIComponent('รหัสผ่านไม่ถูกต้อง'));
-    }
+    if (!match) return errRedirect('รหัสผ่านไม่ถูกต้อง');
 
     const newStreak = await updateStreak(user.id, user.streak, user.last_streak_date);
 
