@@ -199,7 +199,7 @@
     resultEl.innerHTML = '';
     game.classList.add('hidden');
     lobby.classList.remove('hidden');
-    startBtn.classList.add('hidden');
+    startBtn.classList.toggle('hidden', roomData?.host !== me.id);
   });
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

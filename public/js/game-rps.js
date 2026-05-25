@@ -175,7 +175,9 @@
     results.classList.add('hidden');
     game.classList.add('hidden');
     lobby.classList.remove('hidden');
-    startBtn.classList.add('hidden');
+    history = [];
+    chosen = false;
+    renderLobby({ players, host: roomData?.host });
   });
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

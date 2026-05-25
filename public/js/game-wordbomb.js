@@ -184,7 +184,7 @@
     resultEl.innerHTML = '';
     game.classList.add('hidden');
     lobby.classList.remove('hidden');
-    startBtn.classList.add('hidden');
+    startBtn.classList.toggle('hidden', roomData?.host !== me.id);
   });
 
   function renderLobbyPlayers({ players: pl, host }) {

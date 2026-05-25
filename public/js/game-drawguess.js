@@ -308,7 +308,7 @@
     results.classList.add('hidden');
     game.classList.add('hidden');
     lobby.classList.remove('hidden');
-    startBtn.classList.add('hidden');
+    startBtn.classList.toggle('hidden', roomData?.host !== me.id);
     overlay.classList.add('hidden');
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   });

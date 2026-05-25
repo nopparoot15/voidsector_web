@@ -69,8 +69,8 @@
 
   input.addEventListener('input', () => {
     if (!state || finished) return;
-    const typed = input.value;
-    const target = state.text;
+    const typed = input.value.normalize('NFC');
+    const target = state.text.normalize('NFC');
     let correct = 0;
     for (let i = 0; i < typed.length && i < target.length; i++) {
       if (typed[i] === target[i]) correct = i + 1;
@@ -93,14 +93,13 @@
 
   function renderText(typed) {
     if (!state) return;
-    const target = state.text;
+    const target = state.text.normalize('NFC');
+    typed = typed.normalize('NFC');
     let html = '';
-    let errorAt = -1;
     for (let i = 0; i < typed.length && i < target.length; i++) {
       if (typed[i] === target[i]) {
         html += `<span class="tr-char tr-ok">${esc(target[i])}</span>`;
       } else {
-        if (errorAt < 0) errorAt = i;
         html += `<span class="tr-char tr-err">${esc(target[i])}</span>`;
       }
     }
@@ -222,8 +221,9 @@
     results.classList.add('hidden');
     game.classList.add('hidden');
     lobby.classList.remove('hidden');
-    startBtn.classList.add('hidden');
+    startBtn.classList.toggle('hidden', roomData?.host !== me.id);
     input.value = '';
+    finished = false;
   });
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
