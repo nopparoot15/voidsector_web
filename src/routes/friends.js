@@ -41,6 +41,61 @@ router.post('/friends/request', requireLogin, async (req, res) => {
 });
 
 // ------------------------------------------------------
+// ACCEPT REQUEST BY from_user_id  (used from notification bell)
+// POST /friends/request/accept-by-user  body: { from_user_id }
+// ------------------------------------------------------
+router.post('/friends/request/accept-by-user', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
+  const fromId = Number(req.body.from_user_id);
+  if (!fromId) return res.json({ ok: false });
+
+  const { rows: [fr] } = await pool.query(
+    `SELECT id FROM friend_requests WHERE from_user_id=$1 AND to_user_id=$2 AND status='pending'`,
+    [fromId, me]
+  );
+  if (!fr) return res.json({ ok: false, reason: 'not_found' });
+
+  // Reuse the accept logic via a simulated request to the existing route
+  // (directly inline the logic to avoid internal fetch complexity)
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`UPDATE friend_requests SET status='accepted' WHERE id=$1`, [fr.id]);
+    await client.query(`INSERT INTO friendships(user_id,friend_user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [fromId, me]);
+    await client.query(`INSERT INTO friendships(user_id,friend_user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [me, fromId]);
+    const u1 = Math.min(fromId, me), u2 = Math.max(fromId, me);
+    const name = `dm:${u1}:${u2}`;
+    await client.query(`INSERT INTO chat_rooms(name,is_public) VALUES($1,FALSE) ON CONFLICT(name) DO NOTHING`, [name]);
+    const { rows: [room] } = await client.query(`SELECT id FROM chat_rooms WHERE name=$1`, [name]);
+    await client.query(`INSERT INTO chat_room_members(room_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [room.id, fromId]);
+    await client.query(`INSERT INTO chat_room_members(room_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [room.id, me]);
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[accept-by-user]', e);
+    res.status(500).json({ ok: false });
+  } finally {
+    client.release();
+  }
+});
+
+// ------------------------------------------------------
+// DECLINE REQUEST BY from_user_id  (used from notification bell)
+// POST /friends/request/decline-by-user  body: { from_user_id }
+// ------------------------------------------------------
+router.post('/friends/request/decline-by-user', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
+  const fromId = Number(req.body.from_user_id);
+  if (!fromId) return res.json({ ok: false });
+  const { rowCount } = await pool.query(
+    `UPDATE friend_requests SET status='declined' WHERE from_user_id=$1 AND to_user_id=$2 AND status='pending'`,
+    [fromId, me]
+  );
+  res.json({ ok: rowCount > 0 });
+});
+
+// ------------------------------------------------------
 // CANCEL SENT REQUEST
 // DELETE /friends/request  body: { username }
 // ------------------------------------------------------

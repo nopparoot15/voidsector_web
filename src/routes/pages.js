@@ -121,7 +121,7 @@ router.get('/user/:username', requireFullAccount, async (req, res) => {
   try {
     const me = req.session.user.id;
     const { rows: [target] } = await pool.query(
-      'SELECT id, username, xp, streak, avatar FROM users WHERE LOWER(username)=LOWER($1)',
+      'SELECT id, username, xp, streak, avatar, cover FROM users WHERE LOWER(username)=LOWER($1)',
       [req.params.username]
     );
     if (!target) return res.status(404).render('pages/notfound', { title: '404' });

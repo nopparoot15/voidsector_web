@@ -209,7 +209,7 @@ router.get('/notifications', requireLogin, async (req, res) => {
   const me = Number(req.session.user.id);
   try {
     const { rows } = await pool.query(
-      `SELECT n.id, n.type, n.post_id, n.is_read, n.created_at,
+      `SELECT n.id, n.type, n.post_id, n.is_read, n.created_at, n.from_user_id,
               u.username AS from_username, u.avatar AS from_avatar
        FROM notifications n
        LEFT JOIN users u ON u.id = n.from_user_id
