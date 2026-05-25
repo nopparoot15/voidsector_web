@@ -18,6 +18,8 @@ const gamesRoutes  = require('./routes/games');
 const forumRoutes  = require('./routes/forum');
 const feedApiRoutes = require('./routes/feedApi');
 const friendsRoutes = require('./routes/friends');
+const dmRoutes = require('./routes/dm');
+const notifyRoutes = require('./routes/notify');
 const { viewLocals } = require('./middleware/viewLocals');
 
 function createApp() {
@@ -68,6 +70,8 @@ function createApp() {
   app.use('/', gamesRoutes);
   app.use('/', forumRoutes);
   app.use('/api', feedApiRoutes);
+  app.use('/api', notifyRoutes);
+  app.use('/', dmRoutes);
   app.use('/', friendsRoutes);
   app.use('/', authRoutes);
   app.use('/', pageRoutes);

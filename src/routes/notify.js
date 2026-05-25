@@ -17,7 +17,7 @@ async function getDmThreads(me) {
       WHERE crm.user_id = $1 AND cr.is_public = false
     ),
     other_member AS (
-      SELECT mr.room_id, u.id AS friend_id, u.username, u.avatar_path
+      SELECT mr.room_id, u.id AS friend_id, u.username, u.avatar
       FROM my_rooms mr
       JOIN chat_room_members crm2 ON crm2.room_id = mr.room_id AND crm2.user_id <> $1
       JOIN users u ON u.id = crm2.user_id
@@ -53,7 +53,7 @@ async function getDmThreads(me) {
     SELECT om.room_id,
            om.friend_id,
            om.username,
-           om.avatar_path,
+           om.avatar,
            lm.last_message,
            lm.last_user_id,
            lm.last_at,
@@ -74,7 +74,7 @@ router.get('/notify/summary', requireLogin, async (req, res) => {
 
     // incoming friend requests (pending)
     const fr = await pool.query(
-      `SELECT fr.id, fr.from_user_id, u.username, u.avatar_path, fr.created_at
+      `SELECT fr.id, fr.from_user_id, u.username, u.avatar, fr.created_at
        FROM friend_requests fr
        JOIN users u ON u.id = fr.from_user_id
        WHERE fr.to_user_id=$1 AND fr.status='pending'
@@ -87,7 +87,7 @@ router.get('/notify/summary', requireLogin, async (req, res) => {
 
     // whiteboard invites (pending)
     const wbi = await pool.query(
-      `SELECT i.id, i.room_id, i.from_user_id, u.username, u.avatar_path, i.created_at
+      `SELECT i.id, i.room_id, i.from_user_id, u.username, u.avatar, i.created_at
        FROM whiteboard_invites i
        JOIN users u ON u.id = i.from_user_id
        WHERE i.to_user_id=$1 AND i.status='pending'

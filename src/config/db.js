@@ -53,6 +53,16 @@ async function initDb() {
        created_at TIMESTAMPTZ DEFAULT NOW()
      )`,
     `CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, created_at DESC)`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ DEFAULT NOW()`,
+    `UPDATE posts SET last_activity_at = created_at WHERE last_activity_at IS NULL`,
+    `ALTER TABLE chat_messages RENAME COLUMN text TO message`,
+    `ALTER TABLE chat_room_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ DEFAULT NOW()`,
+    `CREATE TABLE IF NOT EXISTS chat_reads (
+       room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,
+       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+       last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+       PRIMARY KEY(room_id, user_id)
+     )`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});

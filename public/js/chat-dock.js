@@ -350,7 +350,7 @@
     // open/get room id once
     if (!box.dataset.roomId) {
       try {
-        const j = await postJson('/api/dm/open', { friend_id: fid });
+        const j = await postJson('/dm/open', { friend_id: fid });
         const rid = Number(j.room_id);
         if (rid) {
           box.dataset.roomId = String(rid);
@@ -362,7 +362,7 @@
           if (s) s.emit('dm:join', { roomId: rid });
 
           // load history and mark read
-          const history = await getJson(`/api/dm/rooms/${rid}/messages?limit=60`);
+          const history = await getJson(`/dm/rooms/${rid}/messages?limit=60`);
           renderDmHistory(box, history.messages || []);
 
           // mark read now that DM is open

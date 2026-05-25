@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS chat_rooms (
 CREATE TABLE IF NOT EXISTS chat_room_members (
   room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY(room_id, user_id)
 );
 
@@ -131,8 +132,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   username VARCHAR(50) NOT NULL,
-  text TEXT NOT NULL,
+  message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chat_reads (
+  room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY(room_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS threads (

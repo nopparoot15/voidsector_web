@@ -18,7 +18,7 @@
       const me = window.VS_ME || {};
       const username = String(me.username || '').trim();
       if (!username) return;
-      socket.emit('chat:hello', { userId: me.id || null, username });
+      socket.emit('vs:hello', { userId: me.id || null, username });
     } catch {}
   };
 

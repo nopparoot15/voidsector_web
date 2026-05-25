@@ -152,6 +152,27 @@ router.get('/user/:username', requireFullAccount, async (req, res) => {
   }
 });
 
+router.get('/dm/:roomId', requireFullAccount, async (req, res) => {
+  const me = req.session.user.id;
+  const roomId = Number(req.params.roomId);
+  try {
+    const mem = await pool.query(
+      `SELECT 1 FROM chat_room_members WHERE room_id=$1 AND user_id=$2`,
+      [roomId, me]
+    );
+    if (!mem.rowCount) return res.status(403).render('pages/notfound', { title: '403' });
+    const other = await pool.query(
+      `SELECT u.id, u.username FROM chat_room_members m JOIN users u ON u.id=m.user_id WHERE m.room_id=$1 AND m.user_id!=$2 LIMIT 1`,
+      [roomId, me]
+    );
+    const friend = other.rows[0] || { id: null, username: 'Unknown' };
+    res.render('pages/dm', { title: `DM — ${friend.username}`, friendId: friend.id, friendName: friend.username, roomId });
+  } catch (e) {
+    console.error('[dm page]', e.message);
+    res.redirect('/');
+  }
+});
+
 router.get('/profile', requireFullAccount, async (req, res) => {
   try {
     const userId = req.session.user.id;

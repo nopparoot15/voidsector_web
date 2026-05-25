@@ -27,7 +27,7 @@ router.get('/feed', requireLogin, async (req, res) => {
          LEFT JOIN post_comments c ON c.post_id = p.id
          WHERE p.user_id = $2
          GROUP BY p.id, u.username, u.avatar
-         ORDER BY p.created_at DESC
+         ORDER BY p.last_activity_at DESC
          LIMIT $3 OFFSET $4`,
         [me, targetId, limit, offset]
       ));
@@ -44,7 +44,7 @@ router.get('/feed', requireLogin, async (req, res) => {
          WHERE p.user_id = $1
             OR p.user_id IN (SELECT friend_user_id FROM friendships WHERE user_id=$1)
          GROUP BY p.id, u.username, u.avatar
-         ORDER BY p.created_at DESC
+         ORDER BY p.last_activity_at DESC
          LIMIT $2 OFFSET $3`,
         [me, limit, offset]
       ));
@@ -108,6 +108,7 @@ router.post('/feed/:id/like', requireFullAccount, async (req, res) => {
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_likes WHERE post_id=$1`, [id]
   );
+  pool.query(`UPDATE posts SET last_activity_at=NOW() WHERE id=$1`, [id]).catch(() => {});
   if (rowCount > 0) {
     const { rows: [post] } = await pool.query(`SELECT user_id FROM posts WHERE id=$1`, [id]);
     if (post && post.user_id !== me) {
@@ -127,6 +128,7 @@ router.delete('/feed/:id/like', requireFullAccount, async (req, res) => {
   const me = Number(req.session.user.id);
   const id = Number(req.params.id);
   await pool.query(`DELETE FROM post_likes WHERE post_id=$1 AND user_id=$2`, [id, me]);
+  pool.query(`UPDATE posts SET last_activity_at=NOW() WHERE id=$1`, [id]).catch(() => {});
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_likes WHERE post_id=$1`, [id]
   );
@@ -157,6 +159,7 @@ router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_comments WHERE post_id=$1`, [id]
   );
+  pool.query(`UPDATE posts SET last_activity_at=NOW() WHERE id=$1`, [id]).catch(() => {});
   const { rows: [post] } = await pool.query(`SELECT user_id FROM posts WHERE id=$1`, [id]);
   if (post && post.user_id !== me) {
     pool.query(
