@@ -1127,6 +1127,7 @@ main { padding-top: var(--topbar-h); }
   position: relative;
   width: 88px;
   margin: 0 auto 18px;
+  cursor: pointer;
 }
 .profile-avatar-img {
   width: 88px; height: 88px; border-radius: 50%; object-fit: cover;
