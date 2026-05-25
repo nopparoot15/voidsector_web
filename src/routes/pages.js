@@ -117,6 +117,41 @@ router.get('/leaderboard', requireFullAccount, (req, res) => {
   res.render('pages/leaderboard', { title: 'Leaderboard' });
 });
 
+router.get('/user/:username', requireFullAccount, async (req, res) => {
+  try {
+    const me = req.session.user.id;
+    const { rows: [target] } = await pool.query(
+      'SELECT id, username, xp, streak, avatar FROM users WHERE LOWER(username)=LOWER($1)',
+      [req.params.username]
+    );
+    if (!target) return res.status(404).render('pages/notfound', { title: '404' });
+    if (target.id === me) return res.redirect('/profile');
+
+    const { rows: [{ count }] } = await pool.query(
+      'SELECT COUNT(*) FROM user_lesson_progress WHERE user_id=$1', [target.id]
+    );
+    const { rows: [friendRow] } = await pool.query(
+      'SELECT 1 FROM friendships WHERE user_id=$1 AND friend_user_id=$2', [me, target.id]
+    );
+    const { rows: [reqRow] } = await pool.query(
+      `SELECT status FROM friend_requests
+       WHERE from_user_id=$1 AND to_user_id=$2 AND status='pending'`, [me, target.id]
+    );
+    const level = Math.floor(Math.sqrt((target.xp || 0) / 100)) + 1;
+    res.render('pages/user-profile', {
+      title: target.username,
+      target,
+      level,
+      completedCount: parseInt(count),
+      isFriend: !!friendRow,
+      requestSent: !!reqRow,
+    });
+  } catch (e) {
+    console.error('user profile error:', e.message);
+    res.redirect('/');
+  }
+});
+
 router.get('/profile', requireFullAccount, async (req, res) => {
   try {
     const userId = req.session.user.id;

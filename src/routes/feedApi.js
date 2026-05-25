@@ -139,4 +139,21 @@ router.post('/avatar', requireFullAccount, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── GET /users/search?q= ──────────────────────────────────────────────────────
+router.get('/users/search', requireLogin, async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 1) return res.json({ ok: true, users: [] });
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, username, avatar FROM users
+       WHERE LOWER(username) LIKE LOWER($1) AND id != $2
+       ORDER BY username ASC LIMIT 8`,
+      [`${q}%`, req.session.user.id]
+    );
+    res.json({ ok: true, users: rows });
+  } catch (e) {
+    res.json({ ok: false, users: [] });
+  }
+});
+
 module.exports = router;

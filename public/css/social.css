@@ -159,7 +159,7 @@
 
 .social-layout {
   display: grid;
-  grid-template-columns: 240px 1fr 260px;
+  grid-template-columns: 240px 1fr;
   gap: 16px;
   max-width: 1160px;
   margin: 0 auto;

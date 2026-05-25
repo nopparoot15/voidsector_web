@@ -66,3 +66,49 @@
   </div>
 
 </header>
+<div class="fb-search-dropdown hidden" id="fb-search-drop"></div>
+<script>
+(function(){
+  const inp = document.getElementById('globalSearch');
+  const drop = document.getElementById('fb-search-drop');
+  if (!inp) return;
+  let timer;
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function avatarHtml(avatar, username){
+    if(avatar) return `<img src="${avatar}" class="fb-drop-avatar-img" alt="">`;
+    return `<div class="fb-drop-avatar-init">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
+  }
+  inp.addEventListener('input', ()=>{
+    clearTimeout(timer);
+    const q = inp.value.trim();
+    if(!q){ drop.classList.add('hidden'); drop.innerHTML=''; return; }
+    timer = setTimeout(async ()=>{
+      try{
+        const r = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+        const {ok,users} = await r.json();
+        if(!ok||!users.length){ drop.classList.add('hidden'); drop.innerHTML=''; return; }
+        drop.innerHTML = users.map(u=>`
+          <a class="fb-drop-item" href="/user/${encodeURIComponent(u.username)}">
+            <div class="fb-drop-avatar">${avatarHtml(u.avatar, u.username)}</div>
+            <span class="fb-drop-name">${esc(u.username)}</span>
+          </a>`).join('');
+        const rect = inp.getBoundingClientRect();
+        drop.style.left = rect.left + 'px';
+        drop.style.top  = (rect.bottom + 6) + 'px';
+        drop.style.width = rect.width + 'px';
+        drop.classList.remove('hidden');
+      }catch(e){}
+    }, 250);
+  });
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      const q=inp.value.trim();
+      if(q){ drop.classList.add('hidden'); window.location.href='/user/'+encodeURIComponent(q); }
+    }
+    if(e.key==='Escape'){ drop.classList.add('hidden'); }
+  });
+  document.addEventListener('click', e=>{
+    if(!inp.contains(e.target)&&!drop.contains(e.target)) drop.classList.add('hidden');
+  });
+})();
+</script>

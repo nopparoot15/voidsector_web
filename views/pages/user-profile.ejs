@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %></head>
+<body>
+<%- include('../partials/topbar') %>
+<main class="profile-main">
+  <div class="profile-card">
+    <div class="profile-avatar-wrap">
+      <% if (target.avatar) { %>
+        <img src="<%- target.avatar %>" class="profile-avatar-img" alt="avatar">
+      <% } else { %>
+        <div class="profile-avatar"><%= target.username.slice(0,1).toUpperCase() %></div>
+      <% } %>
+    </div>
+    <h1 class="profile-username"><%= target.username %></h1>
+    <div class="profile-level">Level <%= level %></div>
+
+    <div class="profile-actions" style="margin-top:16px">
+      <% if (isFriend) { %>
+        <span class="btn-outline" style="cursor:default">🤝 เป็นเพื่อนกันแล้ว</span>
+      <% } else if (requestSent) { %>
+        <span class="btn-outline" style="cursor:default">⏳ รอการตอบรับ</span>
+      <% } else { %>
+        <button class="btn-primary" id="add-friend-btn">+ เพิ่มเพื่อน</button>
+      <% } %>
+    </div>
+    <div id="friend-msg" style="font-size:13px;margin-top:8px;min-height:18px"></div>
+  </div>
+
+  <div class="profile-stats">
+    <div class="stat-card">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-value"><%= target.xp || 0 %></div>
+      <div class="stat-label">XP ทั้งหมด</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🔥</div>
+      <div class="stat-value"><%= target.streak || 0 %></div>
+      <div class="stat-label">Streak วัน</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value"><%= completedCount %></div>
+      <div class="stat-label">บทเรียนที่ผ่านแล้ว</div>
+    </div>
+  </div>
+
+  <div class="profile-actions" style="margin-top:24px">
+    <a href="/" class="btn-outline">← กลับ</a>
+  </div>
+</main>
+<script>
+const btn = document.getElementById('add-friend-btn');
+const msg = document.getElementById('friend-msg');
+if (btn) btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  const r = await fetch('/friends/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: '<%= target.username %>' })
+  });
+  const { ok } = await r.json();
+  if (ok) {
+    btn.textContent = '⏳ รอการตอบรับ';
+    btn.className = 'btn-outline';
+    msg.textContent = 'ส่งคำขอเพิ่มเพื่อนแล้ว';
+  } else {
+    msg.textContent = 'เกิดข้อผิดพลาด';
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

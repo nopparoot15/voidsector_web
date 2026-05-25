@@ -121,30 +121,6 @@
     <div id="feed-end" class="feed-end hidden">— ดูครบแล้ว —</div>
   </main>
 
-  <!-- ── RIGHT SIDEBAR ──────────────────────────────────────── -->
-  <aside class="social-sidebar-right">
-    <% if (user && !user.isGuest) { %>
-    <div class="social-widget">
-      <div class="social-widget-title">👥 คำขอเป็นเพื่อน</div>
-      <div id="friend-requests-list"><span class="social-widget-empty">ไม่มีคำขอใหม่</span></div>
-    </div>
-    <div class="social-widget">
-      <div class="social-widget-title">🤝 เพื่อน</div>
-      <div id="friends-list"><span class="social-widget-empty">ยังไม่มีเพื่อน</span></div>
-      <div class="social-add-friend">
-        <input id="add-friend-input" class="social-add-friend-input" placeholder="ค้นหา username…" maxlength="50">
-        <button id="add-friend-btn" class="social-add-friend-btn">เพิ่ม</button>
-      </div>
-      <div id="add-friend-msg" class="add-friend-msg"></div>
-    </div>
-    <% } else { %>
-    <div class="social-widget">
-      <div class="social-widget-title">เข้าสู่ระบบ</div>
-      <a href="/login" class="btn-primary" style="display:block;text-align:center;margin-top:10px">เข้าสู่ระบบ</a>
-      <a href="/register" class="btn-outline" style="display:block;text-align:center;margin-top:8px">สมัครสมาชิก</a>
-    </div>
-    <% } %>
-  </aside>
 
 </div><!-- end social-layout -->
 
@@ -329,63 +305,6 @@ if(cpSubmit) cpSubmit.addEventListener('click', async ()=>{
   cpSubmit.disabled=false; cpSubmit.textContent='โพสต์';
 });
 
-// ── Friends Sidebar ──────────────────────────────────────────────
-async function loadFriends(){
-  try{
-    const [reqRes, flRes] = await Promise.all([
-      fetch('/friends/requests/incoming'),
-      fetch('/friends/list')
-    ]);
-    const {requests} = await reqRes.json();
-    const {friends} = await flRes.json();
-    const reqList = document.getElementById('friend-requests-list');
-    if(reqList){
-      reqList.innerHTML = requests?.length ? requests.map(r=>`
-        <div class="friend-req-item">
-          <span class="friend-req-name">@${esc(r.username)}</span>
-          <div class="friend-req-btns">
-            <button class="freq-accept" onclick="acceptFriend(${r.id},this)">✓</button>
-            <button class="freq-decline" onclick="declineFriend(${r.id},this)">✗</button>
-          </div>
-        </div>`).join('') : '<span class="social-widget-empty">ไม่มีคำขอใหม่</span>';
-    }
-    const fl = document.getElementById('friends-list');
-    if(fl){
-      fl.innerHTML = friends?.length ? friends.map(f=>`
-        <div class="friend-item">
-          <div class="social-avatar-wrap xs">${avatarHtml(f.avatar,f.username)}</div>
-          <span class="friend-item-name">@${esc(f.username)}</span>
-        </div>`).join('') : '<span class="social-widget-empty">ยังไม่มีเพื่อน</span>';
-    }
-  }catch(e){}
-}
-if(ME_ID && !IS_GUEST) loadFriends();
-
-async function acceptFriend(id,btn){
-  const r = await fetch(`/friends/requests/${id}/accept`,{method:'POST'});
-  const {ok} = await r.json();
-  if(ok){ btn.closest('.friend-req-item').remove(); loadFriends(); }
-}
-async function declineFriend(id,btn){
-  const r = await fetch(`/friends/requests/${id}/decline`,{method:'POST'});
-  const {ok} = await r.json();
-  if(ok) btn.closest('.friend-req-item').remove();
-}
-
-const addFriendBtn = document.getElementById('add-friend-btn');
-const addFriendInput = document.getElementById('add-friend-input');
-const addFriendMsg = document.getElementById('add-friend-msg');
-if(addFriendBtn) addFriendBtn.addEventListener('click', async ()=>{
-  const username = addFriendInput.value.trim();
-  if(!username) return;
-  const r = await fetch('/friends/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})});
-  const {ok} = await r.json();
-  addFriendMsg.textContent = ok ? '✓ ส่งคำขอแล้ว' : '✗ ไม่พบผู้ใช้';
-  addFriendMsg.className = 'add-friend-msg ' + (ok ? 'ok' : 'err');
-  if(ok) addFriendInput.value='';
-  setTimeout(()=>{ addFriendMsg.textContent=''; }, 3000);
-});
-addFriendInput?.addEventListener('keydown', e=>{ if(e.key==='Enter') addFriendBtn.click(); });
 </script>
 </body>
 </html>
