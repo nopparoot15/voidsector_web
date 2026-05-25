@@ -35,6 +35,13 @@ async function initDb() {
     `ALTER TABLE threads ADD COLUMN IF NOT EXISTS image TEXT`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS image TEXT`,
+    `CREATE TABLE IF NOT EXISTS "session" (
+       "sid" varchar NOT NULL COLLATE "default",
+       "sess" json NOT NULL,
+       "expire" timestamp(6) NOT NULL,
+       CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+     )`,
+    `CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});

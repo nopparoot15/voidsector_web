@@ -5,6 +5,7 @@ const path = require('path');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
+const pgSession = require('connect-pg-simple')(session);
 const pageRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
 const learnApiRoutes = require('./routes/api/learn');
@@ -30,7 +31,13 @@ function createApp() {
   app.use(express.urlencoded({ extended: false, limit: '2mb' }));
   app.use(express.json({ limit: '2mb' }));
 
+  const { pool: dbPool } = require('./config/db');
   app.use(session({
+    store: new pgSession({
+      pool: dbPool,
+      tableName: 'session',
+      createTableIfMissing: false,
+    }),
     secret: process.env.SESSION_SECRET || 'change-me-in-.env',
     resave: false,
     saveUninitialized: false,
@@ -38,6 +45,7 @@ function createApp() {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }));
 
