@@ -33,7 +33,6 @@ function vsBumpDmToTop(container, friendId, ts){
 
 (() => {
   const menus = Array.from(document.querySelectorAll('.vs-menu[data-menu]'));
-  if (!menus.length) return;
 
   const menusByName = new Map(menus.map(m => [m.getAttribute('data-menu') || '', m]));
   const isLoggedIn = !!window.VS_ME;
