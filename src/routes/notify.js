@@ -85,18 +85,22 @@ router.get('/notify/summary', requireLogin, async (req, res) => {
 
     const threads = await getDmThreads(me);
 
-    // whiteboard invites (pending)
-    const wbi = await pool.query(
-      `SELECT i.id, i.room_id, i.from_user_id, u.username, u.avatar, i.created_at
-       FROM whiteboard_invites i
-       JOIN users u ON u.id = i.from_user_id
-       WHERE i.to_user_id=$1 AND i.status='pending'
-       ORDER BY i.created_at DESC
-       LIMIT 10`,
-      [me]
-    );
+    // whiteboard invites (pending) — table may not exist yet
+    let wbiRows = [];
+    try {
+      const wbi = await pool.query(
+        `SELECT i.id, i.room_id, i.from_user_id, u.username, u.avatar, i.created_at
+         FROM whiteboard_invites i
+         JOIN users u ON u.id = i.from_user_id
+         WHERE i.to_user_id=$1 AND i.status='pending'
+         ORDER BY i.created_at DESC
+         LIMIT 10`,
+        [me]
+      );
+      wbiRows = wbi.rows;
+    } catch (_) {}
 
-    const alerts_count = fr.rows.length + wbi.rows.length;
+    const alerts_count = fr.rows.length + wbiRows.length;
     const messages_unread = threads.reduce((s, t) => s + (t.unread_count || 0), 0);
 
     res.json({
@@ -106,7 +110,7 @@ router.get('/notify/summary', requireLogin, async (req, res) => {
         messages: messages_unread,
       },
       friend_requests: fr.rows,
-      whiteboard_invites: wbi.rows,
+      whiteboard_invites: wbiRows,
       dm_threads: threads,
     });
   } catch (err) {
