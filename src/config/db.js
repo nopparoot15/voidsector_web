@@ -55,7 +55,7 @@ async function initDb() {
     `CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, created_at DESC)`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ DEFAULT NOW()`,
     `UPDATE posts SET last_activity_at = created_at WHERE last_activity_at IS NULL`,
-    `ALTER TABLE chat_messages RENAME COLUMN text TO message`,
+    `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS message TEXT`,
     `ALTER TABLE chat_room_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ DEFAULT NOW()`,
     `CREATE TABLE IF NOT EXISTS chat_reads (
        room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,

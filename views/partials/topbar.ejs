@@ -332,3 +332,12 @@
   });
 })();
 </script>
+
+<% if (user && !user.isGuest) { %>
+<script>
+window.VS_ME = { id: <%- JSON.stringify(user.id) %>, username: <%- JSON.stringify(user.username) %>, avatar: <%- JSON.stringify(user.avatar || null) %> };
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/vs-socket.js"></script>
+<script src="/js/chat-dock.js"></script>
+<% } %>
