@@ -41,6 +41,23 @@ router.post('/friends/request', requireLogin, async (req, res) => {
 });
 
 // ------------------------------------------------------
+// CANCEL SENT REQUEST
+// DELETE /friends/request  body: { username }
+// ------------------------------------------------------
+router.delete('/friends/request', requireLogin, async (req, res) => {
+  const me = req.session.user.id;
+  const { username } = req.body;
+  if (!username) return res.json({ ok: false });
+  const { rows: [target] } = await pool.query('SELECT id FROM users WHERE LOWER(username)=LOWER($1)', [username]);
+  if (!target) return res.json({ ok: false });
+  const { rowCount } = await pool.query(
+    `DELETE FROM friend_requests WHERE from_user_id=$1 AND to_user_id=$2 AND status='pending'`,
+    [me, target.id]
+  );
+  res.json({ ok: rowCount > 0 });
+});
+
+// ------------------------------------------------------
 // INCOMING REQUESTS
 // GET /friends/requests/incoming
 // ------------------------------------------------------

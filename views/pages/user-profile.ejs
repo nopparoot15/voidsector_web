@@ -15,16 +15,17 @@
     <h1 class="profile-username"><%= target.username %></h1>
     <div class="profile-level">Level <%= level %></div>
 
-    <div class="profile-actions" style="margin-top:16px">
+    <div class="profile-actions" style="margin-top:16px" id="friend-action-wrap">
       <% if (isFriend) { %>
         <span class="btn-outline" style="cursor:default">🤝 เป็นเพื่อนกันแล้ว</span>
       <% } else if (requestSent) { %>
         <span class="btn-outline" style="cursor:default">⏳ รอการตอบรับ</span>
+        <button class="btn-outline" id="cancel-friend-btn" style="margin-left:8px;border-color:rgba(255,80,80,.4);color:#f87171">✕ ยกเลิก</button>
       <% } else { %>
         <button class="btn-primary" id="add-friend-btn">+ เพิ่มเพื่อน</button>
       <% } %>
     </div>
-    <div id="friend-msg" style="font-size:13px;margin-top:8px;min-height:18px"></div>
+    <div id="friend-msg" style="font-size:13px;margin-top:8px;min-height:18px;color:rgba(235,245,255,.6)"></div>
   </div>
 
   <div class="profile-stats">
@@ -50,25 +51,57 @@
   </div>
 </main>
 <script>
-const btn = document.getElementById('add-friend-btn');
+const TARGET_USERNAME = '<%= target.username %>';
 const msg = document.getElementById('friend-msg');
-if (btn) btn.addEventListener('click', async () => {
-  btn.disabled = true;
+
+// ── เพิ่มเพื่อน ───────────────────────────────────────────────────
+const addBtn = document.getElementById('add-friend-btn');
+if (addBtn) addBtn.addEventListener('click', async () => {
+  addBtn.disabled = true;
   const r = await fetch('/friends/request', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: '<%= target.username %>' })
+    body: JSON.stringify({ username: TARGET_USERNAME })
   });
   const { ok } = await r.json();
   if (ok) {
-    btn.textContent = '⏳ รอการตอบรับ';
-    btn.className = 'btn-outline';
+    document.getElementById('friend-action-wrap').innerHTML =
+      `<span class="btn-outline" style="cursor:default">⏳ รอการตอบรับ</span>
+       <button class="btn-outline" id="cancel-friend-btn" style="margin-left:8px;border-color:rgba(255,80,80,.4);color:#f87171">✕ ยกเลิก</button>`;
     msg.textContent = 'ส่งคำขอเพิ่มเพื่อนแล้ว';
+    bindCancel();
   } else {
-    msg.textContent = 'เกิดข้อผิดพลาด';
-    btn.disabled = false;
+    msg.textContent = 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง';
+    addBtn.disabled = false;
   }
 });
+
+// ── ยกเลิกคำขอ ────────────────────────────────────────────────────
+function bindCancel() {
+  const cancelBtn = document.getElementById('cancel-friend-btn');
+  if (!cancelBtn) return;
+  cancelBtn.addEventListener('click', async () => {
+    cancelBtn.disabled = true;
+    const r = await fetch('/friends/request', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: TARGET_USERNAME })
+    });
+    const { ok } = await r.json();
+    if (ok) {
+      document.getElementById('friend-action-wrap').innerHTML =
+        `<button class="btn-primary" id="add-friend-btn">+ เพิ่มเพื่อน</button>`;
+      msg.textContent = 'ยกเลิกคำขอแล้ว';
+      document.getElementById('add-friend-btn').addEventListener('click', async () => {
+        location.reload();
+      });
+    } else {
+      msg.textContent = 'เกิดข้อผิดพลาด';
+      cancelBtn.disabled = false;
+    }
+  });
+}
+bindCancel();
 </script>
 </body>
 </html>

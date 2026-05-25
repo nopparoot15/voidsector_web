@@ -147,6 +147,25 @@
     return `<strong>${esc(n.from_username||'ผู้ใช้')}</strong> ${map[n.type]||n.type}`;
   }
 
+  async function acceptFriendReq(fromUsername, btn){
+    btn.disabled = true;
+    const r = await fetch('/friends/requests/incoming');
+    const {requests} = await r.json();
+    const req = requests?.find(x => x.username === fromUsername);
+    if (!req) return;
+    await fetch(`/friends/requests/${req.id}/accept`, { method: 'POST' });
+    btn.closest('.fb-notif-item').querySelector('.fb-notif-actions').innerHTML = '<span style="font-size:12px;color:#34d399">เป็นเพื่อนกันแล้ว ✓</span>';
+  }
+  async function declineFriendReq(fromUsername, btn){
+    btn.disabled = true;
+    const r = await fetch('/friends/requests/incoming');
+    const {requests} = await r.json();
+    const req = requests?.find(x => x.username === fromUsername);
+    if (!req) return;
+    await fetch(`/friends/requests/${req.id}/decline`, { method: 'POST' });
+    btn.closest('.fb-notif-item').remove();
+  }
+
   async function loadNotifs(){
     try{
       const r = await fetch('/api/notifications');
@@ -164,6 +183,10 @@
           <div class="fb-notif-text">
             <div>${notifMsg(n)}</div>
             <div class="fb-notif-time">${timeAgo(n.created_at)}</div>
+            ${n.type==='friend_request' ? `<div class="fb-notif-actions">
+              <button class="fb-notif-accept" onclick="acceptFriendReq('${esc(n.from_username)}',this)">รับ</button>
+              <button class="fb-notif-decline" onclick="declineFriendReq('${esc(n.from_username)}',this)">ปฏิเสธ</button>
+            </div>` : ''}
           </div>
           ${!n.is_read ? '<div class="fb-notif-dot"></div>' : ''}
         </div>`).join('') : '<div class="fb-panel-empty">ยังไม่มีการแจ้งเตือน</div>';

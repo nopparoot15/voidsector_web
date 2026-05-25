@@ -759,6 +759,21 @@
 .fb-notif-text strong { color: rgba(235,245,255,.95); }
 .fb-notif-time { font-size: 11px; color: rgba(235,245,255,.4); margin-top: 2px; }
 
+.fb-notif-actions { display: flex; gap: 6px; margin-top: 6px; }
+.fb-notif-accept {
+  background: #06b6d4; color: #fff; border: none;
+  border-radius: 6px; font-size: 12px; font-weight: 600;
+  padding: 4px 12px; cursor: pointer; transition: background .15s;
+}
+.fb-notif-accept:hover { background: #0891b2; }
+.fb-notif-decline {
+  background: rgba(255,255,255,.08); color: rgba(235,245,255,.7);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 6px; font-size: 12px; font-weight: 600;
+  padding: 4px 12px; cursor: pointer; transition: background .15s;
+}
+.fb-notif-decline:hover { background: rgba(255,80,80,.15); color: #f87171; }
+
 .fb-notif-dot {
   width: 10px; height: 10px;
   border-radius: 50%;
