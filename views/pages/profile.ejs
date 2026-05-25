@@ -5,7 +5,17 @@
 <%- include('../partials/topbar') %>
 <main class="profile-main">
   <div class="profile-card">
-    <div class="profile-avatar"><%= userData.username.slice(0,1).toUpperCase() %></div>
+    <div class="profile-avatar-wrap" id="avatar-wrap">
+      <% if (userData.avatar) { %>
+        <img src="<%- userData.avatar %>" class="profile-avatar-img" id="avatar-img" alt="avatar">
+      <% } else { %>
+        <div class="profile-avatar" id="avatar-placeholder"><%= userData.username.slice(0,1).toUpperCase() %></div>
+      <% } %>
+      <label class="profile-avatar-edit" title="เปลี่ยนรูป">
+        ✏️
+        <input type="file" id="avatar-file" accept="image/*" style="display:none">
+      </label>
+    </div>
     <h1 class="profile-username"><%= userData.username %></h1>
     <p class="profile-email"><%= userData.email %></p>
     <div class="profile-level">Level <%= level %></div>
@@ -34,5 +44,36 @@
     <a href="/logout" class="btn-outline">ออกจากระบบ</a>
   </div>
 </main>
+<script>
+document.getElementById('avatar-file')?.addEventListener('change', function(){
+  const file = this.files[0];
+  if(!file) return;
+  if(file.size > 3*1024*1024){ alert('รูปใหญ่เกิน 3MB'); this.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = async () => {
+      const SIZE=200; const canvas=document.createElement('canvas');
+      canvas.width=SIZE; canvas.height=SIZE;
+      const ctx=canvas.getContext('2d');
+      const min=Math.min(img.width,img.height);
+      const sx=(img.width-min)/2, sy=(img.height-min)/2;
+      ctx.drawImage(img,sx,sy,min,min,0,0,SIZE,SIZE);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.85);
+      const r=await fetch('/api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar:dataUrl})});
+      const {ok}=await r.json();
+      if(ok){
+        const wrap=document.getElementById('avatar-wrap');
+        wrap.querySelector('.profile-avatar-img, .profile-avatar')?.remove();
+        const newImg=document.createElement('img');
+        newImg.src=dataUrl; newImg.className='profile-avatar-img'; newImg.id='avatar-img';
+        wrap.prepend(newImg);
+      }
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+</script>
 </body>
 </html>

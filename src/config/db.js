@@ -33,6 +33,8 @@ async function initDb() {
     `ALTER TABLE units ADD COLUMN IF NOT EXISTS grammar_note TEXT`,
     `ALTER TABLE units ADD COLUMN IF NOT EXISTS cultural_note TEXT`,
     `ALTER TABLE threads ADD COLUMN IF NOT EXISTS image TEXT`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS image TEXT`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});

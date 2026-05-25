@@ -1,94 +1,349 @@
 <!DOCTYPE html>
 <html lang="th">
-<head><%- include('../partials/head') %></head>
-<body>
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/social.css">
+</head>
+<body class="social-body">
 <%- include('../partials/topbar') %>
-<main class="hub-main">
 
-  <section class="hub-hero">
-  <% if (user) { %>
+<div class="social-layout">
+
+  <!-- ── LEFT SIDEBAR ──────────────────────────────────────── -->
+  <aside class="social-sidebar-left">
+    <% if (user) { %>
     <%
       const xp = user.xp || 0;
-      const streak = user.streak || 0;
       const level = Math.floor(Math.sqrt(xp / 100)) + 1;
-      const xpForLevel = Math.pow(level - 1, 2) * 100;
-      const xpForNext  = Math.pow(level, 2) * 100;
-      const xpProgress = xp - xpForLevel;
-      const xpNeeded   = xpForNext - xpForLevel;
-      const xpPct      = Math.min(100, Math.round((xpProgress / xpNeeded) * 100));
     %>
-    <p class="hub-welcome">ยินดีต้อนรับกลับ</p>
-    <h1 class="hub-name"><%= user.username %></h1>
-    <div class="hub-user-stats">
-      <span class="stat-pill">
-        <span class="stat-pill-label">🔥 Streak</span>
-        <strong><%= streak %> วัน</strong>
-      </span>
-      <span class="stat-pill">
-        <span class="stat-pill-label">⚡ XP</span>
-        <strong><%= xp.toLocaleString() %></strong>
-      </span>
-      <span class="stat-pill">
-        <span class="stat-pill-label">⭐ Level</span>
-        <strong><%= level %></strong>
-      </span>
+    <a href="/profile" class="social-user-card">
+      <div class="social-avatar-wrap">
+        <% if (user.avatar) { %>
+          <img src="<%- user.avatar %>" class="social-avatar-img" alt="avatar">
+        <% } else { %>
+          <div class="social-avatar-placeholder"><%= (user.username||'?').slice(0,1).toUpperCase() %></div>
+        <% } %>
+      </div>
+      <div class="social-user-info">
+        <div class="social-user-name"><%= user.username %></div>
+        <div class="social-user-level">Lv.<%= level %> · <%= xp.toLocaleString() %> XP</div>
+      </div>
+    </a>
+    <% } %>
+
+    <nav class="social-nav">
+      <a href="/forum"       class="social-nav-item">💬 <span>Forum</span></a>
+      <a href="/learning"    class="social-nav-item">📚 <span>Learning</span></a>
+      <a href="/arcade"      class="social-nav-item">🕹 <span>Arcade</span></a>
+      <a href="/tools"       class="social-nav-item">🛠 <span>Tools</span></a>
+      <a href="/leaderboard" class="social-nav-item">🏆 <span>Leaderboard</span></a>
+    </nav>
+  </aside>
+
+  <!-- ── FEED ──────────────────────────────────────────────── -->
+  <main class="social-feed">
+
+    <% if (user && !user.isGuest) { %>
+    <!-- Create Post -->
+    <div class="create-post-card">
+      <div class="create-post-top">
+        <div class="social-avatar-wrap sm">
+          <% if (user.avatar) { %>
+            <img src="<%- user.avatar %>" class="social-avatar-img" alt="">
+          <% } else { %>
+            <div class="social-avatar-placeholder sm"><%= (user.username||'?').slice(0,1).toUpperCase() %></div>
+          <% } %>
+        </div>
+        <div class="create-post-trigger" id="cp-trigger">คุณกำลังคิดอะไรอยู่?</div>
+      </div>
+
+      <div class="create-post-form hidden" id="cp-form">
+        <textarea id="cp-text" class="create-post-textarea" placeholder="คุณกำลังคิดอะไรอยู่?" maxlength="4000" rows="3"></textarea>
+        <div id="cp-preview-wrap" class="cp-img-preview-wrap hidden">
+          <img id="cp-preview" class="cp-img-preview" alt="preview">
+          <button type="button" id="cp-remove-img" class="cp-remove-img">✕</button>
+        </div>
+        <div class="create-post-actions">
+          <label class="cp-img-btn" title="แนบรูป">
+            🖼
+            <input type="file" id="cp-file" accept="image/*" style="display:none">
+          </label>
+          <button class="cp-submit-btn" id="cp-submit">โพสต์</button>
+        </div>
+      </div>
     </div>
-    <div class="xp-progress-wrap">
-      <div class="xp-progress-bar">
-        <div class="xp-progress-fill" style="width:<%= xpPct %>%"></div>
-      </div>
-      <div class="xp-progress-label">
-        <span>Lv.<%= level %></span>
-        <span><%= xpProgress.toLocaleString() %> / <%= xpNeeded.toLocaleString() %> XP → Lv.<%= level + 1 %></span>
-      </div>
+    <% } %>
+
+    <!-- Feed list -->
+    <div id="feed-list"></div>
+    <div id="feed-loading" class="feed-loading">กำลังโหลด…</div>
+    <div id="feed-end" class="feed-end hidden">— ดูครบแล้ว —</div>
+  </main>
+
+  <!-- ── RIGHT SIDEBAR ──────────────────────────────────────── -->
+  <aside class="social-sidebar-right">
+    <% if (user && !user.isGuest) { %>
+    <div class="social-widget">
+      <div class="social-widget-title">👥 คำขอเป็นเพื่อน</div>
+      <div id="friend-requests-list"><span class="social-widget-empty">ไม่มีคำขอใหม่</span></div>
     </div>
-  <% } else { %>
-    <div class="hub-hero-tag">Personal Space</div>
-    <h1 class="hub-name">salty</h1>
-    <p class="hub-bio">เรียนภาษา · code · tools</p>
-    <div class="hub-auth">
-      <a href="/register" class="btn-primary">เริ่มใช้งาน</a>
-      <a href="/login" class="btn-outline">เข้าสู่ระบบ</a>
+    <div class="social-widget">
+      <div class="social-widget-title">🤝 เพื่อน</div>
+      <div id="friends-list"><span class="social-widget-empty">ยังไม่มีเพื่อน</span></div>
+      <div class="social-add-friend">
+        <input id="add-friend-input" class="social-add-friend-input" placeholder="ค้นหา username…" maxlength="50">
+        <button id="add-friend-btn" class="social-add-friend-btn">เพิ่ม</button>
+      </div>
+      <div id="add-friend-msg" class="add-friend-msg"></div>
     </div>
-  <% } %>
-  </section>
+    <% } else { %>
+    <div class="social-widget">
+      <div class="social-widget-title">เข้าสู่ระบบ</div>
+      <a href="/login" class="btn-primary" style="display:block;text-align:center;margin-top:10px">เข้าสู่ระบบ</a>
+      <a href="/register" class="btn-outline" style="display:block;text-align:center;margin-top:8px">สมัครสมาชิก</a>
+    </div>
+    <% } %>
+  </aside>
 
-  <section class="hub-grid">
-    <a href="/forum" class="hub-card hub-card--forum">
-      <div class="hub-card-body">
-        <h2>Forum</h2>
-        <p>กระทู้ · ถามตอบ · พูดคุย</p>
+</div><!-- end social-layout -->
+
+<script>
+const ME_ID = <%- JSON.stringify(user?.id || null) %>;
+const ME_NAME = <%- JSON.stringify(user?.username || '') %>;
+const IS_GUEST = <%- JSON.stringify(!!(user?.isGuest)) %>;
+
+// ── helpers ──────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function timeAgo(d){
+  const s=Math.floor((Date.now()-new Date(d))/1000);
+  if(s<60) return 'เมื่อกี้';
+  if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
+  if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
+  return Math.floor(s/86400)+' วันที่แล้ว';
+}
+function avatarHtml(avatar, username, size=''){
+  if(avatar) return `<img src="${avatar}" class="social-avatar-img${size?' '+size:''}" alt="">`;
+  return `<div class="social-avatar-placeholder${size?' '+size:''}">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
+}
+
+// ── Feed ─────────────────────────────────────────────────────────
+let feedOffset=0, feedLoading=false, feedDone=false;
+const feedList = document.getElementById('feed-list');
+const feedLoadingEl = document.getElementById('feed-loading');
+const feedEndEl = document.getElementById('feed-end');
+
+function buildPost(p){
+  const isOwn = p.user_id === ME_ID;
+  return `<div class="post-card" id="post-${p.id}">
+    <div class="post-header">
+      <div class="social-avatar-wrap sm">${avatarHtml(p.avatar, p.username)}</div>
+      <div class="post-meta">
+        <span class="post-author">${esc(p.username)}</span>
+        <span class="post-time">${timeAgo(p.created_at)}</span>
       </div>
-      <span class="hub-card-arrow">→</span>
-    </a>
+      ${isOwn ? `<button class="post-delete-btn" onclick="deletePost(${p.id})">🗑</button>` : ''}
+    </div>
+    ${p.text ? `<div class="post-text">${esc(p.text).replace(/\n/g,'<br>')}</div>` : ''}
+    ${p.image ? `<img class="post-image" src="${p.image}" alt="รูป" loading="lazy">` : ''}
+    <div class="post-actions">
+      <button class="post-like-btn ${p.liked?'liked':''}" onclick="toggleLike(${p.id},this)">
+        <span class="like-icon">${p.liked?'❤️':'🤍'}</span> <span class="like-count">${p.like_count}</span>
+      </button>
+      <button class="post-comment-btn" onclick="toggleComments(${p.id})">
+        💬 <span id="ccount-${p.id}">${p.comment_count}</span>
+      </button>
+    </div>
+    <div class="post-comments hidden" id="comments-${p.id}">
+      <div class="comments-list" id="clist-${p.id}"></div>
+      ${!IS_GUEST ? `<div class="comment-input-row">
+        <input class="comment-input" placeholder="แสดงความคิดเห็น…" maxlength="1000"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${p.id},this)}">
+      </div>` : ''}
+    </div>
+  </div>`;
+}
 
-    <a href="/learning" class="hub-card hub-card--lang">
-      <div class="hub-card-body">
-        <h2>Learning</h2>
-        <p>ภาษา · คณิตศาสตร์ · ภาษาคอมพิวเตอร์</p>
+async function loadFeed(){
+  if(feedLoading||feedDone) return;
+  feedLoading=true;
+  feedLoadingEl.classList.remove('hidden');
+  try{
+    const r = await fetch(`/api/feed?limit=10&offset=${feedOffset}`);
+    const {ok,posts} = await r.json();
+    if(!ok||!posts.length){ feedDone=true; feedLoadingEl.classList.add('hidden'); feedEndEl.classList.remove('hidden'); return; }
+    posts.forEach(p => feedList.insertAdjacentHTML('beforeend', buildPost(p)));
+    feedOffset += posts.length;
+    if(posts.length<10){ feedDone=true; feedEndEl.classList.remove('hidden'); feedLoadingEl.classList.add('hidden'); }
+  }catch(e){ console.error(e); }
+  feedLoading=false;
+  feedLoadingEl.classList.add('hidden');
+}
+
+if(ME_ID) loadFeed();
+window.addEventListener('scroll',()=>{ if(window.innerHeight+scrollY >= document.body.offsetHeight-300) loadFeed(); });
+
+async function toggleLike(id,btn){
+  const liked = btn.classList.contains('liked');
+  const r = await fetch(`/api/feed/${id}/like`,{method: liked?'DELETE':'POST'});
+  const {ok,count} = await r.json();
+  if(!ok) return;
+  btn.classList.toggle('liked',!liked);
+  btn.querySelector('.like-icon').textContent = !liked?'❤️':'🤍';
+  btn.querySelector('.like-count').textContent = count;
+}
+
+async function toggleComments(id){
+  const box = document.getElementById(`comments-${id}`);
+  if(box.classList.contains('hidden')){
+    box.classList.remove('hidden');
+    const list = document.getElementById(`clist-${id}`);
+    if(!list.dataset.loaded){ await loadComments(id); list.dataset.loaded='1'; }
+  } else { box.classList.add('hidden'); }
+}
+
+async function loadComments(id){
+  const r = await fetch(`/api/feed/${id}/comments`);
+  const {comments} = await r.json();
+  const list = document.getElementById(`clist-${id}`);
+  list.innerHTML = comments.length ? comments.map(c=>`
+    <div class="comment-item">
+      <div class="social-avatar-wrap xs">${avatarHtml(c.avatar,c.username)}</div>
+      <div class="comment-bubble">
+        <span class="comment-author">${esc(c.username)}</span>
+        <span class="comment-text">${esc(c.text)}</span>
       </div>
-      <span class="hub-card-arrow">→</span>
-    </a>
+    </div>`).join('') : '<div class="comments-empty">ยังไม่มีความคิดเห็น</div>';
+}
 
-    <a href="/tools" class="hub-card hub-card--tools">
-      <div class="hub-card-body">
-        <h2>Tools</h2>
-        <p>Terminal · Calculator · Watch Party · Whiteboard</p>
-      </div>
-      <span class="hub-card-arrow">→</span>
-    </a>
+async function submitComment(id,input){
+  const text = input.value.trim();
+  if(!text) return;
+  input.value='';
+  await fetch(`/api/feed/${id}/comments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+  const list = document.getElementById(`clist-${id}`);
+  list.dataset.loaded='0';
+  await loadComments(id);
+  const cnt = document.getElementById(`ccount-${id}`);
+  cnt.textContent = Number(cnt.textContent)+1;
+}
 
-    <a href="/arcade" class="hub-card hub-card--arcade">
-      <div class="hub-card-body">
-        <h2>Arcade</h2>
-        <p>XO · Word Bomb · Trivia Quiz</p>
-      </div>
-      <span class="hub-card-arrow">→</span>
-    </a>
-  </section>
+async function deletePost(id){
+  if(!confirm('ลบโพสต์นี้?')) return;
+  const r = await fetch(`/api/feed/${id}`,{method:'DELETE'});
+  const {ok} = await r.json();
+  if(ok) document.getElementById(`post-${id}`)?.remove();
+}
 
+// ── Create Post ──────────────────────────────────────────────────
+const cpTrigger = document.getElementById('cp-trigger');
+const cpForm    = document.getElementById('cp-form');
+const cpText    = document.getElementById('cp-text');
+const cpFile    = document.getElementById('cp-file');
+const cpPreviewWrap = document.getElementById('cp-preview-wrap');
+const cpPreview = document.getElementById('cp-preview');
+const cpSubmit  = document.getElementById('cp-submit');
+let cpImageData = null;
 
-</main>
-<a href="/portfolio" class="portfolio-lock" title="Portfolio">🔒</a>
+if(cpTrigger) cpTrigger.addEventListener('click',()=>{
+  cpTrigger.classList.add('hidden'); cpForm.classList.remove('hidden'); cpText.focus();
+});
+
+if(cpFile) cpFile.addEventListener('change',()=>{
+  const file = cpFile.files[0];
+  if(!file) return;
+  if(file.size > 5*1024*1024){ alert('รูปใหญ่เกิน 5MB'); cpFile.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX=1200; let w=img.width,h=img.height;
+      if(w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+      const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      cpImageData = canvas.toDataURL('image/jpeg',0.82);
+      cpPreview.src = cpImageData; cpPreviewWrap.classList.remove('hidden');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('cp-remove-img')?.addEventListener('click',()=>{
+  cpImageData=null; cpFile.value=''; cpPreviewWrap.classList.add('hidden');
+});
+
+if(cpSubmit) cpSubmit.addEventListener('click', async ()=>{
+  const text = cpText.value.trim();
+  if(!text && !cpImageData) return;
+  cpSubmit.disabled=true; cpSubmit.textContent='กำลังโพสต์…';
+  try{
+    const r = await fetch('/api/feed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,image:cpImageData||''})});
+    const {ok,post} = await r.json();
+    if(ok && post){
+      feedList.insertAdjacentHTML('afterbegin', buildPost(post));
+      cpText.value=''; cpImageData=null; cpPreviewWrap?.classList.add('hidden');
+      cpFile && (cpFile.value=''); cpForm.classList.add('hidden'); cpTrigger?.classList.remove('hidden');
+    }
+  }catch(e){ console.error(e); }
+  cpSubmit.disabled=false; cpSubmit.textContent='โพสต์';
+});
+
+// ── Friends Sidebar ──────────────────────────────────────────────
+async function loadFriends(){
+  try{
+    const [reqRes, flRes] = await Promise.all([
+      fetch('/friends/requests/incoming'),
+      fetch('/friends/list')
+    ]);
+    const {requests} = await reqRes.json();
+    const {friends} = await flRes.json();
+    const reqList = document.getElementById('friend-requests-list');
+    if(reqList){
+      reqList.innerHTML = requests?.length ? requests.map(r=>`
+        <div class="friend-req-item">
+          <span class="friend-req-name">@${esc(r.username)}</span>
+          <div class="friend-req-btns">
+            <button class="freq-accept" onclick="acceptFriend(${r.id},this)">✓</button>
+            <button class="freq-decline" onclick="declineFriend(${r.id},this)">✗</button>
+          </div>
+        </div>`).join('') : '<span class="social-widget-empty">ไม่มีคำขอใหม่</span>';
+    }
+    const fl = document.getElementById('friends-list');
+    if(fl){
+      fl.innerHTML = friends?.length ? friends.map(f=>`
+        <div class="friend-item">
+          <div class="social-avatar-wrap xs">${avatarHtml(f.avatar,f.username)}</div>
+          <span class="friend-item-name">@${esc(f.username)}</span>
+        </div>`).join('') : '<span class="social-widget-empty">ยังไม่มีเพื่อน</span>';
+    }
+  }catch(e){}
+}
+if(ME_ID && !IS_GUEST) loadFriends();
+
+async function acceptFriend(id,btn){
+  const r = await fetch(`/friends/requests/${id}/accept`,{method:'POST'});
+  const {ok} = await r.json();
+  if(ok){ btn.closest('.friend-req-item').remove(); loadFriends(); }
+}
+async function declineFriend(id,btn){
+  const r = await fetch(`/friends/requests/${id}/decline`,{method:'POST'});
+  const {ok} = await r.json();
+  if(ok) btn.closest('.friend-req-item').remove();
+}
+
+const addFriendBtn = document.getElementById('add-friend-btn');
+const addFriendInput = document.getElementById('add-friend-input');
+const addFriendMsg = document.getElementById('add-friend-msg');
+if(addFriendBtn) addFriendBtn.addEventListener('click', async ()=>{
+  const username = addFriendInput.value.trim();
+  if(!username) return;
+  const r = await fetch('/friends/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})});
+  const {ok} = await r.json();
+  addFriendMsg.textContent = ok ? '✓ ส่งคำขอแล้ว' : '✗ ไม่พบผู้ใช้';
+  addFriendMsg.className = 'add-friend-msg ' + (ok ? 'ok' : 'err');
+  if(ok) addFriendInput.value='';
+  setTimeout(()=>{ addFriendMsg.textContent=''; }, 3000);
+});
+addFriendInput?.addEventListener('keydown', e=>{ if(e.key==='Enter') addFriendBtn.click(); });
+</script>
 </body>
 </html>

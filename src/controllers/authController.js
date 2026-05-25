@@ -78,7 +78,8 @@ async function login(req, res) {
       id: user.id,
       username: user.username,
       xp: user.xp,
-      streak: newStreak
+      streak: newStreak,
+      avatar: user.avatar || null,
     };
     return res.redirect('/home');
   } catch (err) {

@@ -74,6 +74,67 @@ CREATE TABLE IF NOT EXISTS user_vocab_progress (
   last_review TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS posts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT,
+  image TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS post_likes (
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY(post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS post_comments (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  username VARCHAR(50) NOT NULL,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS friend_requests (
+  id SERIAL PRIMARY KEY,
+  from_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  to_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(from_user_id, to_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS friendships (
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  friend_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY(user_id, friend_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS chat_rooms (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(200) UNIQUE,
+  display_name VARCHAR(200),
+  is_public BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chat_room_members (
+  room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY(room_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  room_id INTEGER REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  username VARCHAR(50) NOT NULL,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS threads (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
