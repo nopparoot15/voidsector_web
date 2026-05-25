@@ -35,7 +35,13 @@
 
       <div class="fb-profile-actions">
         <% if (isFriend) { %>
-          <span class="fb-prof-btn fb-prof-btn--ghost" style="cursor:default">🤝 เพื่อนกันแล้ว</span>
+          <button class="fb-prof-btn fb-prof-btn--primary" id="dm-btn">💬 ส่งข้อความ</button>
+          <div class="friend-menu-wrap" id="friend-menu-wrap">
+            <button class="fb-prof-btn fb-prof-btn--ghost" id="friend-menu-btn">🤝 เพื่อน ▾</button>
+            <div class="friend-menu-dropdown hidden" id="friend-menu-dropdown">
+              <button class="friend-menu-item friend-menu-item--danger" id="unfriend-btn">🗑 ลบเพื่อน</button>
+            </div>
+          </div>
         <% } else if (requestSent) { %>
           <span class="fb-prof-btn fb-prof-btn--ghost" style="cursor:default" id="pending-label">⏳ รอการตอบรับ</span>
           <button class="fb-prof-btn" id="cancel-friend-btn" style="background:rgba(255,80,80,.15);color:#f87171;border:1px solid rgba(255,80,80,.3)">✕ ยกเลิก</button>
@@ -253,6 +259,49 @@ async function deletePost(id){
   const r=await fetch(`/api/feed/${id}`,{method:'DELETE'});
   const {ok}=await r.json();
   if(ok) document.getElementById(`post-${id}`)?.remove();
+}
+
+// ── Send message button ───────────────────────────────────────────
+const dmBtn = document.getElementById('dm-btn');
+if (dmBtn) {
+  dmBtn.addEventListener('click', () => {
+    if (window.VS_CHAT_DOCK && typeof window.VS_CHAT_DOCK.openDm === 'function') {
+      window.VS_CHAT_DOCK.openDm(TARGET_ID, TARGET_USERNAME);
+    }
+  });
+}
+
+// ── Friend menu dropdown ──────────────────────────────────────────
+const friendMenuBtn  = document.getElementById('friend-menu-btn');
+const friendMenuDrop = document.getElementById('friend-menu-dropdown');
+const unfriendBtn    = document.getElementById('unfriend-btn');
+
+if (friendMenuBtn) {
+  friendMenuBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    friendMenuDrop.classList.toggle('hidden');
+  });
+  document.addEventListener('click', () => friendMenuDrop?.classList.add('hidden'));
+}
+
+if (unfriendBtn) {
+  unfriendBtn.addEventListener('click', async () => {
+    if (!confirm(`ลบ ${TARGET_USERNAME} ออกจากเพื่อน?`)) return;
+    unfriendBtn.disabled = true;
+    const r = await fetch('/friends/remove', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: TARGET_USERNAME })
+    });
+    const { ok } = await r.json();
+    if (ok) {
+      document.getElementById('friend-menu-wrap').outerHTML =
+        `<button class="fb-prof-btn fb-prof-btn--primary" id="add-friend-btn">+ เพิ่มเพื่อน</button>`;
+      document.getElementById('add-friend-btn').addEventListener('click', () => location.reload());
+    } else {
+      unfriendBtn.disabled = false;
+    }
+  });
 }
 
 // ── Friend actions ────────────────────────────────────────────────

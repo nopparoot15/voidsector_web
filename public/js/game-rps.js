@@ -101,8 +101,15 @@
 
   function startGame(st) {
     state = st;
+    chosen = false;
     lobby.classList.add('hidden');
     game.classList.remove('hidden');
+    document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = false; });
+    document.getElementById('rps-hint').textContent = 'เลือกได้เลย!';
+    document.getElementById('rps-left').innerHTML = '';
+    document.getElementById('rps-right').innerHTML = '';
+    document.getElementById('rps-left').className = 'rps-side';
+    document.getElementById('rps-right').className = 'rps-side';
     renderScoreboard(st.scores);
     document.getElementById('rps-round-label').textContent = `รอบที่ ${st.round}`;
     startTimer(st.timerEndsAt);
@@ -177,6 +184,7 @@
     lobby.classList.remove('hidden');
     history = [];
     chosen = false;
+    document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = false; });
     renderLobby({ players, host: roomData?.host });
   });
 

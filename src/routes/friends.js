@@ -261,6 +261,21 @@ router.post('/friends/requests/:id/decline', requireLogin, declineRequest);
 router.post('/friends/requests/:id/deny', requireLogin, declineRequest);
 
 // ------------------------------------------------------
+// REMOVE FRIEND
+// DELETE /friends/remove  body: { username }
+// ------------------------------------------------------
+router.delete('/friends/remove', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
+  const { username } = req.body;
+  if (!username) return res.json({ ok: false });
+  const { rows: [target] } = await pool.query('SELECT id FROM users WHERE LOWER(username)=LOWER($1)', [username]);
+  if (!target) return res.json({ ok: false });
+  const targetId = Number(target.id);
+  await pool.query(`DELETE FROM friendships WHERE (user_id=$1 AND friend_user_id=$2) OR (user_id=$2 AND friend_user_id=$1)`, [me, targetId]);
+  res.json({ ok: true });
+});
+
+// ------------------------------------------------------
 // FRIEND LIST
 // GET /friends/list
 // ------------------------------------------------------

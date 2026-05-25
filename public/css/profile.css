@@ -157,6 +157,41 @@
 }
 .fb-prof-btn--ghost:hover { background: rgba(255,255,255,.14); }
 
+/* ── Friend action dropdown ───────────────────────────────────── */
+.friend-menu-wrap {
+  position: relative;
+}
+.friend-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #131929;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  min-width: 150px;
+  z-index: 100;
+  overflow: hidden;
+}
+.friend-menu-item {
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(235,245,255,.8);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background .15s;
+}
+.friend-menu-item:hover { background: rgba(255,255,255,.07); }
+.friend-menu-item--danger { color: #f87171; }
+.friend-menu-item--danger:hover { background: rgba(255,80,80,.1); }
+
 /* ── Tab bar ──────────────────────────────────────────────────── */
 .fb-profile-tabs {
   display: flex;
