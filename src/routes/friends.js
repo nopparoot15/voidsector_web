@@ -191,7 +191,7 @@ router.get('/friends/list', requireLogin, async (req, res) => {
   const me = Number(req.session.user.id);
 
   const r = await pool.query(
-    `SELECT u.id, u.username, u.avatar_path
+    `SELECT u.id, u.username, u.avatar
      FROM friendships f
      JOIN users u ON u.id = f.friend_user_id
      WHERE f.user_id=$1

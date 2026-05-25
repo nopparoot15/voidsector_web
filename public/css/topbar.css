@@ -445,6 +445,8 @@
 .fb-search-icon {
   position: absolute;
   left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 16px; height: 16px;
   color: rgba(235,245,255,.45);
   pointer-events: none;
@@ -486,7 +488,15 @@
   color: rgba(235,245,255,.55);
   position: relative;
   transition: color .15s;
-  border-bottom: 3px solid transparent;
+}
+.fb-navtab::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10px; right: 10px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+  transition: background .15s;
 }
 .fb-navtab svg {
   width: 22px; height: 22px;
@@ -506,8 +516,8 @@
 }
 .fb-navtab--active {
   color: #06b6d4;
-  border-bottom-color: #06b6d4;
 }
+.fb-navtab--active::after { background: #06b6d4; }
 .fb-navtab--active svg { stroke: #06b6d4; }
 
 /* ---------- RIGHT ---------- */
