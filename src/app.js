@@ -51,7 +51,7 @@ function createApp() {
 
   app.use(compression());
   app.use(viewLocals);
-  app.use(express.static(path.join(__dirname, '../public'), { maxAge: '7d' }));
+  app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1h' }));
 
   app.get('/__health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
