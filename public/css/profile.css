@@ -352,6 +352,19 @@
   width: 24px; height: 24px; cursor: pointer; font-size: 12px;
 }
 
+/* Ensure avatar wraps in posts are always constrained */
+.fb-profile-feed .social-avatar-wrap {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.fb-profile-feed .social-avatar-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* Post cards — reuse social feed styles but scoped to profile */
 .fb-profile-feed .post-card {
   background: rgba(255,255,255,.04);
