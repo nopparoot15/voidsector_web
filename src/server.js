@@ -327,11 +327,18 @@ io.on('connection', (socket) => {
       const userId = Number(socket.data.userId);
       const gmRoom = gameStore.get(gmRid);
       if (gmRoom) {
-        if (gmRoom.status === 'waiting') {
-          const remaining = gameStore.removePlayer(gmRid, userId);
-          if (remaining) {
-            io.to(`gm:${gmRid}`).emit('gm:players', { players: remaining.players.map(p => ({ userId: p.userId, username: p.username })) });
-          }
+        if (gmRoom.status === 'waiting' || gmRoom.status === 'ended') {
+          // Grace period before removing — handles page refresh without killing the room
+          gmRoom.offlinePlayers.add(userId);
+          gameStore.setTimer(gmRid, `dc_${userId}`, () => {
+            const r = gameStore.get(gmRid);
+            if (!r || !r.offlinePlayers.has(userId)) return;
+            const remaining = gameStore.removePlayer(gmRid, userId);
+            if (remaining) {
+              const pl = remaining.players.map(p => ({ userId: p.userId, username: p.username }));
+              io.to(`gm:${gmRid}`).emit('gm:players', { players: pl });
+            }
+          }, 30000);
         } else if (gmRoom.status === 'playing') {
           gmRoom.offlinePlayers.add(userId);
           const players = gmRoom.players.map(p => ({ userId: p.userId, username: p.username, offline: gmRoom.offlinePlayers.has(p.userId) }));
