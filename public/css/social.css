@@ -396,6 +396,12 @@
 .feed-loading { text-align: center; color: var(--muted); padding: 20px; font-size: 14px; }
 .feed-end { text-align: center; color: var(--muted); padding: 16px; font-size: 13px; }
 
+.post-bumped { animation: postBump 1s ease-out; }
+@keyframes postBump {
+  0%   { box-shadow: 0 0 0 2px rgba(0,200,255,.7), 0 0 20px rgba(0,200,255,.25); }
+  100% { box-shadow: none; }
+}
+
 /* ── Right Sidebar ─────────────────────────────────────────────── */
 .social-sidebar-right { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 12px; }
 

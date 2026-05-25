@@ -2,6 +2,7 @@
 <html lang="th">
 <head><%- include('../partials/head') %>
 <link rel="stylesheet" href="/css/social.css">
+<script src="/socket.io/socket.io.js"></script>
 </head>
 
 <% if (!user || user.isGuest) { %>
@@ -296,6 +297,29 @@ if(cpSubmit) cpSubmit.addEventListener('click', async ()=>{
   }catch(e){ console.error(e); }
   cpSubmit.disabled=false; cpSubmit.textContent='โพสต์';
 });
+
+// ── Real-time feed updates ────────────────────────────────────────
+if(ME_ID){
+  const feedSocket = io();
+  feedSocket.on('feed:activity', ({ post_id, type, count }) => {
+    const card = document.getElementById(`post-${post_id}`);
+    if(!card) return;
+    if(type === 'like'){
+      const lc = card.querySelector('.like-count');
+      if(lc) lc.textContent = count;
+    } else if(type === 'comment'){
+      const cc = document.getElementById(`ccount-${post_id}`);
+      if(cc) cc.textContent = count;
+    }
+    if(feedList.firstElementChild !== card){
+      feedList.prepend(card);
+      card.classList.remove('post-bumped');
+      void card.offsetWidth;
+      card.classList.add('post-bumped');
+      setTimeout(() => card.classList.remove('post-bumped'), 1000);
+    }
+  });
+}
 
 </script>
 </body>
