@@ -19,6 +19,7 @@
   let players = [];
   let timerInterval = null;
   let chosen = false;
+  let hasSentChoice = false;
   let history = [];
 
   document.getElementById('copy-link-btn').addEventListener('click', () => {
@@ -46,6 +47,8 @@
   socket.on('gm:started', ({ state: st }) => startGame(st));
 
   socket.on('rps:chose', () => {
+    if (!hasSentChoice) return; // ignore stale ack from previous game
+    hasSentChoice = false;
     chosen = true;
     document.querySelectorAll('.rps-btn').forEach(b => b.classList.add('locked'));
     document.getElementById('rps-hint').textContent = '✓ รอคู่ต่อสู้…';
@@ -54,6 +57,7 @@
   socket.on('rps:reveal', ({ round, choices, winnerId, scores }) => {
     clearInterval(timerInterval);
     chosen = false;
+    hasSentChoice = false;
     document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = true; });
     const [p1, p2] = players;
     const c1 = choices[p1.userId];
@@ -95,6 +99,7 @@
       const choice = btn.dataset.c;
       document.querySelectorAll('.rps-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+      hasSentChoice = true;
       socket.emit('rps:choose', { roomId, choice });
     });
   });
@@ -102,6 +107,7 @@
   function startGame(st) {
     state = st;
     chosen = false;
+    hasSentChoice = false;
     lobby.classList.add('hidden');
     game.classList.remove('hidden');
     document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = false; });
@@ -184,6 +190,7 @@
     lobby.classList.remove('hidden');
     history = [];
     chosen = false;
+    hasSentChoice = false;
     document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = false; });
     renderLobby({ players, host: roomData?.host });
   });
