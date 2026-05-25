@@ -1,14 +1,14 @@
-// public/js/chat-dock.js
-// -----------------------------------------------------------------------------
-// Chat dock overlays (Global + DM) — Facebook style
-// - Singleton init guard (script may be included multiple times)
-// - Global chat uses socket event chat:send/chat:new + chat:pull
-// - DM uses /api/dm/open + /api/dm/rooms/:id/messages + socket dm:join/dm:send/dm:new
-// -----------------------------------------------------------------------------
+// public/js/chat-dock.js — Facebook-style chat dock
+// Max 4 open windows; extras collapse to circle bubbles on the right
 (() => {
   if (window.__VS_CHAT_DOCK_INIT__) return;
   window.__VS_CHAT_DOCK_INIT__ = true;
 
+  // ── Identity ──────────────────────────────────────────────────────────────
+  const MY_ID   = window.VS_ME?.id ? Number(window.VS_ME.id) : null;
+  const MY_NAME = norm(window.VS_ME?.username || '');
+
+  // ── DOM setup ─────────────────────────────────────────────────────────────
   let dock = document.getElementById('chatDock');
   if (!dock) {
     dock = document.createElement('div');
@@ -17,269 +17,347 @@
     document.body.appendChild(dock);
   }
 
-  // ===== identity (from EJS) =====
-  const MY_ID = window.VS_ME?.id ? Number(window.VS_ME.id) : null;
-  const MY_NAME = norm(window.VS_ME?.username || '');
-
-  // ===== socket (shared) =====
-  let socket = null;
-  let lastGlobalHistory = [];
-
-  // Dedupe: track optimistic messages by clientMsgId
-  const pendingById = new Map();
-
-  function genClientMsgId() {
-    return `c_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  let bubblesEl = document.getElementById('chat-bubbles');
+  if (!bubblesEl) {
+    bubblesEl = document.createElement('div');
+    bubblesEl.id = 'chat-bubbles';
+    document.body.appendChild(bubblesEl);
   }
 
-  // DM registries
-  const dmRoomByFriend = new Map(); // friendId -> roomId
-  const dmKeyByRoom = new Map();    // roomId -> key
+  // ── State ──────────────────────────────────────────────────────────────────
+  const MAX_OPEN   = 4;
+  const boxes      = new Map(); // key → { el, meta }
+  const openOrder  = [];        // keys in insertion order (oldest first)
+  const minimized  = new Set(); // keys currently shown as bubbles
 
-  function bindSocketOnce(s) {
-    if (!s || s.__vs_chat_dock_bound__) return;
+  // Dedupe optimistic messages
+  const pendingById = new Map();
+  function genId() { return `c_${Date.now()}_${Math.random().toString(16).slice(2)}`; }
+
+  // DM maps
+  const dmRoomByFriend = new Map();
+  const dmKeyByRoom    = new Map();
+
+  // Unread counts for bubbles
+  const unreadCount = new Map(); // key → number
+
+  // Global chat history cache
+  let lastGlobalHistory = [];
+
+  // ── Socket ────────────────────────────────────────────────────────────────
+  let socket = null;
+
+  function ensureSocket() {
+    if (socket) return socket;
+    socket = window.VS_SOCKET || null;
+    if (socket && !socket.__vs_chat_dock_bound__) bindSocket(socket);
+    return socket;
+  }
+
+  function bindSocket(s) {
     s.__vs_chat_dock_bound__ = true;
 
-    s.on('chat:history', (rows) => {
+    s.on('chat:history', rows => {
       lastGlobalHistory = Array.isArray(rows) ? rows : [];
-      const box = boxes.get('global');
-      if (!box) return;
-      renderGlobalHistory(box);
+      const entry = boxes.get('global');
+      if (entry) renderGlobalHistory(entry.el);
     });
 
-    s.on('chat:new', (row) => {
-      const box = boxes.get('global');
+    s.on('chat:new', row => {
       if (row) lastGlobalHistory.push(row);
-      if (!box) return;
-
-      const body = box.querySelector('.chat-box__body');
-      const cmid = row?.clientMsgId ? String(row.clientMsgId) : '';
-
-      // Dedupe: upgrade optimistic message instead of duplicating
-      if (cmid && pendingById.has(cmid)) {
-        const el = pendingById.get(cmid);
-        pendingById.delete(cmid);
-        if (el) el.classList.remove('is-pending');
-      } else {
-        appendMsg(body, {
-          userId: row.userId ?? row.user_id ?? null,
-          username: row.username,
-          message: row.message,
-          clientMsgId: cmid || null,
-        });
+      const entry = boxes.get('global');
+      const cmid  = row?.clientMsgId ? String(row.clientMsgId) : '';
+      if (entry && !entry.collapsed) {
+        const body = entry.el.querySelector('.chat-box__body');
+        if (cmid && pendingById.has(cmid)) {
+          pendingById.get(cmid)?.classList.remove('is-pending');
+          pendingById.delete(cmid);
+        } else {
+          appendMsg(body, { userId: row.userId ?? row.user_id, username: row.username, message: row.message });
+          scrollBottom(body);
+        }
       }
-
-      scrollToBottom(body);
-
-      // ✅ FIX: roomId was undefined (crashed listener => "อีกฝั่งไม่เห็น" + notify เพี้ยน)
-      if ((row.userId ?? row.user_id ?? null) !== MY_ID) {
-        markRoomRead(1); // Global room_id = 1
+      if ((row?.userId ?? row?.user_id) !== MY_ID) {
+        bumpUnread('global');
+        window.VS_REFRESH_NOTIFY?.();
       }
-
-      typeof window.VS_REFRESH_NOTIFY === 'function' && window.VS_REFRESH_NOTIFY();
     });
 
     s.on('dm:history', ({ roomId, rows }) => {
       if (!roomId) return;
-      const key = dmKeyByRoom.get(Number(roomId));
-      if (!key) return;
-      const box = boxes.get(key);
-      if (!box) return;
-      renderDmHistory(box, Array.isArray(rows) ? rows : []);
+      const key   = dmKeyByRoom.get(Number(roomId));
+      const entry = key ? boxes.get(key) : null;
+      if (entry) renderDmHistory(entry.el, Array.isArray(rows) ? rows : []);
     });
 
-    s.on('dm:new', (row) => {
+    s.on('dm:new', row => {
       const roomId = Number(row?.roomId ?? row?.room_id ?? 0);
       if (!roomId) return;
-      const key = dmKeyByRoom.get(roomId);
-      if (!key) return;
-      const box = boxes.get(key);
-      if (!box) return;
+      const key   = dmKeyByRoom.get(roomId);
+      const entry = key ? boxes.get(key) : null;
+      const cmid  = row?.clientMsgId ? String(row.clientMsgId) : '';
 
-      const body = box.querySelector('.chat-box__body');
-      const cmid = row?.clientMsgId ? String(row.clientMsgId) : '';
-
-      if (cmid && pendingById.has(cmid)) {
-        const el = pendingById.get(cmid);
-        pendingById.delete(cmid);
-        if (el) el.classList.remove('is-pending');
-      } else {
-        appendMsg(body, {
-          userId: row.userId ?? row.user_id ?? null,
-          username: row.username,
-          message: row.message,
-          clientMsgId: cmid || null,
-        });
+      if (entry && !entry.collapsed) {
+        const body = entry.el.querySelector('.chat-box__body');
+        if (cmid && pendingById.has(cmid)) {
+          pendingById.get(cmid)?.classList.remove('is-pending');
+          pendingById.delete(cmid);
+        } else {
+          appendMsg(body, { userId: row.userId ?? row.user_id, username: row.username, message: row.message });
+          scrollBottom(body);
+        }
       }
-
-      scrollToBottom(body);
-
-      if ((row.userId ?? row.user_id ?? null) !== MY_ID) {
-        markRoomRead(roomId);
+      if ((row?.userId ?? row?.user_id) !== MY_ID) {
+        bumpUnread(key);
+        window.VS_REFRESH_NOTIFY?.();
       }
-
-      typeof window.VS_REFRESH_NOTIFY === 'function' && window.VS_REFRESH_NOTIFY();
     });
 
-    s.on('dm:notify', () => (typeof window.VS_REFRESH_NOTIFY === 'function' && window.VS_REFRESH_NOTIFY()));
+    s.on('dm:notify', () => window.VS_REFRESH_NOTIFY?.());
   }
 
-  function ensureSocket() {
-    if (socket) return socket;
-
-    socket = window.VS_SOCKET || null;
-    if (!socket) return null;
-
-    bindSocketOnce(socket);
-    return socket;
-  }
-
-  // ✅ Robust bind: wait until VS_SOCKET exists (prevents missing history)
-  function waitForSocketBind() {
+  // Poll until VS_SOCKET is ready
+  (function waitSocket() {
     const s = ensureSocket();
-    if (s) return;
-    // try a few times quickly, then stop (safe)
-    let tries = 0;
-    const t = setInterval(() => {
-      tries++;
-      const s2 = ensureSocket();
-      if (s2 || tries > 40) clearInterval(t);
-    }, 100);
-  }
-  waitForSocketBind();
+    if (!s) { let n = 0; const t = setInterval(() => { n++; if (ensureSocket() || n > 60) clearInterval(t); }, 150); }
+  })();
 
-  // ===== small utils =====
-  function norm(s) {
-    return String(s || '').trim().toLowerCase();
+  // ── Utils ─────────────────────────────────────────────────────────────────
+  function norm(s) { return String(s || '').trim().toLowerCase(); }
+
+  function esc(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
   }
-  function escapeHtml(str) {
-    return String(str ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+
+  function avatarHtml(avatar, name) {
+    const init = String(name || '?').trim().charAt(0).toUpperCase();
+    if (avatar) return `<img src="${esc(avatar)}" alt="">`;
+    return init;
   }
 
   async function postJson(url, body) {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body || {})
-    });
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, credentials:'include', body: JSON.stringify(body || {}) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.ok === false) throw new Error(j.reason || j.message || 'request_failed');
     return j;
   }
 
   async function getJson(url) {
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'include' });
+    const r = await fetch(url, { headers:{'Accept':'application/json'}, credentials:'include' });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.ok === false) throw new Error(j.reason || j.message || 'request_failed');
     return j;
   }
 
-  // Mark a room as read (clears message badge for that thread)
-  const _markTimers = new Map();
-  async function markRoomRead(roomId) {
-    const rid = Number(roomId);
-    if (!rid) return;
-    // debounce per room
-    if (_markTimers.has(rid)) return;
-    _markTimers.set(rid, setTimeout(() => {
-      clearTimeout(_markTimers.get(rid));
-      _markTimers.delete(rid);
-    }, 900));
-
-    try {
-      await postJson('/api/notify/read', { roomId: rid });
-    } catch (_) {
-      // ignore
-    }
-    if (typeof window.VS_REFRESH_NOTIFY === 'function') {
-      window.VS_REFRESH_NOTIFY();
+  // ── Unread badge ──────────────────────────────────────────────────────────
+  function bumpUnread(key) {
+    if (!key) return;
+    const entry = boxes.get(key);
+    if (!entry) return;
+    if (minimized.has(key)) {
+      const n = (unreadCount.get(key) || 0) + 1;
+      unreadCount.set(key, n);
+      updateBubbleBadge(key, n);
     }
   }
 
-  // ===== chat box registry (prevent duplicates) =====
-  const boxes = new Map(); // key -> element
+  function clearUnread(key) {
+    unreadCount.set(key, 0);
+    updateBubbleBadge(key, 0);
+  }
 
-  function openChatBox({ key, title, mode }) {
+  function updateBubbleBadge(key, n) {
+    const bubble = bubblesEl.querySelector(`[data-bubble-key="${CSS.escape(key)}"]`);
+    if (!bubble) return;
+    let badge = bubble.querySelector('.chat-bubble__badge');
+    if (n > 0) {
+      if (!badge) { badge = document.createElement('div'); badge.className = 'chat-bubble__badge'; bubble.appendChild(badge); }
+      badge.textContent = n > 99 ? '99+' : n;
+    } else {
+      badge?.remove();
+    }
+  }
+
+  // ── Layout: open slot counting ─────────────────────────────────────────────
+  function countOpen() {
+    return openOrder.filter(k => !minimized.has(k)).length;
+  }
+
+  function minimizeOldest() {
+    for (const k of openOrder) {
+      if (!minimized.has(k)) { minimizeBox(k); return; }
+    }
+  }
+
+  // ── Minimize / restore ────────────────────────────────────────────────────
+  function minimizeBox(key) {
+    const entry = boxes.get(key);
+    if (!entry || minimized.has(key)) return;
+    minimized.add(key);
+
+    // Hide the window from dock
+    entry.el.style.display = 'none';
+    // Rebuild dock visibility
+    refreshDock();
+
+    // Create bubble
+    const meta   = entry.meta;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+    bubble.dataset.bubbleKey = key;
+    bubble.title = meta.title;
+    bubble.innerHTML = avatarHtml(meta.avatar, meta.title);
+    bubble.addEventListener('click', () => restoreBox(key));
+    bubblesEl.appendChild(bubble);
+
+    const n = unreadCount.get(key) || 0;
+    if (n > 0) updateBubbleBadge(key, n);
+  }
+
+  function restoreBox(key) {
+    if (!minimized.has(key)) return;
+    // If dock is full, minimize the oldest open window first
+    if (countOpen() >= MAX_OPEN) minimizeOldest();
+
+    minimized.delete(key);
+    clearUnread(key);
+
+    // Remove bubble
+    bubblesEl.querySelector(`[data-bubble-key="${CSS.escape(key)}"]`)?.remove();
+
+    // Show window and move to front (rightmost)
+    const entry = boxes.get(key);
+    if (entry) {
+      entry.el.style.display = '';
+      dock.appendChild(entry.el); // move to end (rightmost visually)
+    }
+    refreshDock();
+  }
+
+  // ── Ensure position in openOrder ──────────────────────────────────────────
+  function touchOrder(key) {
+    const idx = openOrder.indexOf(key);
+    if (idx !== -1) openOrder.splice(idx, 1);
+    openOrder.push(key);
+  }
+
+  function refreshDock() {
+    // Nothing structural needed; CSS flex does layout.
+    // Hide/show handled per box. Just sync bubblesEl right offset.
+    const openCount = countOpen();
+    // Shift bubble column left of the dock windows
+    const dockWidth = openCount * (300 + 10);
+    bubblesEl.style.right = (dockWidth + 16) + 'px';
+
+    // Also hide bubble column if empty
+    bubblesEl.style.display = minimized.size > 0 ? 'flex' : 'none';
+  }
+
+  // ── Core: open / create a chat box ───────────────────────────────────────
+  function openChatBox({ key, title, mode, avatar = null }) {
     if (boxes.has(key)) {
-      const el = boxes.get(key);
-      dock.appendChild(el);
-      return el;
+      const entry = boxes.get(key);
+      if (minimized.has(key)) {
+        restoreBox(key);
+      } else {
+        // Already open — bring to front
+        dock.appendChild(entry.el);
+        touchOrder(key);
+        entry.el.querySelector('.chat-box__input input')?.focus();
+      }
+      return entry.el;
     }
 
+    // Need a new slot
+    if (countOpen() >= MAX_OPEN) minimizeOldest();
+
+    // Build window
     const box = document.createElement('div');
     box.className = 'chat-box';
     box.dataset.chatKey = key;
-    box.dataset.mode = mode || 'global';
 
     box.innerHTML = `
       <div class="chat-box__head">
-        <div class="chat-box__title"><span>${escapeHtml(title)}</span></div>
-        <button type="button" aria-label="Close">✕</button>
+        <div class="chat-box__avatar">${avatarHtml(avatar, title)}</div>
+        <div class="chat-box__title"><span>${esc(title)}</span></div>
+        <div class="chat-box__head-actions">
+          <button type="button" class="chat-box__head-btn btn-minimize" title="ย่อ">—</button>
+          <button type="button" class="chat-box__head-btn btn-close" title="ปิด">✕</button>
+        </div>
       </div>
       <div class="chat-box__body"></div>
       <form class="chat-box__input" autocomplete="off">
-        <input type="text" placeholder="พิมพ์ข้อความ..." maxlength="1000" />
-        <button type="submit">Send</button>
+        <input type="text" placeholder="พิมพ์ข้อความ…" maxlength="1000" />
+        <button type="submit" title="ส่ง">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </form>
     `;
 
-    const closeBtn = box.querySelector('.chat-box__head button');
-    const body = box.querySelector('.chat-box__body');
-    const form = box.querySelector('form');
-    const input = box.querySelector('input');
+    const head     = box.querySelector('.chat-box__head');
+    const body     = box.querySelector('.chat-box__body');
+    const form     = box.querySelector('.chat-box__input');
+    const input    = box.querySelector('input');
+    const btnMin   = box.querySelector('.btn-minimize');
+    const btnClose = box.querySelector('.btn-close');
 
-    closeBtn.addEventListener('click', () => {
-      boxes.delete(key);
-      box.remove();
+    // Toggle collapse on header click (not on buttons)
+    head.addEventListener('click', e => {
+      if (e.target.closest('.chat-box__head-actions')) return;
+      box.classList.toggle('is-collapsed');
+      if (!box.classList.contains('is-collapsed')) {
+        scrollBottom(body);
+        input.focus();
+      }
     });
 
-    form.addEventListener('submit', (e) => {
+    btnMin.addEventListener('click', e => { e.stopPropagation(); minimizeBox(key); });
+    btnClose.addEventListener('click', e => {
+      e.stopPropagation();
+      // Remove completely
+      boxes.delete(key);
+      minimized.delete(key);
+      bubblesEl.querySelector(`[data-bubble-key="${CSS.escape(key)}"]`)?.remove();
+      const idx = openOrder.indexOf(key);
+      if (idx !== -1) openOrder.splice(idx, 1);
+      box.remove();
+      refreshDock();
+    });
+
+    form.addEventListener('submit', e => {
       e.preventDefault();
       const msg = String(input.value || '').trim();
       if (!msg) return;
       input.value = '';
 
-      // optimistic UI (dedupe with clientMsgId)
-      const clientMsgId = genClientMsgId();
-      const el = appendMsg(body, {
-        userId: MY_ID,
-        username: window.VS_ME?.username || 'Me',
-        message: msg,
-        clientMsgId,
-        pending: true,
-      });
-      if (clientMsgId && el) pendingById.set(clientMsgId, el);
-      scrollToBottom(body);
+      const clientMsgId = genId();
+      const el = appendMsg(body, { userId: MY_ID, username: window.VS_ME?.username || 'Me', message: msg, pending: true });
+      if (el) pendingById.set(clientMsgId, el);
+      scrollBottom(body);
 
-      const modeNow = box.dataset.mode;
-
-      if (modeNow === 'global') {
-        const s = ensureSocket();
+      const s = ensureSocket();
+      if (mode === 'global') {
         if (s) s.emit('chat:send', { message: msg, clientMsgId });
-      } else if (modeNow === 'dm') {
+      } else if (mode === 'dm') {
         const roomId = Number(box.dataset.roomId);
-        const s = ensureSocket();
         if (s && roomId) s.emit('dm:send', { roomId, message: msg, clientMsgId });
       }
     });
 
     dock.appendChild(box);
-    boxes.set(key, box);
-    scrollToBottom(body);
+    boxes.set(key, { el: box, meta: { title, avatar, mode }, collapsed: false });
+    touchOrder(key);
+    refreshDock();
+
+    input.focus();
     return box;
   }
 
-  function appendMsg(bodyEl, { userId = null, username, message, clientMsgId = null, pending = false }) {
-    const uRaw = String(username || '').trim();
-    const u = norm(uRaw);
-
-    // ✅ decide side (prefer userId)
+  // ── Message rendering ──────────────────────────────────────────────────────
+  function appendMsg(bodyEl, { userId, username, message, pending = false, clientMsgId = null }) {
+    const u = norm(username);
     const isMe =
       (MY_ID !== null && userId !== null && Number(userId) === Number(MY_ID)) ||
       (MY_NAME && u === MY_NAME);
@@ -289,18 +367,16 @@
     if (pending) row.classList.add('is-pending');
     if (clientMsgId) row.dataset.clientMsgId = String(clientMsgId);
 
+    const uRaw = String(username || '').trim();
     row.innerHTML = `
-      <div class="u">${escapeHtml(uRaw || 'Unknown')}</div>
-      <div class="t">${escapeHtml(message || '')}</div>
+      <div class="u">${esc(uRaw || 'Unknown')}</div>
+      <div class="t">${esc(message || '')}</div>
     `;
-
     bodyEl.appendChild(row);
     return row;
   }
 
-  function scrollToBottom(bodyEl) {
-    bodyEl.scrollTop = bodyEl.scrollHeight;
-  }
+  function scrollBottom(el) { el.scrollTop = el.scrollHeight; }
 
   function renderGlobalHistory(box) {
     const body = box.querySelector('.chat-box__body');
@@ -310,98 +386,72 @@
       username: r.username,
       message: r.message
     }));
-    scrollToBottom(body);
+    scrollBottom(body);
   }
 
   function renderDmHistory(box, rows) {
     const body = box.querySelector('.chat-box__body');
     body.innerHTML = '';
-    (rows || []).forEach(m => appendMsg(body, {
+    rows.forEach(m => appendMsg(body, {
       userId: m.user_id ?? m.userId ?? null,
       username: m.username,
       message: m.message
     }));
-    scrollToBottom(body);
+    scrollBottom(body);
   }
 
+  // ── Open Global Chat ───────────────────────────────────────────────────────
   async function openGlobal() {
+    const box = openChatBox({ key: 'global', title: '🌐 Global', mode: 'global', avatar: null });
     const s = ensureSocket();
-    const box = openChatBox({ key: 'global', title: '🌐 Global Chat', mode: 'global' });
-
-    // ✅ Always pull history when opening (fix "ประวัติหาย" 100%)
     if (s) s.emit('chat:pull', { limit: 60 });
-
-    // Also render cached if already have it
-    if (!box.dataset.bound) {
-      box.dataset.bound = '1';
-      if (lastGlobalHistory.length) renderGlobalHistory(box);
-    }
-    return box;
+    else if (lastGlobalHistory.length) renderGlobalHistory(box);
   }
 
-  async function openDm(friendId, friendName = 'Friend') {
+  // ── Open DM ────────────────────────────────────────────────────────────────
+  async function openDm(friendId, friendName = 'Friend', friendAvatar = null) {
     ensureSocket();
     const fid = Number(friendId);
-    if (!fid) return null;
+    if (!fid) return;
 
     const key = `dm:${fid}`;
-    const box = openChatBox({ key, title: `👤 ${friendName}`, mode: 'dm' });
+    const box = openChatBox({ key, title: friendName, mode: 'dm', avatar: friendAvatar });
 
-    // open/get room id once
     if (!box.dataset.roomId) {
       try {
-        const j = await postJson('/dm/open', { friend_id: fid });
+        const j   = await postJson('/dm/open', { friend_id: fid });
         const rid = Number(j.room_id);
         if (rid) {
           box.dataset.roomId = String(rid);
           dmRoomByFriend.set(fid, rid);
           dmKeyByRoom.set(rid, key);
 
-          // join room for realtime
           const s = ensureSocket();
           if (s) s.emit('dm:join', { roomId: rid });
 
-          // load history and mark read
-          const history = await getJson(`/dm/rooms/${rid}/messages?limit=60`);
-          renderDmHistory(box, history.messages || []);
-
-          // mark read now that DM is open
-          await markRoomRead(rid);
-
-          typeof window.VS_REFRESH_NOTIFY === 'function' && window.VS_REFRESH_NOTIFY();
+          const hist = await getJson(`/dm/rooms/${rid}/messages?limit=60`);
+          renderDmHistory(box, hist.messages || []);
         }
       } catch (e) {
         const body = box.querySelector('.chat-box__body');
-        body.innerHTML = `<div class="chat-box__sys">DM error: ${escapeHtml(e.message || e)}</div>`;
+        if (body) body.innerHTML = `<div class="chat-box__sys">เกิดข้อผิดพลาด: ${esc(e.message)}</div>`;
       }
     }
-
-    return box;
   }
 
-  // ===== integrate with topbar dropdown items =====
-  document.addEventListener('click', (e) => {
+  // ── Click delegation for topbar items ────────────────────────────────────
+  document.addEventListener('click', e => {
     const item = e.target.closest('[data-open-chat]');
     if (!item) return;
-
-    const type = item.getAttribute('data-open-chat');
-    if (type === 'global') {
-      openGlobal();
-      return;
-    }
-
-    if (type === 'dm') {
-      const fid = item.getAttribute('data-friend-id');
-      const fname = item.getAttribute('data-friend-name') || 'Friend';
-      if (!fid) return;
-      openDm(fid, fname);
-      return;
+    if (item.dataset.openChat === 'global') { openGlobal(); return; }
+    if (item.dataset.openChat === 'dm') {
+      openDm(item.dataset.friendId, item.dataset.friendName || 'Friend', item.dataset.friendAvatar || null);
     }
   });
 
-  // ===== expose for programmatic opening =====
-  window.VS_CHAT_DOCK = {
-    openGlobal,
-    openDm,
-  };
+  // ── Public API ────────────────────────────────────────────────────────────
+  window.VS_CHAT_DOCK = { openGlobal, openDm };
+
+  // Init bubble column visibility
+  refreshDock();
 })();

@@ -94,8 +94,14 @@
   <div class="fb-panel-head">
     <span class="fb-panel-title">แชท</span>
   </div>
+  <div style="padding:8px 12px 0;">
+    <div class="fb-chat-item" data-open-chat="global" style="border-radius:10px;padding:8px 10px;background:rgba(121,247,255,.07);border:1px solid rgba(121,247,255,.15);margin-bottom:4px;cursor:pointer;">
+      <div class="fb-chat-avatar" style="background:rgba(121,247,255,.18);">🌐</div>
+      <div class="fb-chat-name">Global Chat</div>
+    </div>
+  </div>
   <div class="fb-panel-search">
-    <input type="text" placeholder="ค้นหา Messenger" class="fb-panel-search-inp" id="chat-search">
+    <input type="text" placeholder="ค้นหาเพื่อน" class="fb-panel-search-inp" id="chat-search">
   </div>
   <div class="fb-panel-body" id="chat-friend-list">
     <div class="fb-panel-empty">กำลังโหลด…</div>
@@ -249,7 +255,7 @@
 
   function renderFriends(list){
     chatList.innerHTML = list.length ? list.map(f=>`
-      <div class="fb-chat-item" onclick="openDM(${f.id})">
+      <div class="fb-chat-item" data-open-chat="dm" data-friend-id="${f.id}" data-friend-name="${esc(f.username)}" data-friend-avatar="${esc(f.avatar||'')}">
         <div class="fb-chat-avatar">
           ${f.avatar ? `<img src="${f.avatar}" alt="">` : `<div class="fb-chat-avatar-init">${esc((f.username||'?').slice(0,1).toUpperCase())}</div>`}
         </div>
@@ -257,17 +263,16 @@
       </div>`).join('') : '<div class="fb-panel-empty">ยังไม่มีเพื่อน</div>';
   }
 
-  window.openDM = async function(friendId){
-    const r = await fetch('/dm/open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({friend_id:friendId})});
-    const {ok,room_id} = await r.json();
-    if(ok) window.location.href = '/dm/' + room_id;
-  };
-
   chatBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     notifPanel.classList.add('hidden');
     chatPanel.classList.toggle('hidden');
     if(!chatPanel.classList.contains('hidden') && !allFriends.length) loadFriends();
+  });
+
+  // Close chat panel when a chat item is clicked
+  chatPanel.addEventListener('click', e => {
+    if (e.target.closest('[data-open-chat]')) chatPanel.classList.add('hidden');
   });
 
   if(chatSearch) chatSearch.addEventListener('input', ()=>{
