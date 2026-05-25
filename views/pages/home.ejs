@@ -149,7 +149,7 @@ function buildPost(p){
     <div class="post-header">
       <div class="social-avatar-wrap sm">${avatarHtml(p.avatar, p.username)}</div>
       <div class="post-meta">
-        <span class="post-author">${esc(p.username)}</span>
+        <a class="post-author" href="/user/${encodeURIComponent(p.username)}">${esc(p.username)}</a>
         <span class="post-time">${timeAgo(p.created_at)}</span>
       </div>
       ${isOwn ? `<button class="post-delete-btn" onclick="deletePost(${p.id})">🗑</button>` : ''}
@@ -220,7 +220,7 @@ async function loadComments(id){
     <div class="comment-item">
       <div class="social-avatar-wrap xs">${avatarHtml(c.avatar,c.username)}</div>
       <div class="comment-bubble">
-        <span class="comment-author">${esc(c.username)}</span>
+        <a class="comment-author" href="/user/${encodeURIComponent(c.username)}">${esc(c.username)}</a>
         <span class="comment-text">${esc(c.text)}</span>
       </div>
     </div>`).join('') : '<div class="comments-empty">ยังไม่มีความคิดเห็น</div>';
@@ -333,7 +333,7 @@ if(ME_ID){
           <div class="comment-item">
             <div class="social-avatar-wrap xs">${avatarHtml(comment.avatar, comment.username)}</div>
             <div class="comment-bubble">
-              <span class="comment-author">${esc(comment.username)}</span>
+              <a class="comment-author" href="/user/${encodeURIComponent(comment.username)}">${esc(comment.username)}</a>
               <span class="comment-text">${esc(comment.text)}</span>
             </div>
           </div>`);
