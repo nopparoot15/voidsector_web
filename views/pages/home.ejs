@@ -82,11 +82,7 @@
   </aside>
 
   <!-- ── FEED ──────────────────────────────────────────────── -->
-  <main class="social-feed">
-
-    <% if (user && !user.isGuest) { %>
-    <!-- Create Post -->
-    <div class="create-post-card">
+  <main class="social-feed"><% if (user && !user.isGuest) { %><div class="create-post-card">
       <div class="create-post-top">
         <div class="social-avatar-wrap sm">
           <% if (user.avatar) { %>
@@ -112,11 +108,7 @@
           <button class="cp-submit-btn" id="cp-submit">โพสต์</button>
         </div>
       </div>
-    </div>
-    <% } %>
-
-    <!-- Feed list -->
-    <div id="feed-list"></div>
+    </div><% } %><div id="feed-list"></div>
     <div id="feed-loading" class="feed-loading">กำลังโหลด…</div>
     <div id="feed-end" class="feed-end hidden">— ดูครบแล้ว —</div>
   </main>
