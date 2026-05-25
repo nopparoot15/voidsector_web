@@ -825,3 +825,13 @@ input.fb-search-input {
   .fb-topbar-search { display: none; }
   .fb-navtab { min-width: 42px; }
 }
+@media (max-width: 480px) {
+  .fb-topbar { padding: 0 4px; }
+  .fb-topbar__right { gap: 4px; }
+  /* hide leaderboard + tools tabs to save space */
+  .fb-navtab:nth-child(5),
+  .fb-navtab:nth-child(6) { display: none; }
+  .fb-navtab { min-width: 36px; padding: 0 2px; }
+  /* hide logout — accessible via profile page */
+  .fb-topbar-logout { display: none; }
+}

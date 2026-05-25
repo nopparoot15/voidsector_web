@@ -46,7 +46,7 @@
 .fb-cover-edit-btn {
   position: absolute;
   bottom: 12px; right: 14px;
-  z-index: 2;
+  z-index: 5;
   background: rgba(0,0,0,.55);
   color: rgba(235,245,255,.9);
   font-size: 12px; font-weight: 600;
