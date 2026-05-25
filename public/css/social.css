@@ -158,21 +158,20 @@
 .social-body .topbar-nav { display: none; } /* sidebar takes over nav */
 
 .social-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+  display: flex;
+  align-items: flex-start;
   gap: 16px;
   max-width: 1160px;
   margin: 0 auto;
   padding: 68px 12px 60px;
-  align-items: start;
   position: relative;
   z-index: 1;
 }
 
 /* ── Left Sidebar ──────────────────────────────────────────────── */
 .social-sidebar-left {
-  position: sticky;
-  top: 68px;
+  flex: 0 0 240px;
+  width: 240px;
 }
 
 .social-user-card {
@@ -248,7 +247,7 @@
 .social-avatar-placeholder.xs { font-size: 11px; }
 
 /* ── Feed ──────────────────────────────────────────────────────── */
-.social-feed { min-width: 0; display: flex; flex-direction: column; font-size: 0; }
+.social-feed { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0; }
 .social-feed > * { font-size: 1rem; }
 .social-feed > * + * { margin-top: 12px; }
 
@@ -449,11 +448,10 @@
 
 /* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .social-layout { grid-template-columns: 200px 1fr; }
-  .social-sidebar-right { display: none; }
+  .social-sidebar-left { flex: 0 0 200px; width: 200px; }
 }
 @media (max-width: 680px) {
-  .social-layout { grid-template-columns: 1fr; padding: 64px 8px 40px; }
+  .social-layout { flex-direction: column; padding: 64px 8px 40px; }
   .social-sidebar-left { display: none; }
-  .social-body .topbar-nav { display: flex; } /* show topbar nav on mobile */
+  .social-body .topbar-nav { display: flex; }
 }
