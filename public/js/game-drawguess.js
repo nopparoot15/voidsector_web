@@ -302,13 +302,16 @@
     </div>`;
   }
 
-  window.playAgain = async (gameType) => {
-    try {
-      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
-      const { roomId } = await r.json();
-      window.location.href = `/arcade/${gameType}/${roomId}`;
-    } catch { window.location.href = '/arcade'; }
-  };
+  window.playAgain = () => socket.emit('gm:new_game', { roomId });
+
+  socket.on('gm:reset', () => {
+    results.classList.add('hidden');
+    game.classList.add('hidden');
+    lobby.classList.remove('hidden');
+    startBtn.classList.add('hidden');
+    overlay.classList.add('hidden');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
 
   function renderLobby({ players: pl, host }) {
     lobbyPlayers.innerHTML = pl.map(p => `

@@ -216,13 +216,15 @@
     if (active) active.classList.add('active');
   }
 
-  window.playAgain = async (gameType) => {
-    try {
-      const r = await fetch(`/arcade/${gameType}/create`, { method: 'POST' });
-      const { roomId } = await r.json();
-      window.location.href = `/arcade/${gameType}/${roomId}`;
-    } catch { window.location.href = '/arcade'; }
-  };
+  window.playAgain = () => socket.emit('gm:new_game', { roomId });
+
+  socket.on('gm:reset', () => {
+    results.classList.add('hidden');
+    game.classList.add('hidden');
+    lobby.classList.remove('hidden');
+    startBtn.classList.add('hidden');
+    input.value = '';
+  });
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();

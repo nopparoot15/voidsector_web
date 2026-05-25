@@ -578,6 +578,20 @@ io.on('connection', (socket) => {
     io.to(`gm:${rid}`).emit('sp:reset');
   });
 
+  // Universal new-game reset for wordbomb / trivia / typerace / rps / drawguess
+  socket.on('gm:new_game', ({ roomId } = {}) => {
+    const rid = String(roomId || '').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.host !== userId) return;
+    gameStore.clearAllTimers(rid);
+    const savedOptions = room.state?.options || {};
+    room.status = 'waiting';
+    room.state  = { options: savedOptions };
+    io.to(`gm:${rid}`).emit('gm:reset');
+    io.to(`gm:${rid}`).emit('gm:players', { players: room.players, host: room.host });
+  });
+
   socket.on('xo:move', ({ roomId, cell } = {}) => {
     const rid = String(roomId || '').toUpperCase();
     const userId = Number(socket.data.userId);
