@@ -362,6 +362,52 @@
 .post-image {
   width: 100%; max-height: 480px; object-fit: contain;
   border-radius: var(--radius-sm); border: 1px solid var(--border);
+  cursor: zoom-in;
+}
+
+/* ── Lightbox ──────────────────────────────────────────────── */
+#vs-lightbox {
+  position: fixed; inset: 0;
+  z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+#vs-lightbox.vlb-open {
+  pointer-events: auto;
+  opacity: 1;
+}
+.vlb-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.88);
+  backdrop-filter: blur(6px);
+}
+.vlb-close {
+  position: absolute; top: 18px; right: 22px;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  color: #fff; font-size: 18px;
+  cursor: pointer; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.vlb-close:hover { background: rgba(255,255,255,.18); }
+.vlb-content {
+  position: relative; z-index: 1;
+  max-width: 92vw; max-height: 90vh;
+  display: flex; align-items: center; justify-content: center;
+  transform: scale(.92);
+  transition: transform .22s cubic-bezier(.2,.9,.2,1);
+}
+#vs-lightbox.vlb-open .vlb-content { transform: scale(1); }
+.vlb-img {
+  max-width: 100%; max-height: 90vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  display: block;
 }
 
 .post-actions {
