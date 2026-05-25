@@ -21,6 +21,13 @@
         🖼 เปลี่ยนรูปปก
         <input type="file" id="cover-file" accept="image/*" style="display:none">
       </label>
+      <div class="cover-reposition-bar hidden" id="cover-reposition-bar">
+        <span class="cover-reposition-hint">ลากเพื่อปรับตำแหน่ง</span>
+        <div style="display:flex;gap:8px">
+          <button class="fb-prof-btn fb-prof-btn--ghost" id="cover-cancel-pos-btn">ยกเลิก</button>
+          <button class="fb-prof-btn fb-prof-btn--primary" id="cover-save-pos-btn">บันทึก</button>
+        </div>
+      </div>
     </div>
 
     <div class="fb-profile-info-row">
@@ -386,35 +393,119 @@ document.getElementById('avatar-file').addEventListener('change', function(){
   reader.readAsDataURL(file);
 });
 
-// ── Cover upload ──────────────────────────────────────────────────
+// ── Cover upload with drag-to-reposition ─────────────────────────
 document.getElementById('cover-file').addEventListener('change', function(){
   const file = this.files[0]; if(!file) return;
   if(file.size > 5*1024*1024){ alert('รูปใหญ่เกิน 5MB'); this.value=''; return; }
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
-    img.onload = async () => {
-      const W=1200,H=350; const canvas=document.createElement('canvas');
-      canvas.width=W; canvas.height=H;
-      const ctx=canvas.getContext('2d');
-      const scale=Math.max(W/img.width,H/img.height);
-      const sw=img.width*scale, sh=img.height*scale;
-      ctx.drawImage(img,(W-sw)/2,(H-sh)/2,sw,sh);
-      const dataUrl=canvas.toDataURL('image/jpeg',0.85);
-      const r=await fetch('/api/cover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cover:dataUrl})});
-      const {ok}=await r.json();
-      if(ok){
-        const section=document.querySelector('.fb-cover-photo');
-        section.querySelector('.fb-cover-img,.fb-cover-placeholder')?.remove();
-        const newImg=document.createElement('img');
-        newImg.src=dataUrl; newImg.className='fb-cover-img';
-        section.prepend(newImg);
-      }
-    };
-    img.src=e.target.result;
+    img.onload = () => enterCoverReposition(img);
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+  this.value = '';
 });
+
+function enterCoverReposition(sourceImg) {
+  const section = document.querySelector('.fb-cover-photo');
+  const origEl = section.querySelector('.fb-cover-img,.fb-cover-placeholder');
+  origEl?.remove();
+
+  const containerW = section.offsetWidth;
+  const containerH = section.offsetHeight;
+  const scale = Math.max(containerW / sourceImg.naturalWidth, containerH / sourceImg.naturalHeight);
+  const imgW = sourceImg.naturalWidth * scale;
+  const imgH = sourceImg.naturalHeight * scale;
+
+  let offsetX = (containerW - imgW) / 2;
+  let offsetY = (containerH - imgH) / 2;
+
+  const dragImg = document.createElement('img');
+  dragImg.src = sourceImg.src;
+  dragImg.className = 'fb-cover-drag-img';
+  section.prepend(dragImg);
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  function applyOffset(ox, oy){
+    offsetX = clamp(ox, Math.min(0, containerW - imgW), 0);
+    offsetY = clamp(oy, Math.min(0, containerH - imgH), 0);
+    dragImg.style.left = offsetX + 'px';
+    dragImg.style.top  = offsetY + 'px';
+    dragImg.style.width  = imgW + 'px';
+    dragImg.style.height = imgH + 'px';
+  }
+  applyOffset(offsetX, offsetY);
+
+  let dragging = false, sx, sy, sox, soy;
+  function md(e){
+    dragging = true;
+    sx = e.touches ? e.touches[0].clientX : e.clientX;
+    sy = e.touches ? e.touches[0].clientY : e.clientY;
+    sox = offsetX; soy = offsetY;
+    dragImg.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+  function mm(e){
+    if (!dragging) return;
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    applyOffset(sox + cx - sx, soy + cy - sy);
+    e.preventDefault();
+  }
+  function mu(){ dragging = false; dragImg.style.cursor = 'grab'; }
+
+  dragImg.addEventListener('mousedown', md);
+  document.addEventListener('mousemove', mm);
+  document.addEventListener('mouseup', mu);
+  dragImg.addEventListener('touchstart', md, { passive: false });
+  document.addEventListener('touchmove', mm, { passive: false });
+  document.addEventListener('touchend', mu);
+
+  const bar = document.getElementById('cover-reposition-bar');
+  bar.classList.remove('hidden');
+
+  function cleanup(){
+    dragImg.remove();
+    bar.classList.add('hidden');
+    document.removeEventListener('mousemove', mm);
+    document.removeEventListener('mouseup', mu);
+    document.removeEventListener('touchmove', mm);
+    document.removeEventListener('touchend', mu);
+    document.getElementById('cover-save-pos-btn').disabled = false;
+    document.getElementById('cover-save-pos-btn').textContent = 'บันทึก';
+    document.getElementById('cover-save-pos-btn').onclick = null;
+    document.getElementById('cover-cancel-pos-btn').onclick = null;
+  }
+
+  document.getElementById('cover-save-pos-btn').onclick = async () => {
+    const saveBtn = document.getElementById('cover-save-pos-btn');
+    saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก…';
+    const W=1200, H=350;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const rs = W / containerW;
+    canvas.getContext('2d').drawImage(sourceImg, offsetX * rs, offsetY * rs, imgW * rs, imgH * rs);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const r = await fetch('/api/cover', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cover: dataUrl }) });
+    const { ok } = await r.json();
+    if (ok) {
+      cleanup();
+      const newImg = document.createElement('img');
+      newImg.src = dataUrl; newImg.className = 'fb-cover-img';
+      section.prepend(newImg);
+    } else {
+      alert('อัพโหลดไม่สำเร็จ');
+      saveBtn.disabled = false; saveBtn.textContent = 'บันทึก';
+    }
+  };
+
+  document.getElementById('cover-cancel-pos-btn').onclick = () => {
+    cleanup();
+    if (origEl) section.prepend(origEl);
+    else { const ph = document.createElement('div'); ph.className = 'fb-cover-placeholder'; section.prepend(ph); }
+  };
+}
 
 // ── Friends list ──────────────────────────────────────────────────
 (async ()=>{
