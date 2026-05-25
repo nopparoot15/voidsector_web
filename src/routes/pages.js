@@ -156,7 +156,7 @@ router.get('/profile', requireFullAccount, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const { rows: [userData] } = await pool.query(
-      'SELECT id, username, email, xp, streak, avatar, created_at FROM users WHERE id=$1',
+      'SELECT id, username, email, xp, streak, avatar, cover, created_at FROM users WHERE id=$1',
       [userId]
     );
     const { rows: [countRow] } = await pool.query(

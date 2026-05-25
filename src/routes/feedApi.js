@@ -7,28 +7,48 @@ const router = express.Router();
 
 const MAX_IMAGE_BYTES = 800 * 1024;
 
-// ── GET feed (friends + self) ───────────────────────────────────────────────
+// ── GET feed (friends + self, or by user_id) ──────────────────────────────
 router.get('/feed', requireLogin, async (req, res) => {
   const me = Number(req.session.user.id);
-  const limit  = Math.min(Number(req.query.limit)  || 20, 50);
-  const offset = Math.max(Number(req.query.offset) || 0,  0);
+  const limit    = Math.min(Number(req.query.limit)   || 20, 50);
+  const offset   = Math.max(Number(req.query.offset)  || 0,  0);
+  const targetId = req.query.user_id ? Number(req.query.user_id) : null;
   try {
-    const { rows } = await pool.query(
-      `SELECT p.id, p.user_id, u.username, u.avatar, p.text, p.image, p.created_at,
-              COUNT(DISTINCT l.user_id)::int AS like_count,
-              EXISTS(SELECT 1 FROM post_likes WHERE post_id=p.id AND user_id=$1) AS liked,
-              COUNT(DISTINCT c.id)::int AS comment_count
-       FROM posts p
-       JOIN users u ON u.id = p.user_id
-       LEFT JOIN post_likes l ON l.post_id = p.id
-       LEFT JOIN post_comments c ON c.post_id = p.id
-       WHERE p.user_id = $1
-          OR p.user_id IN (SELECT friend_user_id FROM friendships WHERE user_id=$1)
-       GROUP BY p.id, u.username, u.avatar
-       ORDER BY p.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [me, limit, offset]
-    );
+    let rows;
+    if (targetId) {
+      ({ rows } = await pool.query(
+        `SELECT p.id, p.user_id, u.username, u.avatar, p.text, p.image, p.created_at,
+                COUNT(DISTINCT l.user_id)::int AS like_count,
+                EXISTS(SELECT 1 FROM post_likes WHERE post_id=p.id AND user_id=$1) AS liked,
+                COUNT(DISTINCT c.id)::int AS comment_count
+         FROM posts p
+         JOIN users u ON u.id = p.user_id
+         LEFT JOIN post_likes l ON l.post_id = p.id
+         LEFT JOIN post_comments c ON c.post_id = p.id
+         WHERE p.user_id = $2
+         GROUP BY p.id, u.username, u.avatar
+         ORDER BY p.created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [me, targetId, limit, offset]
+      ));
+    } else {
+      ({ rows } = await pool.query(
+        `SELECT p.id, p.user_id, u.username, u.avatar, p.text, p.image, p.created_at,
+                COUNT(DISTINCT l.user_id)::int AS like_count,
+                EXISTS(SELECT 1 FROM post_likes WHERE post_id=p.id AND user_id=$1) AS liked,
+                COUNT(DISTINCT c.id)::int AS comment_count
+         FROM posts p
+         JOIN users u ON u.id = p.user_id
+         LEFT JOIN post_likes l ON l.post_id = p.id
+         LEFT JOIN post_comments c ON c.post_id = p.id
+         WHERE p.user_id = $1
+            OR p.user_id IN (SELECT friend_user_id FROM friendships WHERE user_id=$1)
+         GROUP BY p.id, u.username, u.avatar
+         ORDER BY p.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [me, limit, offset]
+      ));
+    }
     res.json({ ok: true, posts: rows });
   } catch (e) {
     console.error('[feed get]', e.message);
@@ -136,6 +156,17 @@ router.post('/avatar', requireFullAccount, async (req, res) => {
   }
   await pool.query(`UPDATE users SET avatar=$1 WHERE id=$2`, [raw, me]);
   req.session.user.avatar = raw;
+  res.json({ ok: true });
+});
+
+// ── COVER ─────────────────────────────────────────────────────────────────
+router.post('/cover', requireFullAccount, async (req, res) => {
+  const me  = Number(req.session.user.id);
+  const raw = (req.body.cover || '').trim();
+  if (!raw || !raw.startsWith('data:image/') || Buffer.byteLength(raw) > 800 * 1024) {
+    return res.status(400).json({ ok: false, reason: 'invalid' });
+  }
+  await pool.query(`UPDATE users SET cover=$1 WHERE id=$2`, [raw, me]);
   res.json({ ok: true });
 });
 

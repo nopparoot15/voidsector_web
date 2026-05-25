@@ -1,53 +1,307 @@
 <!DOCTYPE html>
 <html lang="th">
-<head><%- include('../partials/head') %></head>
-<body>
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/profile.css">
+</head>
+<body class="profile-body">
 <%- include('../partials/topbar') %>
-<main class="profile-main">
-  <div class="profile-card">
-    <div class="profile-avatar-wrap" id="avatar-wrap">
-      <% if (userData.avatar) { %>
-        <img src="<%- userData.avatar %>" class="profile-avatar-img" id="avatar-img" alt="avatar">
+
+<div class="fb-profile-wrap">
+
+  <!-- Cover + Avatar row -->
+  <div class="fb-cover-section">
+    <div class="fb-cover-photo">
+      <% if (userData.cover) { %>
+        <img src="<%- userData.cover %>" class="fb-cover-img" alt="cover">
       <% } else { %>
-        <div class="profile-avatar" id="avatar-placeholder"><%= userData.username.slice(0,1).toUpperCase() %></div>
+        <div class="fb-cover-placeholder"></div>
       <% } %>
-      <label class="profile-avatar-edit" title="เปลี่ยนรูป">
-        ✏️
-        <input type="file" id="avatar-file" accept="image/*" style="display:none">
+      <label class="fb-cover-edit-btn" title="เปลี่ยนรูปปก">
+        🖼 เปลี่ยนรูปปก
+        <input type="file" id="cover-file" accept="image/*" style="display:none">
       </label>
     </div>
-    <h1 class="profile-username"><%= userData.username %></h1>
-    <p class="profile-email"><%= userData.email %></p>
-    <div class="profile-level">Level <%= level %></div>
+
+    <div class="fb-profile-info-row">
+      <div class="fb-avatar-wrap" id="avatar-wrap">
+        <% if (userData.avatar) { %>
+          <img src="<%- userData.avatar %>" class="fb-avatar-img" id="avatar-img" alt="avatar">
+        <% } else { %>
+          <div class="fb-avatar-init" id="avatar-placeholder"><%= userData.username.slice(0,1).toUpperCase() %></div>
+        <% } %>
+        <label class="fb-avatar-edit-btn" title="เปลี่ยนรูปโปรไฟล์">
+          📷
+          <input type="file" id="avatar-file" accept="image/*" style="display:none">
+        </label>
+      </div>
+
+      <div class="fb-profile-name-block">
+        <h1 class="fb-profile-username"><%= userData.username %></h1>
+        <div class="fb-profile-sub">Level <%= level %> · <%= (userData.xp||0).toLocaleString() %> XP</div>
+      </div>
+
+      <div class="fb-profile-actions">
+        <a href="/logout" class="fb-prof-btn fb-prof-btn--ghost">ออกจากระบบ</a>
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="fb-profile-tabs">
+      <button class="fb-prof-tab fb-prof-tab--active" data-tab="posts">โพสต์</button>
+      <button class="fb-prof-tab" data-tab="friends">เพื่อนๆ</button>
+      <button class="fb-prof-tab" data-tab="stats">สถิติ</button>
+    </div>
   </div>
 
-  <div class="profile-stats">
-    <div class="stat-card">
-      <div class="stat-icon">⚡</div>
-      <div class="stat-value"><%= userData.xp || 0 %></div>
-      <div class="stat-label">XP ทั้งหมด</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">🔥</div>
-      <div class="stat-value"><%= userData.streak || 0 %></div>
-      <div class="stat-label">Streak วัน</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">✅</div>
-      <div class="stat-value"><%= completedCount %></div>
-      <div class="stat-label">บทเรียนที่ผ่านแล้ว</div>
-    </div>
-  </div>
+  <!-- Body -->
+  <div class="fb-profile-body">
 
-  <div class="profile-actions">
-    <a href="/home" class="btn-primary">กลับหน้าหลัก</a>
-    <a href="/logout" class="btn-outline">ออกจากระบบ</a>
+    <!-- LEFT: info card -->
+    <aside class="fb-profile-sidebar">
+      <div class="fb-info-card" id="tab-stats">
+        <h3 class="fb-info-title">สถิติ</h3>
+        <div class="fb-info-row">
+          <span class="fb-info-icon">⚡</span>
+          <span><strong><%= userData.xp || 0 %></strong> XP ทั้งหมด</span>
+        </div>
+        <div class="fb-info-row">
+          <span class="fb-info-icon">🔥</span>
+          <span><strong><%= userData.streak || 0 %></strong> วัน Streak</span>
+        </div>
+        <div class="fb-info-row">
+          <span class="fb-info-icon">✅</span>
+          <span><strong><%= completedCount %></strong> บทเรียนที่ผ่านแล้ว</span>
+        </div>
+        <div class="fb-info-row">
+          <span class="fb-info-icon">🏅</span>
+          <span>Level <strong><%= level %></strong></span>
+        </div>
+      </div>
+
+      <div class="fb-info-card" id="tab-friends-sidebar">
+        <h3 class="fb-info-title">เพื่อนๆ</h3>
+        <div id="friends-grid" class="fb-friends-grid">
+          <div class="fb-friends-loading">กำลังโหลด…</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: posts feed -->
+    <main class="fb-profile-feed">
+
+      <!-- Create post -->
+      <div class="create-post-card">
+        <div class="create-post-top">
+          <div class="fb-avatar-sm-wrap">
+            <% if (userData.avatar) { %>
+              <img src="<%- userData.avatar %>" class="fb-avatar-sm" alt="">
+            <% } else { %>
+              <div class="fb-avatar-sm-init"><%= userData.username.slice(0,1).toUpperCase() %></div>
+            <% } %>
+          </div>
+          <div class="create-post-trigger" id="cp-trigger">คุณกำลังคิดอะไรอยู่?</div>
+        </div>
+        <div class="create-post-form hidden" id="cp-form">
+          <textarea id="cp-text" class="create-post-textarea" placeholder="คุณกำลังคิดอะไรอยู่?" maxlength="4000" rows="3"></textarea>
+          <div id="cp-preview-wrap" class="cp-img-preview-wrap hidden">
+            <img id="cp-preview" class="cp-img-preview" alt="preview">
+            <button type="button" id="cp-remove-img" class="cp-remove-img">✕</button>
+          </div>
+          <div class="create-post-actions">
+            <label class="cp-img-btn" title="แนบรูป">
+              🖼
+              <input type="file" id="cp-file" accept="image/*" style="display:none">
+            </label>
+            <button class="cp-submit-btn" id="cp-submit">โพสต์</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- My posts -->
+      <div id="my-posts"></div>
+      <div id="posts-loading" class="feed-loading">กำลังโหลด…</div>
+      <div id="posts-end" class="feed-end hidden">— ดูครบแล้ว —</div>
+    </main>
   </div>
-</main>
+</div>
+
 <script>
-document.getElementById('avatar-file')?.addEventListener('change', function(){
-  const file = this.files[0];
-  if(!file) return;
+const ME_ID = <%- JSON.stringify(userData.id) %>;
+const ME_NAME = <%- JSON.stringify(userData.username) %>;
+const MY_AVATAR = <%- JSON.stringify(userData.avatar || '') %>;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function timeAgo(d){
+  const s=Math.floor((Date.now()-new Date(d))/1000);
+  if(s<60) return 'เมื่อกี้';
+  if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
+  if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
+  return Math.floor(s/86400)+' วันที่แล้ว';
+}
+function avatarHtml(avatar, username, cls=''){
+  if(avatar) return `<img src="${avatar}" class="social-avatar-img${cls?' '+cls:''}" alt="">`;
+  return `<div class="social-avatar-placeholder${cls?' '+cls:''}">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────
+document.querySelectorAll('.fb-prof-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.fb-prof-tab').forEach(b => b.classList.remove('fb-prof-tab--active'));
+    btn.classList.add('fb-prof-tab--active');
+  });
+});
+
+// ── My Posts ─────────────────────────────────────────────────────
+let postsOffset=0, postsLoading=false, postsDone=false;
+const myPosts = document.getElementById('my-posts');
+const postsLoadingEl = document.getElementById('posts-loading');
+const postsEndEl = document.getElementById('posts-end');
+
+function buildPost(p){
+  return `<div class="post-card" id="post-${p.id}">
+    <div class="post-header">
+      <div class="social-avatar-wrap sm">${avatarHtml(p.avatar, p.username)}</div>
+      <div class="post-meta">
+        <span class="post-author">${esc(p.username)}</span>
+        <span class="post-time">${timeAgo(p.created_at)}</span>
+      </div>
+      <button class="post-delete-btn" onclick="deletePost(${p.id})">🗑</button>
+    </div>
+    ${p.text ? `<div class="post-text">${esc(p.text).replace(/\n/g,'<br>')}</div>` : ''}
+    ${p.image ? `<img class="post-image" src="${p.image}" alt="รูป" loading="lazy">` : ''}
+    <div class="post-actions">
+      <button class="post-like-btn ${p.liked?'liked':''}" onclick="toggleLike(${p.id},this)">
+        <span class="like-icon">${p.liked?'❤️':'🤍'}</span> <span class="like-count">${p.like_count}</span>
+      </button>
+      <button class="post-comment-btn" onclick="toggleComments(${p.id})">
+        💬 <span id="ccount-${p.id}">${p.comment_count}</span>
+      </button>
+    </div>
+    <div class="post-comments hidden" id="comments-${p.id}">
+      <div class="comments-list" id="clist-${p.id}"></div>
+      <div class="comment-input-row">
+        <input class="comment-input" placeholder="แสดงความคิดเห็น…" maxlength="1000"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${p.id},this)}">
+      </div>
+    </div>
+  </div>`;
+}
+
+async function loadMyPosts(){
+  if(postsLoading||postsDone) return;
+  postsLoading=true; postsLoadingEl.classList.remove('hidden');
+  try{
+    const r = await fetch(`/api/feed?user_id=${ME_ID}&limit=10&offset=${postsOffset}`);
+    const {ok,posts} = await r.json();
+    if(!ok||!posts.length){ postsDone=true; postsLoadingEl.classList.add('hidden'); postsEndEl.classList.remove('hidden'); return; }
+    posts.forEach(p => myPosts.insertAdjacentHTML('beforeend', buildPost(p)));
+    postsOffset += posts.length;
+    if(posts.length<10){ postsDone=true; postsEndEl.classList.remove('hidden'); postsLoadingEl.classList.add('hidden'); }
+  }catch(e){ console.error(e); }
+  postsLoading=false; postsLoadingEl.classList.add('hidden');
+}
+loadMyPosts();
+window.addEventListener('scroll',()=>{ if(window.innerHeight+scrollY >= document.body.offsetHeight-300) loadMyPosts(); });
+
+async function toggleLike(id,btn){
+  const liked = btn.classList.contains('liked');
+  const r = await fetch(`/api/feed/${id}/like`,{method: liked?'DELETE':'POST'});
+  const {ok,count} = await r.json();
+  if(!ok) return;
+  btn.classList.toggle('liked',!liked);
+  btn.querySelector('.like-icon').textContent = !liked?'❤️':'🤍';
+  btn.querySelector('.like-count').textContent = count;
+}
+async function toggleComments(id){
+  const box = document.getElementById(`comments-${id}`);
+  if(box.classList.contains('hidden')){
+    box.classList.remove('hidden');
+    const list = document.getElementById(`clist-${id}`);
+    if(!list.dataset.loaded){ await loadComments(id); list.dataset.loaded='1'; }
+  } else { box.classList.add('hidden'); }
+}
+async function loadComments(id){
+  const r = await fetch(`/api/feed/${id}/comments`);
+  const {comments} = await r.json();
+  const list = document.getElementById(`clist-${id}`);
+  list.innerHTML = comments.length ? comments.map(c=>`
+    <div class="comment-item">
+      <div class="social-avatar-wrap xs">${avatarHtml(c.avatar,c.username)}</div>
+      <div class="comment-bubble">
+        <span class="comment-author">${esc(c.username)}</span>
+        <span class="comment-text">${esc(c.text)}</span>
+      </div>
+    </div>`).join('') : '<div class="comments-empty">ยังไม่มีความคิดเห็น</div>';
+}
+async function submitComment(id,input){
+  const text = input.value.trim();
+  if(!text) return;
+  input.value='';
+  await fetch(`/api/feed/${id}/comments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+  const list = document.getElementById(`clist-${id}`);
+  list.dataset.loaded='0';
+  await loadComments(id);
+  const cnt = document.getElementById(`ccount-${id}`);
+  cnt.textContent = Number(cnt.textContent)+1;
+}
+async function deletePost(id){
+  if(!confirm('ลบโพสต์นี้?')) return;
+  const r = await fetch(`/api/feed/${id}`,{method:'DELETE'});
+  const {ok} = await r.json();
+  if(ok) document.getElementById(`post-${id}`)?.remove();
+}
+
+// ── Create Post ──────────────────────────────────────────────────
+const cpTrigger = document.getElementById('cp-trigger');
+const cpForm    = document.getElementById('cp-form');
+const cpText    = document.getElementById('cp-text');
+const cpFile    = document.getElementById('cp-file');
+const cpPreviewWrap = document.getElementById('cp-preview-wrap');
+const cpPreview = document.getElementById('cp-preview');
+const cpSubmit  = document.getElementById('cp-submit');
+let cpImageData = null;
+
+cpTrigger.addEventListener('click',()=>{ cpTrigger.classList.add('hidden'); cpForm.classList.remove('hidden'); cpText.focus(); });
+cpFile.addEventListener('change',()=>{
+  const file = cpFile.files[0]; if(!file) return;
+  if(file.size > 5*1024*1024){ alert('รูปใหญ่เกิน 5MB'); cpFile.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX=1200; let w=img.width,h=img.height;
+      if(w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+      const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      cpImageData = canvas.toDataURL('image/jpeg',0.82);
+      cpPreview.src = cpImageData; cpPreviewWrap.classList.remove('hidden');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('cp-remove-img').addEventListener('click',()=>{
+  cpImageData=null; cpFile.value=''; cpPreviewWrap.classList.add('hidden');
+});
+cpSubmit.addEventListener('click', async ()=>{
+  const text = cpText.value.trim();
+  if(!text && !cpImageData) return;
+  cpSubmit.disabled=true; cpSubmit.textContent='กำลังโพสต์…';
+  try{
+    const r = await fetch('/api/feed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,image:cpImageData||''})});
+    const {ok,post} = await r.json();
+    if(ok && post){
+      myPosts.insertAdjacentHTML('afterbegin', buildPost(post));
+      cpText.value=''; cpImageData=null; cpPreviewWrap.classList.add('hidden');
+      cpFile.value=''; cpForm.classList.add('hidden'); cpTrigger.classList.remove('hidden');
+    }
+  }catch(e){ console.error(e); }
+  cpSubmit.disabled=false; cpSubmit.textContent='โพสต์';
+});
+
+// ── Avatar upload ─────────────────────────────────────────────────
+document.getElementById('avatar-file').addEventListener('change', function(){
+  const file = this.files[0]; if(!file) return;
   if(file.size > 3*1024*1024){ alert('รูปใหญ่เกิน 3MB'); this.value=''; return; }
   const reader = new FileReader();
   reader.onload = e => {
@@ -57,16 +311,15 @@ document.getElementById('avatar-file')?.addEventListener('change', function(){
       canvas.width=SIZE; canvas.height=SIZE;
       const ctx=canvas.getContext('2d');
       const min=Math.min(img.width,img.height);
-      const sx=(img.width-min)/2, sy=(img.height-min)/2;
-      ctx.drawImage(img,sx,sy,min,min,0,0,SIZE,SIZE);
+      ctx.drawImage(img,(img.width-min)/2,(img.height-min)/2,min,min,0,0,SIZE,SIZE);
       const dataUrl=canvas.toDataURL('image/jpeg',0.85);
       const r=await fetch('/api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar:dataUrl})});
       const {ok}=await r.json();
       if(ok){
         const wrap=document.getElementById('avatar-wrap');
-        wrap.querySelector('.profile-avatar-img, .profile-avatar')?.remove();
+        wrap.querySelector('.fb-avatar-img,.fb-avatar-init')?.remove();
         const newImg=document.createElement('img');
-        newImg.src=dataUrl; newImg.className='profile-avatar-img'; newImg.id='avatar-img';
+        newImg.src=dataUrl; newImg.className='fb-avatar-img'; newImg.id='avatar-img';
         wrap.prepend(newImg);
       }
     };
@@ -74,6 +327,53 @@ document.getElementById('avatar-file')?.addEventListener('change', function(){
   };
   reader.readAsDataURL(file);
 });
+
+// ── Cover upload ──────────────────────────────────────────────────
+document.getElementById('cover-file').addEventListener('change', function(){
+  const file = this.files[0]; if(!file) return;
+  if(file.size > 5*1024*1024){ alert('รูปใหญ่เกิน 5MB'); this.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = async () => {
+      const W=1200,H=350; const canvas=document.createElement('canvas');
+      canvas.width=W; canvas.height=H;
+      const ctx=canvas.getContext('2d');
+      const scale=Math.max(W/img.width,H/img.height);
+      const sw=img.width*scale, sh=img.height*scale;
+      ctx.drawImage(img,(W-sw)/2,(H-sh)/2,sw,sh);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.85);
+      const r=await fetch('/api/cover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cover:dataUrl})});
+      const {ok}=await r.json();
+      if(ok){
+        const section=document.querySelector('.fb-cover-photo');
+        section.querySelector('.fb-cover-img,.fb-cover-placeholder')?.remove();
+        const newImg=document.createElement('img');
+        newImg.src=dataUrl; newImg.className='fb-cover-img';
+        section.prepend(newImg);
+      }
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── Friends list ──────────────────────────────────────────────────
+(async ()=>{
+  const grid = document.getElementById('friends-grid');
+  try{
+    const r = await fetch('/friends');
+    const {ok, friends} = await r.json();
+    if(!ok||!friends.length){ grid.innerHTML='<div style="font-size:13px;color:rgba(235,245,255,.4)">ยังไม่มีเพื่อน</div>'; return; }
+    grid.innerHTML = friends.map(f=>`
+      <a class="fb-friend-item" href="/user/${encodeURIComponent(f.username)}">
+        ${f.avatar
+          ? `<img src="${f.avatar}" class="fb-friend-avatar" alt="">`
+          : `<div class="fb-friend-avatar-init">${esc((f.username||'?').slice(0,1).toUpperCase())}</div>`}
+        <span class="fb-friend-name">${esc(f.username)}</span>
+      </a>`).join('');
+  }catch(e){ grid.innerHTML=''; }
+})();
 </script>
 </body>
 </html>

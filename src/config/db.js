@@ -42,6 +42,7 @@ async function initDb() {
        CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
      )`,
     `CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
