@@ -3,6 +3,7 @@
 <head><%- include('../partials/head') %>
 <link rel="stylesheet" href="/css/social.css">
 <script src="/socket.io/socket.io.js"></script>
+<script src="/js/vs-socket.js"></script>
 </head>
 
 <% if (!user || user.isGuest) { %>
@@ -299,25 +300,46 @@ if(cpSubmit) cpSubmit.addEventListener('click', async ()=>{
 });
 
 // ── Real-time feed updates ────────────────────────────────────────
+function bumpPost(card){
+  if(feedList.firstElementChild !== card) feedList.prepend(card);
+  card.classList.remove('post-bumped');
+  void card.offsetWidth;
+  card.classList.add('post-bumped');
+  setTimeout(() => card.classList.remove('post-bumped'), 1000);
+}
+
 if(ME_ID){
-  const feedSocket = io();
-  feedSocket.on('feed:activity', ({ post_id, type, count }) => {
+  const feedSocket = window.VS_SOCKET || io();
+
+  feedSocket.on('feed:like', ({ post_id, count }) => {
     const card = document.getElementById(`post-${post_id}`);
     if(!card) return;
-    if(type === 'like'){
-      const lc = card.querySelector('.like-count');
-      if(lc) lc.textContent = count;
-    } else if(type === 'comment'){
-      const cc = document.getElementById(`ccount-${post_id}`);
-      if(cc) cc.textContent = count;
+    const lc = card.querySelector('.like-count');
+    if(lc) lc.textContent = count;
+    bumpPost(card);
+  });
+
+  feedSocket.on('feed:comment', ({ post_id, count, comment }) => {
+    const card = document.getElementById(`post-${post_id}`);
+    if(!card) return;
+    const cc = document.getElementById(`ccount-${post_id}`);
+    if(cc) cc.textContent = count;
+    // append comment to open list (skip own — submitComment already shows it)
+    if(comment.user_id !== ME_ID){
+      const list = document.getElementById(`clist-${post_id}`);
+      if(list && list.dataset.loaded === '1'){
+        list.querySelector('.comments-empty')?.remove();
+        list.insertAdjacentHTML('beforeend', `
+          <div class="comment-item">
+            <div class="social-avatar-wrap xs">${avatarHtml(comment.avatar, comment.username)}</div>
+            <div class="comment-bubble">
+              <span class="comment-author">${esc(comment.username)}</span>
+              <span class="comment-text">${esc(comment.text)}</span>
+            </div>
+          </div>`);
+      }
     }
-    if(feedList.firstElementChild !== card){
-      feedList.prepend(card);
-      card.classList.remove('post-bumped');
-      void card.offsetWidth;
-      card.classList.add('post-bumped');
-      setTimeout(() => card.classList.remove('post-bumped'), 1000);
-    }
+    bumpPost(card);
   });
 }
 

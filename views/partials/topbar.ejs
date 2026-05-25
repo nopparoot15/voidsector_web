@@ -206,6 +206,17 @@
   loadNotifs();
   setInterval(loadNotifs, 30000);
 
+  // Real-time notification via socket
+  (function waitNotifSocket(){
+    const s = window.VS_SOCKET;
+    if (s && typeof s.on === 'function') {
+      s.on('vs:notification', loadNotifs);
+      s.on('dm:notify', loadNotifs);
+    } else {
+      setTimeout(waitNotifSocket, 300);
+    }
+  })();
+
   notifBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     chatPanel.classList.add('hidden');

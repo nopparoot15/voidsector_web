@@ -116,9 +116,10 @@ router.post('/feed/:id/like', requireFullAccount, async (req, res) => {
          ON CONFLICT DO NOTHING`,
         [post.user_id, me, id]
       ).catch(() => {});
+      req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification');
     }
   }
-  req.app.get('io')?.emit('feed:activity', { post_id: id, type: 'like', count: r.count });
+  req.app.get('io')?.emit('feed:like', { post_id: id, count: r.count });
   res.json({ ok: true, count: r.count });
 });
 
@@ -129,7 +130,7 @@ router.delete('/feed/:id/like', requireFullAccount, async (req, res) => {
   const { rows: [r] } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM post_likes WHERE post_id=$1`, [id]
   );
-  req.app.get('io')?.emit('feed:activity', { post_id: id, type: 'like', count: r.count });
+  req.app.get('io')?.emit('feed:like', { post_id: id, count: r.count });
   res.json({ ok: true, count: r.count });
 });
 
@@ -162,8 +163,18 @@ router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
       `INSERT INTO notifications(user_id,from_user_id,type,post_id) VALUES($1,$2,'comment',$3)`,
       [post.user_id, me, id]
     ).catch(() => {});
+    req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification');
   }
-  req.app.get('io')?.emit('feed:activity', { post_id: id, type: 'comment', count: r.count });
+  req.app.get('io')?.emit('feed:comment', {
+    post_id: id,
+    count: r.count,
+    comment: {
+      user_id: me,
+      username: req.session.user.username,
+      avatar: req.session.user.avatar || null,
+      text
+    }
+  });
   res.json({ ok: true, count: r.count });
 });
 

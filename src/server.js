@@ -34,6 +34,81 @@ io.on('connection', (socket) => {
     const uid = Number(userId);
     socket.data.userId = Number.isFinite(uid) && uid > 0 ? uid : null;
     socket.data.username = String(username || '').trim().slice(0, 32);
+    if (socket.data.userId) socket.join(`user:${socket.data.userId}`);
+  });
+
+  // ── Global Chat ──────────────────────────────────────────────────────────────
+  socket.on('chat:pull', async ({ limit } = {}) => {
+    try {
+      const n = Math.min(Math.max(Number(limit) || 60, 1), 200);
+      const { rows } = await pool.query(
+        `SELECT id, user_id, username, message, created_at
+         FROM chat_messages WHERE room_id=1
+         ORDER BY created_at DESC LIMIT $1`, [n]
+      );
+      socket.emit('chat:history', rows.reverse());
+    } catch (e) { console.error('[chat:pull]', e.message); }
+  });
+
+  socket.on('chat:send', async ({ message, clientMsgId } = {}) => {
+    const username = socket.data.username;
+    const userId   = socket.data.userId;
+    if (!username) return;
+    const msg = String(message || '').trim().slice(0, 1000);
+    if (!msg) return;
+    try {
+      await pool.query(
+        `INSERT INTO chat_messages(room_id, user_id, username, message) VALUES(1,$1,$2,$3)`,
+        [userId || null, username, msg]
+      );
+      io.emit('chat:new', { userId, username, message: msg, clientMsgId: clientMsgId || null });
+    } catch (e) {
+      console.error('[chat:send]', e.message);
+      socket.emit('chat:error', { message: 'Send failed' });
+    }
+  });
+
+  // ── DM ───────────────────────────────────────────────────────────────────────
+  socket.on('dm:join', async ({ roomId } = {}) => {
+    const rid    = Number(roomId);
+    const userId = socket.data.userId;
+    if (!rid || !userId) return;
+    try {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM chat_room_members WHERE room_id=$1 AND user_id=$2`, [rid, userId]
+      );
+      if (rows.length) socket.join(`dm:${rid}`);
+    } catch (e) { console.error('[dm:join]', e.message); }
+  });
+
+  socket.on('dm:send', async ({ roomId, message, clientMsgId } = {}) => {
+    const rid      = Number(roomId);
+    const userId   = socket.data.userId;
+    const username = socket.data.username;
+    if (!rid || !userId || !username) return;
+    const msg = String(message || '').trim().slice(0, 1000);
+    if (!msg) return;
+    try {
+      const { rows: mem } = await pool.query(
+        `SELECT 1 FROM chat_room_members WHERE room_id=$1 AND user_id=$2`, [rid, userId]
+      );
+      if (!mem.length) return socket.emit('dm:error', { message: 'Not a member' });
+
+      await pool.query(
+        `INSERT INTO chat_messages(room_id, user_id, username, message) VALUES($1,$2,$3,$4)`,
+        [rid, userId, username, msg]
+      );
+      io.to(`dm:${rid}`).emit('dm:new', { roomId: rid, userId, username, message: msg, clientMsgId: clientMsgId || null });
+
+      // notify offline recipient
+      const { rows: others } = await pool.query(
+        `SELECT user_id FROM chat_room_members WHERE room_id=$1 AND user_id!=$2`, [rid, userId]
+      );
+      others.forEach(m => io.to(`user:${m.user_id}`).emit('dm:notify', { roomId: rid, from: username }));
+    } catch (e) {
+      console.error('[dm:send]', e.message);
+      socket.emit('dm:error', { message: 'Send failed' });
+    }
   });
 
   // ── WHITEBOARD ─────────────────────────────────────────────────────────────
