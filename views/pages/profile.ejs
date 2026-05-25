@@ -363,7 +363,7 @@ document.getElementById('cover-file').addEventListener('change', function(){
 (async ()=>{
   const grid = document.getElementById('friends-grid');
   try{
-    const r = await fetch('/friends');
+    const r = await fetch('/friends/list');
     const {ok, friends} = await r.json();
     if(!ok||!friends.length){ grid.innerHTML='<div style="font-size:13px;color:rgba(235,245,255,.4)">ยังไม่มีเพื่อน</div>'; return; }
     grid.innerHTML = friends.map(f=>`
