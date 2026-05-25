@@ -451,7 +451,7 @@
   pointer-events: none;
   z-index: 1;
 }
-.fb-search-input {
+input.fb-search-input {
   height: 36px;
   width: 200px;
   padding: 0 12px 0 40px;
