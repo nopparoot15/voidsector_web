@@ -1,28 +1,74 @@
-<header class="topbar">
-  <a href="/" class="logo">
-    <span class="logo-dot"></span>
-    VoidSector
-  </a>
-  <nav class="topbar-nav">
-    <a href="/forum" class="nav-link">Forum</a>
-    <a href="/learning" class="nav-link">Learning</a>
-    <a href="/arcade" class="nav-link">Arcade</a>
-    <a href="/tools" class="nav-link">Tools</a>
-    <a href="/leaderboard" class="nav-link">Leaderboard</a>
+<%
+  const curPath = locals.currentPath || '';
+  function isActive(href) {
+    if (href === '/') return curPath === '/';
+    return curPath.startsWith(href);
+  }
+%>
+<header class="fb-topbar">
+
+  <!-- LEFT: logo + search -->
+  <div class="fb-topbar__left">
+    <a href="/" class="fb-topbar-logo">
+      <span class="fb-topbar-logo__dot"></span>
+      <span class="fb-topbar-logo__text">VS</span>
+    </a>
+    <div class="fb-topbar-search">
+      <svg class="fb-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" placeholder="ค้นหา VoidSector" class="fb-search-input" id="globalSearch" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- CENTER: nav tabs -->
+  <nav class="fb-topbar__center">
+    <a href="/" class="fb-navtab<%= isActive('/') ? ' fb-navtab--active' : '' %>" title="หน้าหลัก">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 21V12h6v9" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>หน้าหลัก</span>
+    </a>
+    <a href="/forum" class="fb-navtab<%= isActive('/forum') ? ' fb-navtab--active' : '' %>" title="กระทู้">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>กระทู้</span>
+    </a>
+    <a href="/arcade" class="fb-navtab<%= isActive('/arcade') ? ' fb-navtab--active' : '' %>" title="เกม">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M8 12h4M10 10v4M16 11h.01M18 13h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Arcade</span>
+    </a>
+    <a href="/learning" class="fb-navtab<%= isActive('/learning') || isActive('/learn') ? ' fb-navtab--active' : '' %>" title="เรียน">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L2 8l10 5 10-5-10-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>เรียน</span>
+    </a>
+    <a href="/leaderboard" class="fb-navtab<%= isActive('/leaderboard') ? ' fb-navtab--active' : '' %>" title="Leaderboard">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>อันดับ</span>
+    </a>
+    <a href="/tools" class="fb-navtab<%= isActive('/tools') ? ' fb-navtab--active' : '' %>" title="Tools">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3-3a6 6 0 01-7 7l-7.2 7.2a2 2 0 01-2.8-2.8L11 11a6 6 0 017-7l-3.3 3.3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <span>Tools</span>
+    </a>
   </nav>
-  <div class="topbar-right">
+
+  <!-- RIGHT: user / auth -->
+  <div class="fb-topbar__right">
     <% if (user && !user.isGuest) { %>
-      <span class="streak-badge"><%= user.streak || 0 %> day streak</span>
-      <span class="xp-badge"><%= (user.xp || 0).toLocaleString() %> XP</span>
-      <a href="/profile" class="nav-link user-link"><%= user.username %></a>
-      <a href="/logout" class="btn-outline btn-sm">ออก</a>
+      <a href="/profile" class="fb-topbar-avatar" title="<%= user.username %>">
+        <% if (user.avatar) { %>
+          <img src="<%= user.avatar %>" alt="<%= user.username %>">
+        <% } else { %>
+          <span class="fb-topbar-avatar__init"><%= user.username.charAt(0).toUpperCase() %></span>
+        <% } %>
+      </a>
+      <a href="/logout" class="fb-topbar-logout" title="ออกจากระบบ">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M17 16l4-4m0 0l-4-4m4 4H7M13 5H5a2 2 0 00-2 2v10a2 2 0 002 2h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
     <% } else if (user && user.isGuest) { %>
-      <span class="guest-badge">👤 <%= user.username %></span>
-      <a href="/register" class="btn-primary btn-sm">สมัครฟรี</a>
-      <a href="/logout" class="btn-outline btn-sm">ออก</a>
+      <a href="/register" class="fb-topbar-btn">สมัครฟรี</a>
+      <a href="/logout" class="fb-topbar-logout" title="ออก">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M17 16l4-4m0 0l-4-4m4 4H7M13 5H5a2 2 0 00-2 2v10a2 2 0 002 2h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
     <% } else { %>
-      <a href="/login" class="btn-outline btn-sm">เข้าสู่ระบบ</a>
-      <a href="/register" class="btn-primary btn-sm">สมัคร</a>
+      <a href="/login"    class="fb-topbar-btn fb-topbar-btn--ghost">เข้าสู่ระบบ</a>
+      <a href="/register" class="fb-topbar-btn">สมัครฟรี</a>
     <% } %>
   </div>
+
 </header>

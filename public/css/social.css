@@ -163,7 +163,7 @@
   gap: 16px;
   max-width: 1160px;
   margin: 0 auto;
-  padding: 72px 12px 60px;
+  padding: 68px 12px 60px;
   align-items: start;
   position: relative;
   z-index: 1;
@@ -172,7 +172,7 @@
 /* ── Left Sidebar ──────────────────────────────────────────────── */
 .social-sidebar-left {
   position: sticky;
-  top: 72px;
+  top: 68px;
 }
 
 .social-user-card {

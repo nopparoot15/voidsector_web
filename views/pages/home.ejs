@@ -23,7 +23,7 @@
       <% if (typeof loginError !== 'undefined' && loginError) { %>
         <div class="fb-login-error"><%= loginError %></div>
       <% } %>
-      <form method="POST" action="/login" class="fb-login-form">
+      <form method="POST" action="/auth/login" class="fb-login-form">
         <input type="hidden" name="back" value="/">
         <input type="text"     name="email" placeholder="อีเมล หรือ ชื่อผู้ใช้" class="fb-input" required autofocus>
         <input type="password" name="password" placeholder="รหัสผ่าน"           class="fb-input" required>
