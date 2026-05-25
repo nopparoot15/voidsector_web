@@ -28,8 +28,10 @@ io.on('connection', (socket) => {
   socket.data.wbRoomId = null;
   socket.data.wpRoomId = null;
   socket.data.gameRoomId = null;
+  // Join personal room immediately so all socket types receive user-targeted events
+  if (socket.data.userId) socket.join(`user:${socket.data.userId}`);
 
-  // Legacy support: allow runtime re-identification
+  // Legacy support: allow runtime re-identification (e.g. vs-socket.js which sends no auth)
   socket.on('vs:hello', ({ userId, username } = {}) => {
     const uid = Number(userId);
     socket.data.userId = Number.isFinite(uid) && uid > 0 ? uid : null;
