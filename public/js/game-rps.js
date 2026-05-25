@@ -4,6 +4,7 @@
   if (!me) return;
 
   const socket = io({ auth: { userId: me.id, username: me.username } });
+  window.VS_TOPBAR?.hookSocket(socket);
 
   const lobby   = document.getElementById('rps-lobby');
   const game    = document.getElementById('rps-game');
@@ -21,6 +22,7 @@
   let chosen = false;
   let hasSentChoice = false;
   let history = [];
+  let currentRound = 0;
 
   document.getElementById('copy-link-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href).then(() => {
@@ -47,7 +49,7 @@
   socket.on('gm:started', ({ state: st }) => startGame(st));
 
   socket.on('rps:chose', () => {
-    if (!hasSentChoice) return; // ignore stale ack from previous game
+    if (!hasSentChoice || currentRound === 0) return; // ignore stale ack
     hasSentChoice = false;
     chosen = true;
     document.querySelectorAll('.rps-btn').forEach(b => b.classList.add('locked'));
@@ -55,6 +57,7 @@
   });
 
   socket.on('rps:reveal', ({ round, choices, winnerId, scores }) => {
+    if (round !== currentRound) return; // stale reveal from a previous game
     clearInterval(timerInterval);
     chosen = false;
     hasSentChoice = false;
@@ -76,6 +79,7 @@
   });
 
   socket.on('rps:round', ({ round, timerEndsAt }) => {
+    currentRound = round;
     document.getElementById('rps-round-label').textContent = `รอบที่ ${round}`;
     document.getElementById('rps-left').innerHTML = '';
     document.getElementById('rps-right').innerHTML = '';
@@ -108,6 +112,7 @@
     state = st;
     chosen = false;
     hasSentChoice = false;
+    currentRound = st.round;
     lobby.classList.add('hidden');
     game.classList.remove('hidden');
     document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = false; });
@@ -191,6 +196,7 @@
     history = [];
     chosen = false;
     hasSentChoice = false;
+    currentRound = 0;
     document.querySelectorAll('.rps-btn').forEach(b => { b.classList.remove('locked', 'selected'); b.disabled = false; });
     renderLobby({ players, host: roomData?.host });
   });

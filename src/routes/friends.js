@@ -36,6 +36,9 @@ router.post('/friends/request', requireLogin, async (req, res) => {
     `INSERT INTO notifications(user_id,from_user_id,type) VALUES($1,$2,'friend_request')`,
     [targetId, me]
   ).catch(() => {});
+  req.app.get('io')?.to(`user:${targetId}`).emit('vs:notification', {
+    type: 'friend_request', from_username: req.session.user.username
+  });
 
   res.json({ ok: true });
 });

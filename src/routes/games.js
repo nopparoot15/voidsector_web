@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { requireLogin } = require('../middleware/requireLogin');
 const gameStore = require('../games/store');
+const { pool } = require('../config/db');
 
 const GAME_TYPES = { xo: 'XO', wordbomb: 'Word Bomb', trivia: 'Trivia', typerace: 'Typing Race', rps: 'Rock Paper Scissors', drawguess: 'Draw & Guess', spyfall: 'Spyfall' };
 
@@ -34,6 +35,32 @@ router.get('/arcade/:gameType/:roomId', requireLogin, (req, res) => {
     roomId,
     gameType,
   });
+});
+
+router.post('/api/games/invite', requireLogin, async (req, res) => {
+  const me = Number(req.session.user.id);
+  const friendId = Number(req.body.friendId);
+  const { roomId, gameType } = req.body;
+  if (!friendId || !roomId || !GAME_TYPES[gameType]) return res.json({ ok: false });
+
+  const room = gameStore.get(String(roomId).toUpperCase());
+  if (!room || room.gameType !== gameType) return res.json({ ok: false, reason: 'room_not_found' });
+
+  const { rows: [friendship] } = await pool.query(
+    `SELECT 1 FROM friendships WHERE user_id=$1 AND friend_user_id=$2`,
+    [me, friendId]
+  );
+  if (!friendship) return res.json({ ok: false, reason: 'not_friends' });
+
+  req.app.get('io')?.to(`user:${friendId}`).emit('gm:invite', {
+    from_user_id: me,
+    from_username: req.session.user.username,
+    gameType,
+    game_label: GAME_TYPES[gameType],
+    roomId: room.id,
+  });
+
+  res.json({ ok: true });
 });
 
 module.exports = router;

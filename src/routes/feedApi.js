@@ -117,7 +117,9 @@ router.post('/feed/:id/like', requireFullAccount, async (req, res) => {
          ON CONFLICT DO NOTHING`,
         [post.user_id, me, id]
       ).catch(() => {});
-      req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification');
+      req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification', {
+        type: 'like', from_username: req.session.user.username, post_id: id
+      });
     }
   }
   req.app.get('io')?.emit('feed:like', { post_id: id, count: r.count });
@@ -174,7 +176,9 @@ router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
       `INSERT INTO notifications(user_id,from_user_id,type,post_id) VALUES($1,$2,'comment',$3)`,
       [post.user_id, me, id]
     ).catch(() => {});
-    req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification');
+    req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification', {
+      type: 'comment', from_username: req.session.user.username, post_id: id
+    });
   }
   const comment = {
     id: inserted.id,

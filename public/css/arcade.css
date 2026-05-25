@@ -1,3 +1,69 @@
+/* ===== GAME INVITE ===== */
+#gm-invite-wrap { position: relative; width: 100%; }
+.gm-invite-btn {
+  width: 100%;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(99,102,241,0.35);
+  background: rgba(99,102,241,0.08);
+  color: rgba(220,225,255,0.85);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.gm-invite-btn:hover {
+  background: rgba(99,102,241,0.15);
+  border-color: rgba(99,102,241,0.55);
+}
+.gm-invite-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0; right: 0;
+  background: #0e0e1a;
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+  z-index: 50;
+  overflow: hidden;
+}
+.gm-invite-panel-header {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(165,180,252,0.8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.gm-invite-list { max-height: 200px; overflow-y: auto; }
+.gm-invite-empty { padding: 14px; font-size: 13px; color: #71717a; text-align: center; }
+.gm-invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.gm-invite-row:last-child { border-bottom: none; }
+.gm-invite-name { font-size: 13px; color: rgba(235,240,255,.9); font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-invite-send-btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(99,102,241,0.4);
+  background: rgba(99,102,241,0.1);
+  color: rgba(220,225,255,0.9);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.gm-invite-send-btn:hover:not(:disabled) { background: rgba(99,102,241,0.2); }
+.gm-invite-send-btn:disabled { opacity: 0.6; cursor: default; }
+.gm-invite-send-btn.sent { border-color: rgba(110,231,183,0.4); color: #86efac; }
+
 /* ===== ARCADE ===== */
 .arcade-grid {
   display: grid;
@@ -1428,3 +1494,4 @@
 @media (max-width: 680px) {
   .sf-guide { position: static; margin-top: 8px; }
 }
+

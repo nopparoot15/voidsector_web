@@ -7,6 +7,7 @@
   const myId   = Number(user.id);
 
   const socket = window.io({ auth: { userId: myId, username: user.username } });
+  window.VS_TOPBAR?.hookSocket(socket);
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);

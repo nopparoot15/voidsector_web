@@ -1869,6 +1869,7 @@ function resolveRPS(rid, timeout) {
   const gameWinner = room.players.find(p => st.scores[p.userId] >= 3);
   const gameOver = !!gameWinner || st.round >= st.maxRounds;
   gameStore.setTimer(rid, 'rpsreveal', () => {
+    if (!room || room.status !== 'playing' || room.state !== st) return;
     if (gameOver) {
       room.status = 'ended'; st.phase = 'ended';
       const finalWinner = room.players.reduce((a, b) => st.scores[a.userId] >= st.scores[b.userId] ? a : b).userId;

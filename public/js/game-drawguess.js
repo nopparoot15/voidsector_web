@@ -4,6 +4,7 @@
   if (!me) return;
 
   const socket = io({ auth: { userId: me.id, username: me.username } });
+  window.VS_TOPBAR?.hookSocket(socket);
 
   const lobby   = document.getElementById('dg-lobby');
   const game    = document.getElementById('dg-game');

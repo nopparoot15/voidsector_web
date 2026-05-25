@@ -55,7 +55,14 @@ function vsBumpDmToTop(container, friendId, ts){
     }
 
     const toast = document.createElement('div');
-    toast.className = 'vs-toast';
+    toast.className = 'vs-toast' + (opts.href ? ' vs-toast--clickable' : '');
+
+    if (opts.href) {
+      toast.addEventListener('click', (e) => {
+        if (e.target.closest('.vs-toast__close')) return;
+        window.location.href = opts.href;
+      });
+    }
 
     const msg = document.createElement('div');
     msg.className = 'vs-toast__msg';
@@ -67,7 +74,8 @@ function vsBumpDmToTop(container, friendId, ts){
       btn.type = 'button';
       btn.className = 'vs-toast__btn';
       btn.textContent = String(opts.actionText);
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         try { opts.onAction(); } catch (_) {}
         toast.remove();
       });
@@ -78,7 +86,7 @@ function vsBumpDmToTop(container, friendId, ts){
     close.type = 'button';
     close.className = 'vs-toast__close';
     close.textContent = '✕';
-    close.addEventListener('click', () => toast.remove());
+    close.addEventListener('click', (e) => { e.stopPropagation(); toast.remove(); });
     toast.appendChild(close);
 
     wrap.appendChild(toast);
@@ -484,9 +492,12 @@ div.innerHTML = `
   setInterval(fetchSummary, 15000);
 
   // If socket exists, refresh on new dm
-  const hookSocket = () => {
-    const s = window.VS_SOCKET || window.socket || null;
+  let _hookedSocket = null;
+  const hookSocket = (explicitSocket) => {
+    const s = explicitSocket || window.VS_SOCKET || window.socket || null;
     if (!s || typeof s.on !== 'function') return;
+    if (s === _hookedSocket) return; // already hooked this socket
+    _hookedSocket = s;
     // when DM arrives and you are in the room view
     s.on('dm:new', () => fetchSummary());
     // when DM arrives but you are not in the room view
@@ -501,6 +512,40 @@ div.innerHTML = `
       const serverAlerts = Number(lastSummary?.counts?.alerts) || 0;
       setBadge('notifications', serverAlerts + (wpInvitesLocal || []).length);
       renderAlerts(lastSummary?.friend_requests || [], lastSummary?.whiteboard_invites || [], wpInvitesLocal || []);
+    });
+
+    // general notifications (likes, comments, friend requests)
+    s.on('vs:notification', (p = {}) => {
+      fetchSummary();
+      const type = p.type || '';
+      const from = p.from_username ? `@${p.from_username}` : 'Someone';
+      let msg = '';
+      let href = '/';
+      if (type === 'like') { msg = `❤️ ${from} ถูกใจโพสต์ของคุณ`; }
+      else if (type === 'comment') { msg = `💬 ${from} แสดงความคิดเห็นในโพสต์ของคุณ`; }
+      else if (type === 'friend_request') { msg = `👋 ${from} ส่งคำขอเป็นเพื่อน`; href = ''; }
+      else { msg = '🔔 มีการแจ้งเตือนใหม่'; }
+      if (href) {
+        showToast(msg, { ttlMs: 6000, href });
+      } else {
+        showToast(msg, {
+          ttlMs: 6000,
+          actionText: 'ดู',
+          onAction: () => {
+            const notifMenu = document.querySelector('.vs-menu[data-menu="notifications"]');
+            if (notifMenu) { closeAll(); notifMenu.setAttribute('open', ''); }
+          }
+        });
+      }
+    });
+
+    // game invites
+    s.on('gm:invite', (p = {}) => {
+      const from = p.from_username ? `@${p.from_username}` : 'Someone';
+      const label = p.game_label || p.gameType || 'เกม';
+      const msg = `🎮 ${from} ชวนคุณเล่น ${label}!`;
+      const href = p.roomId && p.gameType ? `/arcade/${p.gameType}/${p.roomId}` : '';
+      showToast(msg, { ttlMs: 10000, href: href || undefined });
     });
   };
 
@@ -598,6 +643,7 @@ div.innerHTML = `
     closeAll,
     setBadge,
     refresh: fetchSummary,
-    getSummary: () => lastSummary
+    getSummary: () => lastSummary,
+    hookSocket,
   };
 })();
