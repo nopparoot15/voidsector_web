@@ -54,7 +54,7 @@
       <!-- Avatar -->
       <a href="/profile" class="fb-topbar-avatar" title="<%= user.username %>">
         <% if (user.avatar) { %>
-          <img src="<%= user.avatar %>" alt="<%= user.username %>" onerror="this.style.display='none'">
+          <img src="<%= user.avatar %>" alt="<%= user.username %>" onerror="this.src='/images/avatar-default.svg';this.onerror=null">
         <% } else { %>
           <span class="fb-topbar-avatar__init"><%= user.username.charAt(0).toUpperCase() %></span>
         <% } %>
@@ -383,7 +383,7 @@
       const lastMsg = t.last_message ? esc(t.last_message.slice(0,55)) : '<span style="opacity:.5">เริ่มการสนทนา</span>';
       return `<div class="fb-chat-item" data-open-chat="dm" data-friend-id="${t.friend_id}" data-friend-name="${esc(t.username)}" data-friend-avatar="${esc(t.avatar||'')}">
         <div class="fb-chat-avatar">
-          ${t.avatar?`<img src="${esc(t.avatar)}" alt="" onerror="this.style.display='none'">`:`<div class="fb-chat-avatar-init">${esc((t.username||'?').charAt(0).toUpperCase())}</div>`}
+          ${t.avatar?`<img src="${esc(t.avatar)}" alt="" onerror="this.src='/images/avatar-default.svg';this.onerror=null">`:`<div class="fb-chat-avatar-init">${esc((t.username||'?').charAt(0).toUpperCase())}</div>`}
         </div>
         <div class="fb-chat-info">
           <div class="fb-chat-name${unread?' fb-chat-name--unread':''}">${esc(t.username)}</div>
@@ -399,7 +399,7 @@
     const friendHtml = friends.map(f=>`
       <div class="fb-chat-item" data-open-chat="dm" data-friend-id="${f.id}" data-friend-name="${esc(f.username)}" data-friend-avatar="${esc(f.avatar||'')}">
         <div class="fb-chat-avatar">
-          ${f.avatar?`<img src="${esc(f.avatar)}" alt="" onerror="this.style.display='none'">`:`<div class="fb-chat-avatar-init">${esc((f.username||'?').charAt(0).toUpperCase())}</div>`}
+          ${f.avatar?`<img src="${esc(f.avatar)}" alt="" onerror="this.src='/images/avatar-default.svg';this.onerror=null">`:`<div class="fb-chat-avatar-init">${esc((f.username||'?').charAt(0).toUpperCase())}</div>`}
         </div>
         <div class="fb-chat-info">
           <div class="fb-chat-name">${esc(f.username)}</div>

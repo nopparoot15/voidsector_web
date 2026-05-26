@@ -22,7 +22,7 @@
     <div class="fb-profile-info-row">
       <div class="fb-avatar-wrap">
         <% if (target.avatar) { %>
-          <img src="<%- target.avatar %>" class="fb-avatar-img" alt="avatar" onerror="this.style.display='none'">
+          <img src="<%- target.avatar %>" class="fb-avatar-img" alt="avatar" onerror="this.src='/images/avatar-default.svg';this.onerror=null">
         <% } else { %>
           <div class="fb-avatar-init"><%= target.username.slice(0,1).toUpperCase() %></div>
         <% } %>

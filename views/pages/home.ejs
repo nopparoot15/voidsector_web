@@ -62,7 +62,7 @@
     <a href="/profile" class="social-user-card">
       <div class="social-avatar-wrap">
         <% if (user.avatar) { %>
-          <img src="<%- user.avatar %>" class="social-avatar-img" alt="avatar" onerror="this.style.display='none'">
+          <img src="<%- user.avatar %>" class="social-avatar-img" alt="avatar" onerror="this.src='/images/avatar-default.svg';this.onerror=null">
         <% } else { %>
           <div class="social-avatar-placeholder"><%= (user.username||'?').slice(0,1).toUpperCase() %></div>
         <% } %>
@@ -87,7 +87,7 @@
       <div class="create-post-top">
         <div class="social-avatar-wrap sm">
           <% if (user.avatar) { %>
-            <img src="<%- user.avatar %>" class="social-avatar-img" alt="" onerror="this.style.display='none'">
+            <img src="<%- user.avatar %>" class="social-avatar-img" alt="" onerror="this.src='/images/avatar-default.svg';this.onerror=null">
           <% } else { %>
             <div class="social-avatar-placeholder sm"><%= (user.username||'?').slice(0,1).toUpperCase() %></div>
           <% } %>

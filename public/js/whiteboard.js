@@ -658,7 +658,7 @@ function drawText
           return `
             <label class="wb-friend">
               <div class="wb-friend__left">
-                <img class="wb-avatar" src="${av}" alt="" onerror="this.style.display='none'" />
+                <img class="wb-avatar" src="${av}" alt="" onerror="this.src='/images/avatar-default.svg';this.onerror=null" />
                 <div class="wb-name">${escapeHtml(f.username)}</div>
               </div>
               <input type="checkbox" class="wb-friendPick" value="${f.id}" />
