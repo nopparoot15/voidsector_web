@@ -5,7 +5,8 @@ const { requireLogin, requireFullAccount } = require('../middleware/requireLogin
 const { pool } = require('../config/db');
 
 router.get('/', (req, res) => {
-  res.render('pages/home', { title: 'VoidSector', loginError: req.query.error || null });
+  if (!req.session?.user) return res.redirect('/login');
+  res.render('pages/home', { title: 'VoidSector' });
 });
 
 router.get('/home', (req, res) => res.redirect(301, '/'));
@@ -47,12 +48,12 @@ router.get('/music', (req, res) => {
 });
 
 router.get('/login', (req, res) => {
-  if (req.session?.user && !req.session.user.isGuest) return res.redirect('/home');
+  if (req.session?.user) return res.redirect('/home');
   res.render('pages/login', { title: 'เข้าสู่ระบบ', error: req.query.error || null });
 });
 
 router.get('/register', (req, res) => {
-  if (req.session?.user && !req.session.user.isGuest) return res.redirect('/home');
+  if (req.session?.user) return res.redirect('/home');
   res.render('pages/register', { title: 'สมัครสมาชิก', error: req.query.error || null });
 });
 

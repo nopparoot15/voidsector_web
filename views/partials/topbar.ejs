@@ -40,7 +40,7 @@
 
   <!-- RIGHT: user / auth -->
   <div class="fb-topbar__right">
-    <% if (user && !user.isGuest) { %>
+    <% if (user) { %>
       <!-- Chat button -->
       <button class="fb-topbar-icon-btn" id="chat-btn" title="แชท">
         <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -60,11 +60,6 @@
         <% } %>
       </a>
       <a href="/logout" class="fb-topbar-logout" title="ออกจากระบบ">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M17 16l4-4m0 0l-4-4m4 4H7M13 5H5a2 2 0 00-2 2v10a2 2 0 002 2h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-    <% } else if (user && user.isGuest) { %>
-      <a href="/register" class="fb-topbar-btn">สมัครฟรี</a>
-      <a href="/logout" class="fb-topbar-logout" title="ออก">
         <svg viewBox="0 0 24 24" fill="none"><path d="M17 16l4-4m0 0l-4-4m4 4H7M13 5H5a2 2 0 00-2 2v10a2 2 0 002 2h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     <% } else { %>
@@ -112,8 +107,7 @@
 <script>
 // ── Notification & Chat System ───────────────────────────────────
 (function(){
-  const IS_AUTH = <%- JSON.stringify(!!(locals.user && !locals.user.isGuest)) %>;
-  if (!IS_AUTH) return;
+  if (!<%- JSON.stringify(!!locals.user) %>) return;
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function timeAgo(d){
@@ -496,7 +490,7 @@
 })();
 </script>
 
-<% if (user && !user.isGuest) { %>
+<% if (user) { %>
 <script>
 window.VS_ME = { id: <%- JSON.stringify(user.id) %>, username: <%- JSON.stringify(user.username) %>, avatar: <%- JSON.stringify(user.avatar || null) %> };
 </script>

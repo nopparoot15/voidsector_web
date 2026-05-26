@@ -5,48 +5,6 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/vs-socket.js"></script>
 </head>
-
-<% if (!user || user.isGuest) { %>
-<!-- ════════════════════════════════════════════════════
-     LANDING — not logged in (Facebook-style)
-════════════════════════════════════════════════════ -->
-<body class="landing-body">
-<div class="fb-landing">
-
-  <!-- Left -->
-  <div class="fb-landing-left">
-    <div class="fb-logo">VoidSector</div>
-    <p class="fb-tagline">ติดตามข่าวสาร เชื่อมต่อกับเพื่อน<br>และสนุกไปด้วยกันในที่เดียว</p>
-  </div>
-
-  <!-- Right: Login card -->
-  <div class="fb-landing-right">
-    <div class="fb-login-card">
-      <% if (typeof loginError !== 'undefined' && loginError) { %>
-        <div class="fb-login-error"><%= loginError %></div>
-      <% } %>
-      <form method="POST" action="/auth/login" class="fb-login-form">
-        <input type="hidden" name="back" value="/">
-        <input type="text"     name="email" placeholder="อีเมล หรือ ชื่อผู้ใช้" class="fb-input" required autofocus>
-        <input type="password" name="password" placeholder="รหัสผ่าน"           class="fb-input" required>
-        <button type="submit" class="fb-btn-login">เข้าสู่ระบบ</button>
-        <a href="/login" class="fb-forgot">ลืมรหัสผ่าน?</a>
-      </form>
-      <div class="fb-divider"></div>
-      <a href="/register" class="fb-btn-register">สร้างบัญชีใหม่</a>
-    </div>
-    <p class="fb-landing-footer">
-      <a href="/arcade">🕹 Arcade</a> · <a href="/forum">💬 Forum</a> · <a href="/learning">📚 Learning</a>
-    </p>
-  </div>
-
-</div>
-</body>
-</html>
-<% } else { %>
-<!-- ════════════════════════════════════════════════════
-     SOCIAL FEED — logged in
-════════════════════════════════════════════════════ -->
 <body class="social-body">
 <%- include('../partials/topbar') %>
 
@@ -83,7 +41,8 @@
   </aside>
 
   <!-- ── FEED ──────────────────────────────────────────────── -->
-  <main class="social-feed"><% if (user && !user.isGuest) { %><div class="create-post-card">
+  <main class="social-feed">
+    <div class="create-post-card">
       <div class="create-post-top">
         <div class="social-avatar-wrap sm">
           <% if (user.avatar) { %>
@@ -109,20 +68,18 @@
           <button class="cp-submit-btn" id="cp-submit">โพสต์</button>
         </div>
       </div>
-    </div><% } %><div id="feed-list"></div>
+    </div>
+    <div id="feed-list"></div>
     <div id="feed-loading" class="feed-loading">กำลังโหลด…</div>
     <div id="feed-end" class="feed-end hidden">— ดูครบแล้ว —</div>
   </main>
 
-
 </div><!-- end social-layout -->
 
 <script>
-const ME_ID = <%- JSON.stringify(user?.id || null) %>;
-const ME_NAME = <%- JSON.stringify(user?.username || '') %>;
-const IS_GUEST = <%- JSON.stringify(!!(user?.isGuest)) %>;
+const ME_ID = <%- JSON.stringify(user.id) %>;
+const ME_NAME = <%- JSON.stringify(user.username) %>;
 
-// ── helpers ──────────────────────────────────────────────────────
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function timeAgo(d){
   const s=Math.floor((Date.now()-new Date(d))/1000);
@@ -132,11 +89,10 @@ function timeAgo(d){
   return Math.floor(s/86400)+' วันที่แล้ว';
 }
 function avatarHtml(avatar, username, size=''){
-  if(avatar) return `<img src="${avatar}" class="social-avatar-img${size?' '+size:''}" alt="">`;
+  if(avatar) return `<img src="${avatar}" class="social-avatar-img${size?' '+size:''}" alt="" onerror="this.src='/images/avatar-default.svg';this.onerror=null">`;
   return `<div class="social-avatar-placeholder${size?' '+size:''}">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
 }
 
-// ── Feed ─────────────────────────────────────────────────────────
 let feedOffset=0, feedLoading=false, feedDone=false;
 const feedList = document.getElementById('feed-list');
 const feedLoadingEl = document.getElementById('feed-loading');
@@ -165,10 +121,10 @@ function buildPost(p){
     </div>
     <div class="post-comments hidden" id="comments-${p.id}">
       <div class="comments-list" id="clist-${p.id}"></div>
-      ${!IS_GUEST ? `<div class="comment-input-row">
+      <div class="comment-input-row">
         <input class="comment-input" placeholder="แสดงความคิดเห็น…" maxlength="1000"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${p.id},this)}">
-      </div>` : ''}
+      </div>
     </div>
   </div>`;
 }
@@ -189,7 +145,7 @@ async function loadFeed(){
   feedLoadingEl.classList.add('hidden');
 }
 
-if(ME_ID) loadFeed();
+loadFeed();
 window.addEventListener('scroll',()=>{ if(window.innerHeight+scrollY >= document.body.offsetHeight-300) loadFeed(); });
 
 async function toggleLike(id,btn){
@@ -299,7 +255,6 @@ async function deletePost(id){
   if(ok) document.getElementById(`post-${id}`)?.remove();
 }
 
-// ── Create Post ──────────────────────────────────────────────────
 const cpTrigger = document.getElementById('cp-trigger');
 const cpForm    = document.getElementById('cp-form');
 const cpText    = document.getElementById('cp-text');
@@ -353,7 +308,6 @@ if(cpSubmit) cpSubmit.addEventListener('click', async ()=>{
   cpSubmit.disabled=false; cpSubmit.textContent='โพสต์';
 });
 
-// ── Real-time feed updates ────────────────────────────────────────
 function bumpPost(card){
   if(feedList.firstElementChild !== card) feedList.prepend(card);
   card.classList.remove('post-bumped');
@@ -362,35 +316,31 @@ function bumpPost(card){
   setTimeout(() => card.classList.remove('post-bumped'), 1000);
 }
 
-if(ME_ID){
-  const feedSocket = window.VS_SOCKET || io();
+const feedSocket = window.VS_SOCKET || io();
 
-  feedSocket.on('feed:like', ({ post_id, count }) => {
-    const card = document.getElementById(`post-${post_id}`);
-    if(!card) return;
-    const lc = card.querySelector('.like-count');
-    if(lc) lc.textContent = count;
-    bumpPost(card);
-  });
+feedSocket.on('feed:like', ({ post_id, count }) => {
+  const card = document.getElementById(`post-${post_id}`);
+  if(!card) return;
+  const lc = card.querySelector('.like-count');
+  if(lc) lc.textContent = count;
+  bumpPost(card);
+});
 
-  feedSocket.on('feed:comment', ({ post_id, count, comment }) => {
-    const card = document.getElementById(`post-${post_id}`);
-    if(!card) return;
-    const cc = document.getElementById(`ccount-${post_id}`);
-    if(cc) cc.textContent = count;
-    // append comment to open list (skip own — submitComment already shows it)
-    if(comment.user_id !== ME_ID){
-      const list = document.getElementById(`clist-${post_id}`);
-      if(list && list.dataset.loaded === '1'){
-        list.querySelector('.comments-empty')?.remove();
-        list.insertAdjacentHTML('beforeend', buildCommentHtml(comment, post_id));
-      }
+feedSocket.on('feed:comment', ({ post_id, count, comment }) => {
+  const card = document.getElementById(`post-${post_id}`);
+  if(!card) return;
+  const cc = document.getElementById(`ccount-${post_id}`);
+  if(cc) cc.textContent = count;
+  if(comment.user_id !== ME_ID){
+    const list = document.getElementById(`clist-${post_id}`);
+    if(list && list.dataset.loaded === '1'){
+      list.querySelector('.comments-empty')?.remove();
+      list.insertAdjacentHTML('beforeend', buildCommentHtml(comment, post_id));
     }
-    bumpPost(card);
-  });
-}
+  }
+  bumpPost(card);
+});
 
 </script>
 </body>
 </html>
-<% } %>
