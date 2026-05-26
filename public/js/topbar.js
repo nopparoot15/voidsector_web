@@ -409,7 +409,7 @@ div.innerHTML = `
   async function fetchFriends() {
     if (!isLoggedIn) return;
     try {
-      const r = await fetch('/api/friends/list', { credentials: 'include' });
+      const r = await fetch('/friends/list', { credentials: 'include' });
       const j = await r.json();
       if (j && j.ok) {
         lastFriends = j.friends || [];
