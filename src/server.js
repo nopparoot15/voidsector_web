@@ -546,8 +546,16 @@ io.on('connection', (socket) => {
       gameStore.setTimer(rid, 'sptimer', () => endSpyfall(rid, 'spy', 'หมดเวลา — สปายรอดไปได้!'), duration);
 
     } else if (room.gameType === 'checkers') {
-      room.state = { board: initCheckersBoard(), turn: 1, p1: room.players[0].userId, p2: room.players[1].userId, winner: null, multiJumpFrom: null };
+      const CK_TURN_MS = 30000;
+      room.state = { board: initCheckersBoard(), turn: 1, p1: room.players[0].userId, p2: room.players[1].userId, winner: null, multiJumpFrom: null, timerEndsAt: Date.now() + CK_TURN_MS };
       io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
+      gameStore.setTimer(rid, 'cktimer', () => {
+        const st = room.state;
+        if (st.winner || room.status !== 'playing') return;
+        st.winner = st.turn === 1 ? st.p2 : st.p1;
+        room.status = 'ended';
+        io.to(`gm:${rid}`).emit('checkers:state', st);
+      }, CK_TURN_MS);
 
     } else if (room.gameType === 'drawguess') {
       const word = DG_WORDS[Math.floor(Math.random() * DG_WORDS.length)];
@@ -789,6 +797,7 @@ io.on('connection', (socket) => {
       ckPromote(b, to);
     }
     st.board = b;
+    const CK_TURN_MS = 30000;
     if (canContinue) {
       st.multiJumpFrom = to;
     } else {
@@ -796,6 +805,17 @@ io.on('connection', (socket) => {
       st.turn = player===1 ? 2 : 1;
       const w = ckWinner(b, st.turn);
       if (w) { st.winner = w===1 ? st.p1 : st.p2; room.status = 'ended'; }
+    }
+    if (st.winner) {
+      gameStore.clearTimer(rid, 'cktimer');
+    } else {
+      st.timerEndsAt = Date.now() + CK_TURN_MS;
+      gameStore.setTimer(rid, 'cktimer', () => {
+        if (st.winner || room.status !== 'playing') return;
+        st.winner = st.turn === 1 ? st.p2 : st.p1;
+        room.status = 'ended';
+        io.to(`gm:${rid}`).emit('checkers:state', st);
+      }, CK_TURN_MS);
     }
     io.to(`gm:${rid}`).emit('checkers:state', st);
   });
@@ -805,9 +825,31 @@ io.on('connection', (socket) => {
     const room = gameStore.get(rid);
     if (!room || room.gameType !== 'checkers') return;
     if (!room.players.find(p => p.userId === Number(socket.data.userId))) return;
+    const CK_TURN_MS = 30000;
     room.status = 'playing';
-    room.state = { board: initCheckersBoard(), turn: 1, p1: room.state.p1, p2: room.state.p2, winner: null, multiJumpFrom: null };
+    room.state = { board: initCheckersBoard(), turn: 1, p1: room.state.p1, p2: room.state.p2, winner: null, multiJumpFrom: null, timerEndsAt: Date.now() + CK_TURN_MS };
+    gameStore.setTimer(rid, 'cktimer', () => {
+      const st = room.state;
+      if (st.winner || room.status !== 'playing') return;
+      st.winner = st.turn === 1 ? st.p2 : st.p1;
+      room.status = 'ended';
+      io.to(`gm:${rid}`).emit('checkers:state', st);
+    }, CK_TURN_MS);
     io.to(`gm:${rid}`).emit('checkers:state', room.state);
+  });
+
+  socket.on('checkers:resign', ({ roomId } = {}) => {
+    const rid = String(roomId||'').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'checkers' || room.status !== 'playing') return;
+    const st = room.state;
+    if (st.winner) return;
+    if (userId !== st.p1 && userId !== st.p2) return;
+    st.winner = userId === st.p1 ? st.p2 : st.p1;
+    room.status = 'ended';
+    gameStore.clearTimer(rid, 'cktimer');
+    io.to(`gm:${rid}`).emit('checkers:state', st);
   });
 
   socket.on('wb:setoptions', ({ roomId, lang } = {}) => {

@@ -13,10 +13,13 @@
   const resultEl   = document.getElementById('ck-result');
   const actionsEl  = document.getElementById('ck-actions');
   const restartBtn = document.getElementById('ck-restart-btn');
+  const resignBtn  = document.getElementById('ck-resign-btn');
+  const timerEl    = document.getElementById('ck-timer');
   const lobbyPlayers = document.getElementById('lobby-players');
 
   let state = null, players = [], roomData = null;
-  let selected = null; // index of selected piece
+  let selected = null;
+  let timerInterval = null;
 
   document.getElementById('copy-link-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href).then(() => {
@@ -42,13 +45,16 @@
   });
 
   socket.on('gm:started', ({ state: st }) => startGame(st));
-  socket.on('checkers:state', st => { state = st; selected = null; renderBoard(); });
+  socket.on('checkers:state', st => { state = st; selected = null; renderBoard(); startTimer(); });
 
   startBtn.addEventListener('click', () => {
     if (players.length < 2) return alert('ต้องมีผู้เล่น 2 คน');
     socket.emit('gm:start', { roomId });
   });
   restartBtn.addEventListener('click', () => socket.emit('checkers:restart', { roomId }));
+  resignBtn.addEventListener('click', () => {
+    if (confirm('ยืนยันการยอมแพ้?')) socket.emit('checkers:resign', { roomId });
+  });
 
   function startGame(st) {
     state = st; selected = null;
@@ -56,6 +62,18 @@
     game.classList.remove('hidden');
     renderNames(st);
     renderBoard();
+    startTimer();
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    if (!state || state.winner) { timerEl.textContent = '—'; timerEl.className = 'ck-timer'; return; }
+    timerInterval = setInterval(() => {
+      if (!state || state.winner) { clearInterval(timerInterval); timerEl.textContent = '—'; timerEl.className = 'ck-timer'; return; }
+      const left = Math.max(0, Math.ceil((state.timerEndsAt - Date.now()) / 1000));
+      timerEl.textContent = left + 's';
+      timerEl.className = 'ck-timer' + (left <= 10 ? ' danger' : '');
+    }, 250);
   }
 
   function renderNames(st) {
@@ -138,6 +156,7 @@
   function renderBoard() {
     if (!state) return;
     const player = state.p1===me.id?1:state.p2===me.id?2:0;
+    const flipped = player === 2; // p2 sees the board flipped so their pieces are at the bottom
     const myPieces = player===1?[1,3]:player===2?[2,4]:[];
     const must = mustCapturePieces(state.board, player);
     const validTargets = selected!=null ? getValidTargets(selected) : [];
@@ -148,8 +167,10 @@
       : [];
 
     boardEl.innerHTML = '';
-    for (let r=0;r<8;r++) {
-      for (let c=0;c<8;c++) {
+    for (let vr=0;vr<8;vr++) {
+      for (let vc=0;vc<8;vc++) {
+        const r = flipped ? 7-vr : vr;
+        const c = flipped ? 7-vc : vc;
         const idx=r*8+c;
         const isDark=(r+c)%2===1;
         const cell=document.createElement('div');
@@ -183,16 +204,22 @@
     document.getElementById('ck-p1').classList.toggle('active', state.turn===1&&!state.winner);
     document.getElementById('ck-p2').classList.toggle('active', state.turn===2&&!state.winner);
 
+    const isPlayer = player === 1 || player === 2;
+
     if (state.winner) {
       const winPlayer=players.find(p=>p.userId===state.winner);
       const isMe=state.winner===me.id;
       resultEl.textContent=isMe?'🎉 คุณชนะ!':`😔 ${esc(winPlayer?.username||'?')} ชนะ`;
       resultEl.classList.remove('hidden');
       actionsEl.classList.remove('hidden');
+      resignBtn.classList.add('hidden');
+      restartBtn.classList.remove('hidden');
       statusEl.textContent='';
     } else {
       resultEl.classList.add('hidden');
-      actionsEl.classList.add('hidden');
+      actionsEl.classList.toggle('hidden', !isPlayer);
+      resignBtn.classList.toggle('hidden', !isPlayer);
+      restartBtn.classList.add('hidden');
       if (player && player===state.turn) {
         statusEl.textContent = state.multiJumpFrom!=null ? '🔴 กระโดดต่อได้อีก!' : (must.length>0?'⚠️ ต้องกินหมาก!':'ตาคุณ — เลือกหมาก');
       } else {
