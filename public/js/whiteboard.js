@@ -645,7 +645,7 @@ function drawText
     async function loadFriends() {
       if (!listEl) return;
       try {
-        const r = await fetch('/api/friends/list');
+        const r = await fetch('/friends/list', { credentials: 'include' });
         const j = await r.json();
         if (!j.ok) throw new Error('no_friends');
         const friends = Array.isArray(j.friends) ? j.friends : [];

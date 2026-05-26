@@ -769,7 +769,7 @@
   async function loadFriends() {
     if (!els.friends) return;
     try {
-      const r = await fetch('/api/friends/list', { credentials: 'include' });
+      const r = await fetch('/friends/list', { credentials: 'include' });
       const data = await r.json();
       const friends = data?.friends || [];
 
