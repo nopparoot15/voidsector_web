@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;color:#e8eaf0;font-family:'Inter','Noto Sans Thai',sans-serif;min-height:100vh}
+.game-wrap{max-width:520px;margin:0 auto;padding:16px}
+.game-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.back-btn{background:rgba(255,255,255,.07);border:none;color:#aab;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.back-btn:hover{background:rgba(255,255,255,.12)}
+.game-title{font-size:28px;font-weight:800;color:#38bdf8}
+.stat-bar{display:flex;gap:10px;margin-bottom:14px}
+.stat-box{background:#1e2230;border-radius:10px;padding:10px 14px;text-align:center;flex:1}
+.stat-label{font-size:11px;color:#667;text-transform:uppercase;letter-spacing:.05em}
+.stat-val{font-size:20px;font-weight:700;color:#38bdf8}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{aspect-ratio:1;background:#1e2230;border-radius:10px;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .35s}
+.card.flipped,.card.matched{transform:rotateY(180deg)}
+.card.matched .back{background:#0f3460;border:2px solid #38bdf8}
+.card-face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:10px;backface-visibility:hidden;font-size:clamp(22px,6vw,36px)}
+.front{background:#1e2230}
+.front::after{content:'❓';font-size:clamp(18px,5vw,28px);color:#334}
+.back{background:#163344;transform:rotateY(180deg)}
+.new-game-btn{background:#0ea5e9;color:#fff;border:none;padding:12px 28px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;display:block;width:100%;margin-top:16px}
+.new-game-btn:hover{background:#38bdf8;color:#000}
+.win-msg{text-align:center;margin-top:14px;font-size:18px;font-weight:700;color:#38bdf8;min-height:28px}
+.diff-row{display:flex;gap:8px;margin-bottom:12px}
+.diff-btn{flex:1;background:#1e2230;border:2px solid transparent;color:#aab;padding:8px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.diff-btn.active,.diff-btn:hover{border-color:#38bdf8;color:#38bdf8}
+</style>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="game-wrap">
+  <div class="game-header">
+    <a href="/arcade" class="back-btn">← Arcade</a>
+    <span class="game-title">🃏 Memory Match</span>
+  </div>
+  <div class="diff-row">
+    <button class="diff-btn active" data-size="4" onclick="setSize(4,this)">4×4</button>
+    <button class="diff-btn" data-size="6" onclick="setSize(6,this)">6×4 (ยาก)</button>
+  </div>
+  <div class="stat-bar">
+    <div class="stat-box"><div class="stat-label">พลิก</div><div class="stat-val" id="flips">0</div></div>
+    <div class="stat-box"><div class="stat-label">คู่</div><div class="stat-val" id="pairs">0</div></div>
+    <div class="stat-box"><div class="stat-label">เวลา</div><div class="stat-val" id="timer">0s</div></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="win-msg" id="winMsg"></div>
+  <button class="new-game-btn" onclick="startGame()">เริ่มใหม่</button>
+</div>
+<script>
+const EMOJIS='🐶🐱🦊🐻🦁🐯🦋🌈🍕🍔🎸🎯🚀🌙⭐🎃🦄🍓🎲🦖🐙🌺🎵🏆'.split('');
+let flipped=[], matched=0, total=0, flipCount=0, lock=false, elapsed=0, timerI=null, cols=4, rows=4;
+
+function setSize(c, btn){
+  cols=c; rows=4;
+  document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  startGame();
+}
+
+function startGame(){
+  clearInterval(timerI); elapsed=0; flipCount=0; matched=0; flipped=[]; lock=false;
+  total=(cols*rows)/2;
+  document.getElementById('flips').textContent=0;
+  document.getElementById('pairs').textContent=`0/${total}`;
+  document.getElementById('timer').textContent='0s';
+  document.getElementById('winMsg').textContent='';
+  document.getElementById('grid').style.gridTemplateColumns=`repeat(${cols},1fr)`;
+
+  const pool=EMOJIS.slice(0,total);
+  const cards=[...pool,...pool].sort(()=>Math.random()-.5);
+
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  cards.forEach((emoji,i)=>{
+    const card=document.createElement('div');
+    card.className='card'; card.dataset.emoji=emoji; card.dataset.idx=i;
+    card.innerHTML=`<div class="card-face front"></div><div class="card-face back">${emoji}</div>`;
+    card.addEventListener('click',()=>flipCard(card));
+    grid.appendChild(card);
+  });
+
+  timerI=setInterval(()=>{
+    elapsed++;
+    document.getElementById('timer').textContent=elapsed+'s';
+  },1000);
+}
+
+function flipCard(card){
+  if(lock||card.classList.contains('flipped')||card.classList.contains('matched'))return;
+  card.classList.add('flipped');
+  flipped.push(card);
+  flipCount++;
+  document.getElementById('flips').textContent=flipCount;
+  if(flipped.length===2){
+    lock=true;
+    const[a,b]=flipped;
+    if(a.dataset.emoji===b.dataset.emoji){
+      a.classList.add('matched'); b.classList.add('matched');
+      matched++; flipped=[];
+      document.getElementById('pairs').textContent=`${matched}/${total}`;
+      lock=false;
+      if(matched===total){
+        clearInterval(timerI);
+        document.getElementById('winMsg').textContent=`🎉 ชนะ! ${flipCount} ครั้ง / ${elapsed}s`;
+      }
+    } else {
+      setTimeout(()=>{
+        a.classList.remove('flipped'); b.classList.remove('flipped');
+        flipped=[]; lock=false;
+      },900);
+    }
+  }
+}
+
+startGame();
+</script>
+</body>
+</html>

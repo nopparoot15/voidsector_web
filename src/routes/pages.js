@@ -114,6 +114,18 @@ router.get('/tools/codeeditor', requireFullAccount, (req, res) => {
   res.render('pages/codeeditor', { title: 'Code Editor' });
 });
 
+router.get('/solo/2048', requireFullAccount, (req, res) => {
+  res.render('pages/solo-2048', { title: '2048' });
+});
+
+router.get('/solo/snake', requireFullAccount, (req, res) => {
+  res.render('pages/solo-snake', { title: 'Snake' });
+});
+
+router.get('/solo/memory', requireFullAccount, (req, res) => {
+  res.render('pages/solo-memory', { title: 'Memory Match' });
+});
+
 router.get('/leaderboard', requireFullAccount, (req, res) => {
   res.render('pages/leaderboard', { title: 'Leaderboard' });
 });

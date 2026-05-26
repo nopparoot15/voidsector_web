@@ -78,13 +78,19 @@ function createApp() {
   // Code execution proxy — must be before 404 handler
   app.post('/api/run-code', (req, res) => {
     const { language, code, stdin = '' } = req.body || {};
-    const langMap = { python: 'py3', javascript: 'js' };
-    const lang = langMap[language];
-    if (!lang) return res.json({ output: '', error: 'Language not supported for execution', exitCode: 1 });
-    const body = JSON.stringify({ code, language: lang, input: stdin });
+    const supported = ['python', 'javascript', 'csharp'];
+    if (!supported.includes(language) || !code) {
+      return res.json({ output: '', error: 'Language not supported', exitCode: 1 });
+    }
+    const body = JSON.stringify({
+      language,
+      version: '*',
+      files: [{ content: code }],
+      stdin: stdin || '',
+    });
     const options = {
-      hostname: 'api.codex.jaagrav.in',
-      path: '/',
+      hostname: 'emkc.org',
+      path: '/api/v2/piston/execute',
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
     };
@@ -94,14 +100,15 @@ function createApp() {
       apiRes.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          res.json({ output: parsed.output || '', error: parsed.error || '', exitCode: parsed.error ? 1 : 0 });
+          const run = parsed.run || {};
+          res.json({ output: run.stdout || '', error: run.stderr || '', exitCode: run.code ?? 0 });
         } catch {
           res.json({ output: data, error: '', exitCode: 0 });
         }
       });
     });
     apiReq.on('error', e => res.json({ output: '', error: e.message, exitCode: 1 }));
-    apiReq.setTimeout(15000, () => { apiReq.destroy(); res.json({ output: '', error: 'Execution timeout', exitCode: 1 }); });
+    apiReq.setTimeout(20000, () => { apiReq.destroy(); res.json({ output: '', error: 'Execution timeout', exitCode: 1 }); });
     apiReq.write(body);
     apiReq.end();
   });

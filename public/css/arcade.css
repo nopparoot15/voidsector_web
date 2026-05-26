@@ -93,6 +93,13 @@
 .arcade-card--dg  { --ac: #e879f9; }
 .arcade-card--sf  { --ac: #a78bfa; }
 .arcade-card--sf .arcade-play-btn { background: #a78bfa; }
+.arcade-card--solo-2048  { --ac: #f59e0b; }
+.arcade-card--solo-2048 .arcade-play-btn { background: #f59e0b; }
+.arcade-card--solo-snake { --ac: #4ade80; }
+.arcade-card--solo-snake .arcade-play-btn { background: #22c55e; }
+.arcade-card--solo-memory { --ac: #38bdf8; }
+.arcade-card--solo-memory .arcade-play-btn { background: #0ea5e9; }
+.arcade-badge--solo { background: rgba(255,255,255,.08); color: rgba(235,245,255,.6); }
 
 .arcade-card-icon {
   font-size: 2.8rem;

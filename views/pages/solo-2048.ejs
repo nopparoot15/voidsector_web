@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;color:#e8eaf0;font-family:'Inter','Noto Sans Thai',sans-serif;min-height:100vh}
+.game-wrap{max-width:520px;margin:0 auto;padding:16px}
+.game-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.back-btn{background:rgba(255,255,255,.07);border:none;color:#aab;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.back-btn:hover{background:rgba(255,255,255,.12)}
+.game-title{font-size:28px;font-weight:800;color:#f59e0b}
+.score-bar{display:flex;gap:10px;margin-bottom:14px}
+.score-box{background:#1e2230;border-radius:10px;padding:10px 18px;text-align:center;flex:1}
+.score-label{font-size:11px;color:#667;text-transform:uppercase;letter-spacing:.05em}
+.score-val{font-size:22px;font-weight:700;color:#f59e0b}
+.board-wrap{position:relative;background:#1a1d2b;border-radius:14px;padding:10px;touch-action:none;user-select:none}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cell{background:#111420;border-radius:8px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,5vw,28px);font-weight:800;transition:transform .08s}
+.cell[data-v="2"]   {background:#4a3800;color:#fbbf24}
+.cell[data-v="4"]   {background:#5a3200;color:#fb923c}
+.cell[data-v="8"]   {background:#7c2d12;color:#fdba74}
+.cell[data-v="16"]  {background:#7f1d1d;color:#fca5a5}
+.cell[data-v="32"]  {background:#831843;color:#f9a8d4}
+.cell[data-v="64"]  {background:#4c1d95;color:#c4b5fd}
+.cell[data-v="128"] {background:#1e3a8a;color:#93c5fd}
+.cell[data-v="256"] {background:#164e63;color:#67e8f9}
+.cell[data-v="512"] {background:#14532d;color:#86efac}
+.cell[data-v="1024"]{background:#713f12;color:#fde68a;font-size:clamp(12px,4vw,22px)}
+.cell[data-v="2048"]{background:#f59e0b;color:#000;font-size:clamp(12px,4vw,22px)}
+.game-over-overlay{position:absolute;inset:0;background:rgba(0,0,0,.75);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:10}
+.game-over-overlay h2{font-size:30px;font-weight:800;color:#f59e0b}
+.new-game-btn{background:#f59e0b;color:#000;border:none;padding:12px 28px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.new-game-btn:hover{background:#fbbf24}
+.hint{text-align:center;color:#555;font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="game-wrap">
+  <div class="game-header">
+    <a href="/arcade" class="back-btn">← Arcade</a>
+    <span class="game-title">2048</span>
+  </div>
+  <div class="score-bar">
+    <div class="score-box"><div class="score-label">คะแนน</div><div class="score-val" id="score">0</div></div>
+    <div class="score-box"><div class="score-label">สูงสุด</div><div class="score-val" id="best">0</div></div>
+  </div>
+  <div class="board-wrap" id="boardWrap">
+    <div class="board" id="board"></div>
+    <div class="game-over-overlay" id="overlay" style="display:none">
+      <h2>Game Over!</h2>
+      <div style="color:#aab">คะแนน: <span id="finalScore"></span></div>
+      <button class="new-game-btn" onclick="startGame()">เล่นใหม่</button>
+    </div>
+  </div>
+  <p class="hint">ใช้ลูกศร / WASD หรือปัดบนมือถือ</p>
+  <button class="new-game-btn" style="margin-top:14px;width:100%" onclick="startGame()">เริ่มใหม่</button>
+</div>
+<script>
+let grid=[], score=0, best=parseInt(localStorage.getItem('2048_best')||'0'), moved=false;
+const $board=document.getElementById('board');
+const $score=document.getElementById('score');
+const $best=document.getElementById('best');
+const $overlay=document.getElementById('overlay');
+const $final=document.getElementById('finalScore');
+
+function startGame(){
+  grid=Array.from({length:4},()=>Array(4).fill(0));
+  score=0; moved=false;
+  $overlay.style.display='none';
+  addTile(); addTile(); render();
+}
+
+function addTile(){
+  const empty=[];
+  grid.forEach((r,i)=>r.forEach((v,j)=>{if(!v)empty.push([i,j]);}));
+  if(!empty.length)return;
+  const [r,c]=empty[Math.floor(Math.random()*empty.length)];
+  grid[r][c]=Math.random()<.9?2:4;
+}
+
+function render(){
+  $board.innerHTML='';
+  grid.forEach(row=>row.forEach(v=>{
+    const d=document.createElement('div');
+    d.className='cell'; d.textContent=v||''; if(v)d.dataset.v=v;
+    $board.appendChild(d);
+  }));
+  $score.textContent=score;
+  if(score>best){best=score;localStorage.setItem('2048_best',best);}
+  $best.textContent=best;
+}
+
+function slide(row){
+  let r=row.filter(v=>v), changed=false;
+  for(let i=0;i<r.length-1;i++){
+    if(r[i]===r[i+1]){r[i]*=2;score+=r[i];r.splice(i+1,1);changed=true;}
+  }
+  while(r.length<4)r.push(0);
+  for(let i=0;i<4;i++)if(r[i]!==row[i])changed=true;
+  return{r,changed};
+}
+
+function move(dir){
+  let ch=false;
+  const g=grid.map(r=>[...r]);
+  if(dir==='left'){
+    for(let i=0;i<4;i++){const{r,changed}=slide(g[i]);g[i]=r;if(changed)ch=true;}
+  } else if(dir==='right'){
+    for(let i=0;i<4;i++){const{r,changed}=slide(g[i].reverse());g[i]=r.reverse();if(changed)ch=true;}
+  } else if(dir==='up'){
+    for(let j=0;j<4;j++){
+      const col=[g[0][j],g[1][j],g[2][j],g[3][j]];
+      const{r,changed}=slide(col);
+      for(let i=0;i<4;i++)g[i][j]=r[i];
+      if(changed)ch=true;
+    }
+  } else {
+    for(let j=0;j<4;j++){
+      const col=[g[3][j],g[2][j],g[1][j],g[0][j]];
+      const{r,changed}=slide(col);
+      for(let i=0;i<4;i++)g[3-i][j]=r[i];
+      if(changed)ch=true;
+    }
+  }
+  if(ch){grid=g;addTile();render();if(isOver())showOver();}
+}
+
+function isOver(){
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    if(!grid[i][j])return false;
+    if(i<3&&grid[i][j]===grid[i+1][j])return false;
+    if(j<3&&grid[i][j]===grid[i][j+1])return false;
+  }
+  return true;
+}
+
+function showOver(){
+  $final.textContent=score;
+  $overlay.style.display='flex';
+}
+
+document.addEventListener('keydown',e=>{
+  const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',
+             KeyA:'left',KeyD:'right',KeyW:'up',KeyS:'down'};
+  const d=map[e.code||e.key];
+  if(d){e.preventDefault();move(d);}
+});
+
+// Touch/swipe
+let tx=0,ty=0;
+document.getElementById('boardWrap').addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.getElementById('boardWrap').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)<20&&Math.abs(dy)<20)return;
+  if(Math.abs(dx)>Math.abs(dy))move(dx>0?'right':'left');
+  else move(dy>0?'down':'up');
+});
+
+startGame();
+</script>
+</body>
+</html>

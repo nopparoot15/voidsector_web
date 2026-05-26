@@ -145,21 +145,17 @@ class Program {
     const code = editor.getValue();
     if (!code.trim()) return;
 
-    if (currentLang === 'csharp') {
-      setOutput('C# ยังไม่รองรับการรันบน Code Editor นี้', 'err', 'unsupported');
-      return;
-    }
-
     runBtn.disabled = true;
     runBtn.textContent = '⏳ Running…';
     setOutput('', 'run', 'กำลังรัน…');
 
     try {
       const cfg = LANGS[currentLang];
+      const stdin = (document.getElementById('ce-stdin') || {}).value || '';
       const resp = await fetch('/api/run-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: cfg.piston, code }),
+        body: JSON.stringify({ language: cfg.piston, code, stdin }),
       });
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
