@@ -78,15 +78,51 @@ function createApp() {
   // Code execution proxy — must be before 404 handler
   app.post('/api/run-code', (req, res) => {
     const { language, code, stdin = '' } = req.body || {};
+    if (!code) return res.json({ output: '', error: 'Language not supported', exitCode: 1 });
+
+    // C# → Rextester (.NET Core, supports C# 7+)
+    if (language === 'csharp') {
+      const params = new URLSearchParams({
+        LanguageChoiceWrapper: '28',
+        Program: code,
+        Input: stdin || '',
+        CompilerArgs: '',
+      });
+      const body = params.toString();
+      const options = {
+        hostname: 'rextester.com',
+        path: '/rundotnet/api',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+      };
+      const apiReq = https.request(options, apiRes => {
+        let data = '';
+        apiRes.on('data', chunk => { data += chunk; });
+        apiRes.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            const out = parsed.Result || '';
+            const err = parsed.Errors || '';
+            res.json({ output: out, error: err, exitCode: err ? 1 : 0 });
+          } catch {
+            res.json({ output: data, error: '', exitCode: 0 });
+          }
+        });
+      });
+      apiReq.on('error', e => res.json({ output: '', error: e.message, exitCode: 1 }));
+      apiReq.setTimeout(20000, () => { apiReq.destroy(); res.json({ output: '', error: 'Execution timeout', exitCode: 1 }); });
+      apiReq.write(body);
+      apiReq.end();
+      return;
+    }
+
+    // Python / JavaScript → Wandbox
     const compilerMap = {
       python:     'cpython-3.12.7',
       javascript: 'nodejs-18.20.4',
-      csharp:     'mono-6.12.0.199',
     };
     const compiler = compilerMap[language];
-    if (!compiler || !code) {
-      return res.json({ output: '', error: 'Language not supported', exitCode: 1 });
-    }
+    if (!compiler) return res.json({ output: '', error: 'Language not supported', exitCode: 1 });
     const body = JSON.stringify({ compiler, code, stdin: stdin || '' });
     const options = {
       hostname: 'wandbox.org',
