@@ -654,7 +654,7 @@ function drawText
           return;
         }
         listEl.innerHTML = friends.map(f => {
-          const av = f.avatar_path ? f.avatar_path : '/uploads/avatars/default.png';
+          const av = f.avatar_path || '';
           return `
             <label class="wb-friend">
               <div class="wb-friend__left">
