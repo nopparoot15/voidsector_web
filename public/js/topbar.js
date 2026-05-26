@@ -281,6 +281,7 @@ function vsBumpDmToTop(container, friendId, ts){
       item.className = 'vs-dd__item';
       item.dataset.wbInviteId = inv.id;
       item.dataset.roomId = inv.room_id;
+      item.dataset.joinUrl = inv.join_url || `/whiteboard/r/${encodeURIComponent(inv.room_id)}`;
 
       item.innerHTML = `
         <div style="flex:1; min-width:0;">
@@ -518,16 +519,13 @@ div.innerHTML = `
       fetchSummary();
       const type = p.type || '';
       const from = p.from_username ? `@${p.from_username}` : 'Someone';
-      let msg = '';
-      let href = '/';
-      if (type === 'like') { msg = `❤️ ${from} ถูกใจโพสต์ของคุณ`; }
-      else if (type === 'comment') { msg = `💬 ${from} แสดงความคิดเห็นในโพสต์ของคุณ`; }
-      else if (type === 'friend_request') { msg = `👋 ${from} ส่งคำขอเป็นเพื่อน`; href = ''; }
-      else { msg = '🔔 มีการแจ้งเตือนใหม่'; }
-      if (href) {
-        showToast(msg, { ttlMs: 6000, href });
-      } else {
-        showToast(msg, {
+
+      if (type === 'like') {
+        showToast(`❤️ ${from} ถูกใจโพสต์ของคุณ`, { ttlMs: 6000, href: '/' });
+      } else if (type === 'comment') {
+        showToast(`💬 ${from} แสดงความคิดเห็นในโพสต์ของคุณ`, { ttlMs: 6000, href: '/' });
+      } else if (type === 'friend_request') {
+        showToast(`👋 ${from} ส่งคำขอเป็นเพื่อน`, {
           ttlMs: 6000,
           actionText: 'ดู',
           onAction: () => {
@@ -535,6 +533,17 @@ div.innerHTML = `
             if (notifMenu) { closeAll(); notifMenu.setAttribute('open', ''); }
           }
         });
+      } else if (type === 'whiteboard_invite') {
+        const joinUrl = p.join_url || (p.room_id ? `/whiteboard/r/${encodeURIComponent(p.room_id)}` : '');
+        showToast(`🧩 ${from} ชวนคุณเข้า Whiteboard`, {
+          ttlMs: 12000,
+          actionText: 'เข้าร่วม',
+          onAction: () => { if (joinUrl) window.location.href = joinUrl; }
+        });
+        // Also open bell after a tick so the DB insert has time to land
+        setTimeout(fetchSummary, 800);
+      } else {
+        showToast('🔔 มีการแจ้งเตือนใหม่', { ttlMs: 6000 });
       }
     });
 
@@ -589,8 +598,9 @@ div.innerHTML = `
           });
         } catch (_) {}
         fetchSummary();
-        if (action === 'wb-join' && roomId) {
-          window.location.href = `/whiteboard/r/${encodeURIComponent(roomId)}`;
+        if (action === 'wb-join') {
+          const joinUrl = item?.dataset.joinUrl;
+          window.location.href = joinUrl || (roomId ? `/whiteboard/r/${encodeURIComponent(roomId)}` : '/whiteboard');
         }
         return;
       }

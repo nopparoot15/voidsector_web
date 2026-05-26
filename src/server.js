@@ -244,9 +244,9 @@ io.on('connection', (socket) => {
 
     for (const toId of ids) {
       pool.query(
-        `INSERT INTO whiteboard_invites(room_id, from_user_id, to_user_id, status)
-         VALUES($1,$2,$3,'pending')`,
-        [rid, uid, toId]
+        `INSERT INTO whiteboard_invites(room_id, from_user_id, to_user_id, status, join_url)
+         VALUES($1,$2,$3,'pending',$4)`,
+        [rid, uid, toId, joinUrl]
       ).catch(() => {});
       io.to(`user:${toId}`).emit('vs:notification', {
         type: 'whiteboard_invite',
@@ -489,7 +489,7 @@ io.on('connection', (socket) => {
     } else if (room.gameType === 'typerace') {
       const { lang = 'en', difficulty = 'medium' } = room.state?.options || {};
       const pool = TYPERACE_POOL[lang]?.[difficulty] || TYPERACE_POOL.en.medium;
-      const text = pool[Math.floor(Math.random() * pool.length)];
+      const text = pool[Math.floor(Math.random() * pool.length)].normalize('NFC');
       room.state = {
         text,
         lang,

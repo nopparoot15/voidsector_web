@@ -22,6 +22,16 @@
   let finished = false;
   let trOptions = { lang: 'en', difficulty: 'easy' };
 
+  // Split string into grapheme clusters so Thai composing chars (สระ, วรรณยุกต์)
+  // stay attached to their base consonant and don't render as floating spans.
+  const _segmenter = (typeof Intl !== 'undefined' && Intl.Segmenter)
+    ? new Intl.Segmenter('th', { granularity: 'grapheme' })
+    : null;
+  function toGraphemes(str) {
+    if (_segmenter) return [..._segmenter.segment(str)].map(s => s.segment);
+    return [...str]; // code-point fallback
+  }
+
   document.getElementById('copy-link-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href).then(() => {
       document.getElementById('copy-link-btn').textContent = '✓ คัดลอกแล้ว';
@@ -71,12 +81,16 @@
     if (!state || finished) return;
     const typed = input.value.normalize('NFC');
     const target = state.text.normalize('NFC');
-    let correct = 0;
-    for (let i = 0; i < typed.length && i < target.length; i++) {
-      if (typed[i] === target[i]) correct = i + 1;
+    const typedG  = toGraphemes(typed);
+    const targetG = toGraphemes(target);
+    let correctClusters = 0;
+    for (let i = 0; i < typedG.length && i < targetG.length; i++) {
+      if (typedG[i] === targetG[i]) correctClusters = i + 1;
       else break;
     }
-    socket.emit('tr:progress', { roomId, chars: correct });
+    // Send code-unit count so server progress math stays consistent
+    const correctChars = targetG.slice(0, correctClusters).join('').length;
+    socket.emit('tr:progress', { roomId, chars: correctChars });
     renderText(typed);
   });
 
@@ -93,25 +107,24 @@
 
   function renderText(typed) {
     if (!state) return;
-    const target = state.text.normalize('NFC');
+    const target  = state.text.normalize('NFC');
     typed = typed.normalize('NFC');
+    const typedG  = toGraphemes(typed);
+    const targetG = toGraphemes(target);
+
     let html = '';
-    for (let i = 0; i < typed.length && i < target.length; i++) {
-      if (typed[i] === target[i]) {
-        html += `<span class="tr-char tr-ok">${esc(target[i])}</span>`;
-      } else {
-        html += `<span class="tr-char tr-err">${esc(target[i])}</span>`;
-      }
+    for (let i = 0; i < typedG.length && i < targetG.length; i++) {
+      html += typedG[i] === targetG[i]
+        ? `<span class="tr-char tr-ok">${esc(targetG[i])}</span>`
+        : `<span class="tr-char tr-err">${esc(targetG[i])}</span>`;
     }
-    const cursorPos = Math.min(typed.length, target.length);
-    for (let i = typed.length; i < target.length; i++) {
-      const cls = i === cursorPos ? 'tr-char tr-cursor' : 'tr-char';
-      html += `<span class="${cls}">${esc(target[i])}</span>`;
+    const cursorPos = Math.min(typedG.length, targetG.length);
+    for (let i = typedG.length; i < targetG.length; i++) {
+      html += `<span class="${i === cursorPos ? 'tr-char tr-cursor' : 'tr-char'}">${esc(targetG[i])}</span>`;
     }
     textDisplay.innerHTML = html;
 
-    // Check completion
-    if (!finished && typed === target) {
+    if (!finished && typedG.join('') === targetG.join('')) {
       finished = true;
       input.disabled = true;
       socket.emit('tr:progress', { roomId, chars: target.length });

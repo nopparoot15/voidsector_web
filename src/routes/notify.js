@@ -89,10 +89,11 @@ router.get('/notify/summary', requireLogin, async (req, res) => {
     let wbiRows = [];
     try {
       const wbi = await pool.query(
-        `SELECT i.id, i.room_id, i.from_user_id, u.username, u.avatar, i.created_at
+        `SELECT i.id, i.room_id, i.join_url, i.from_user_id, u.username, u.avatar, i.created_at
          FROM whiteboard_invites i
          JOIN users u ON u.id = i.from_user_id
          WHERE i.to_user_id=$1 AND i.status='pending'
+         AND i.created_at > NOW() - INTERVAL '24 hours'
          ORDER BY i.created_at DESC
          LIMIT 10`,
         [me]

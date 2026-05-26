@@ -79,6 +79,7 @@ async function initDb() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_wb_invites_to ON whiteboard_invites(to_user_id, status)`,
     `UPDATE users SET avatar = NULL WHERE avatar = '/uploads/avatars/default.png'`,
+    `ALTER TABLE whiteboard_invites ADD COLUMN IF NOT EXISTS join_url TEXT`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
