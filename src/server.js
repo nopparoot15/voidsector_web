@@ -387,6 +387,18 @@ io.on('connection', (socket) => {
             if (r.players.length === 0) { gameStore.clearAllTimers(gmRid); return; }
             const updated = r.players.map(p => ({ userId: p.userId, username: p.username, offline: r.offlinePlayers.has(p.userId) }));
             io.to(`gm:${gmRid}`).emit('gm:players', { players: updated });
+            // End checkers game if still playing
+            if (r.gameType === 'checkers' && r.status === 'playing' && r.state && !r.state.winner) {
+              const st = r.state;
+              const remaining = r.players.find(p => p.userId === st.p1 || p.userId === st.p2);
+              if (remaining) {
+                st.winner = remaining.userId;
+                st.reason = 'abandon';
+                r.status = 'ended';
+                gameStore.clearTimer(gmRid, 'cktimer');
+                io.to(`gm:${gmRid}`).emit('checkers:state', st);
+              }
+            }
           }, 60000);
         }
       }

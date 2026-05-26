@@ -42,6 +42,10 @@
     players = pl;
     renderLobbyPlayers({ players: pl, host: roomData?.host });
     updateChips(pl);
+    if (state && !state.winner) {
+      const opp = pl.find(p => p.userId !== me.id && (p.userId === state?.p1 || p.userId === state?.p2));
+      if (opp?.offline) statusEl.textContent = `⚠️ ${esc(opp.username)} ออกจากเกม — รอกลับมา 60 วินาที`;
+    }
   });
 
   socket.on('gm:started', ({ state: st }) => startGame(st));
@@ -221,6 +225,9 @@
         msg = iWon ? `🎉 คุณชนะ! — ${lName} หมดเวลา`
             : iLost ? `⏰ คุณหมดเวลา — ${wName} ชนะ`
             : `⏰ ${lName} หมดเวลา — ${wName} ชนะ`;
+      } else if (state.reason==='abandon') {
+        msg = iWon ? `🎉 คุณชนะ! — ${lName} ออกจากเกม`
+            : `😔 ${wName} ชนะ`;
       } else {
         msg = iWon ? `🎉 คุณชนะ!` : `😔 ${wName} ชนะ`;
       }
