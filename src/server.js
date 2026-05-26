@@ -1891,11 +1891,8 @@ function ckCaptures(board, idx, player) {
       let nr=r+dr, nc=c+dc;
       while (nr>=0&&nr<8&&nc>=0&&nc<8) {
         if (opp.includes(board[nr*8+nc])) {
-          let lr=nr+dr, lc=nc+dc;
-          while (lr>=0&&lr<8&&lc>=0&&lc<8&&board[lr*8+lc]===0) {
-            out.push({to:lr*8+lc,over:nr*8+nc});
-            lr+=dr; lc+=dc;
-          }
+          const lr=nr+dr, lc=nc+dc;
+          if (lr>=0&&lr<8&&lc>=0&&lc<8&&board[lr*8+lc]===0) out.push({to:lr*8+lc,over:nr*8+nc});
           break;
         } else if (board[nr*8+nc]!==0) break;
         nr+=dr; nc+=dc;
