@@ -140,6 +140,7 @@
 }
 .arcade-play-btn:hover { opacity: 0.85; }
 .arcade-play-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+a.arcade-play-btn { display: block; text-align: center; text-decoration: none; }
 
 .arcade-creating {
   text-align: center;
