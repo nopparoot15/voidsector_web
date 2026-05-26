@@ -65,6 +65,7 @@ let padX, padW, padH;
 let bricks, score, lives, level, running=false, animId;
 const ROWS=5, COLS=8, PAD_SPEED=8;
 let mouseX = -1;
+let ballHeld = false; // ball sitting on paddle, waiting for click
 
 const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6'];
 
@@ -97,15 +98,33 @@ function startGame() {
   document.getElementById('level').textContent=level;
   document.getElementById('score').textContent=score=0;
   init(level);
+  holdBall();
   running=true;
   cancelAnimationFrame(animId);
   loop();
+}
+
+function holdBall() {
+  const H=canvas.height;
+  bx = padX + padW/2;
+  by = H - padH - 4 - br - 2;
+  bdx = 0; bdy = 0;
+  ballHeld = true;
+}
+
+function launchBall() {
+  if (!ballHeld) return;
+  ballHeld = false;
+  const spd = 2.2 + level * 0.35;
+  bdx = spd * (Math.random() > 0.5 ? 0.6 : -0.6);
+  bdy = -Math.sqrt(spd*spd - bdx*bdx);
 }
 
 function nextLevel() {
   level++;
   document.getElementById('level').textContent=level;
   init(level);
+  holdBall();
 }
 
 function loop() {
@@ -123,6 +142,13 @@ function update() {
     padX = mouseX - padW/2;
   }
   padX = Math.max(0, Math.min(W - padW, padX));
+
+  // Ball follows paddle when held
+  if (ballHeld) {
+    bx = padX + padW/2;
+    by = H - padH - 4 - br - 2;
+    return;
+  }
 
   // Move ball
   bx += bdx; by += bdy;
@@ -147,9 +173,7 @@ function update() {
     const hearts = ['','❤️','❤️❤️','❤️❤️❤️'];
     document.getElementById('lives').textContent = lives > 0 ? hearts[lives] : '💀';
     if (lives <= 0) { gameOver(false); return; }
-    bx=W/2; by=H*0.6;
-    const sp=3.5+level*0.6;
-    bdx=sp*(Math.random()>.5?1:-1); bdy=-sp;
+    holdBall();
   }
 
   // Brick collision
@@ -199,6 +223,14 @@ function draw() {
   ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.4)';
   ctx.beginPath(); ctx.arc(bx-br*.3, by-br*.3, br*.35, 0, Math.PI*2); ctx.fill();
+
+  // "Click to launch" hint
+  if (ballHeld) {
+    ctx.fillStyle='rgba(255,255,255,.55)';
+    ctx.font=`${Math.round(canvas.width*0.038)}px Inter,sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText('คลิกเพื่อปล่อยบอล', canvas.width/2, canvas.height/2);
+  }
 }
 
 function drawIdle() {
@@ -221,10 +253,14 @@ wrap.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
 });
+wrap.addEventListener('click', () => { if (running) launchBall(); });
 wrap.addEventListener('touchmove', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
+}, { passive: false });
+wrap.addEventListener('touchend', e => {
+  if (running && ballHeld) { e.preventDefault(); launchBall(); }
 }, { passive: false });
 
 drawIdle();
