@@ -91,6 +91,8 @@
 .arcade-card--tr  { --ac: #34d399; }
 .arcade-card--rps { --ac: #fb923c; }
 .arcade-card--dg  { --ac: #e879f9; }
+.arcade-card--ck  { --ac: #f59e0b; }
+.arcade-card--ck .arcade-play-btn { background: #f59e0b; color: #000; }
 .arcade-card--sf  { --ac: #a78bfa; }
 .arcade-card--sf .arcade-play-btn { background: #a78bfa; }
 .arcade-card--solo-2048  { --ac: #f59e0b; }

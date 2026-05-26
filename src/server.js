@@ -447,6 +447,7 @@ io.on('connection', (socket) => {
     if (room.gameType === 'typerace' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
     if (room.gameType === 'drawguess' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมีอย่างน้อย 2 คน' });
     if (room.gameType === 'spyfall' && room.players.length < 4) return socket.emit('gm:error', { msg: 'ต้องมีผู้เล่นอย่างน้อย 4 คน' });
+    if (room.gameType === 'checkers' && room.players.length < 2) return socket.emit('gm:error', { msg: 'ต้องมี 2 คน' });
 
     room.status = 'playing';
 
@@ -543,6 +544,10 @@ io.on('connection', (socket) => {
         io.to(`gm:${rid}`).emit('sp:asking', { askedUserId: firstAsked.userId, askedUsername: firstAsked.username, seconds: null });
       });
       gameStore.setTimer(rid, 'sptimer', () => endSpyfall(rid, 'spy', 'หมดเวลา — สปายรอดไปได้!'), duration);
+
+    } else if (room.gameType === 'checkers') {
+      room.state = { board: initCheckersBoard(), turn: 1, p1: room.players[0].userId, p2: room.players[1].userId, winner: null, multiJumpFrom: null };
+      io.to(`gm:${rid}`).emit('gm:started', { state: room.state });
 
     } else if (room.gameType === 'drawguess') {
       const word = DG_WORDS[Math.floor(Math.random() * DG_WORDS.length)];
@@ -747,6 +752,62 @@ io.on('connection', (socket) => {
     room.state = { board: Array(9).fill(0), turn: 0, winner: null, winLine: null,
       x: room.state.x, o: room.state.o };
     io.to(`gm:${rid}`).emit('xo:state', room.state);
+  });
+
+  // ── CHECKERS ────────────────────────────────────────────────────────────────
+  socket.on('checkers:move', ({ roomId, from, to } = {}) => {
+    const rid = String(roomId||'').toUpperCase();
+    const userId = Number(socket.data.userId);
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'checkers' || room.status !== 'playing') return;
+    const st = room.state;
+    const player = st.p1===userId ? 1 : st.p2===userId ? 2 : 0;
+    if (!player || player !== st.turn) return;
+    const pieces = player===1?[1,3]:[2,4];
+    if (!pieces.includes(st.board[from])) return;
+
+    const mustFrom = ckMustCapture(st.board, player);
+    if (st.multiJumpFrom != null && from !== st.multiJumpFrom) return;
+    if (st.multiJumpFrom == null && mustFrom.length > 0 && !mustFrom.includes(from)) return;
+
+    const caps = ckCaptures(st.board, from, player);
+    const moves = mustFrom.length > 0 ? [] : ckMoves(st.board, from, player);
+    const cap = caps.find(m => m.to === to);
+    const mov = moves.find(m => m.to === to);
+    if (!cap && !mov) return;
+
+    const b = [...st.board];
+    b[to] = b[from]; b[from] = 0;
+    let canContinue = false;
+    if (cap) {
+      b[cap.over] = 0;
+      const wasKing = st.board[from] === 3 || st.board[from] === 4;
+      ckPromote(b, to);
+      const promoted = !wasKing && (b[to] === 3 || b[to] === 4);
+      if (!promoted && ckCaptures(b, to, player).length > 0) canContinue = true;
+    } else {
+      ckPromote(b, to);
+    }
+    st.board = b;
+    if (canContinue) {
+      st.multiJumpFrom = to;
+    } else {
+      st.multiJumpFrom = null;
+      st.turn = player===1 ? 2 : 1;
+      const w = ckWinner(b, st.turn);
+      if (w) { st.winner = w===1 ? st.p1 : st.p2; room.status = 'ended'; }
+    }
+    io.to(`gm:${rid}`).emit('checkers:state', st);
+  });
+
+  socket.on('checkers:restart', ({ roomId } = {}) => {
+    const rid = String(roomId||'').toUpperCase();
+    const room = gameStore.get(rid);
+    if (!room || room.gameType !== 'checkers') return;
+    if (!room.players.find(p => p.userId === Number(socket.data.userId))) return;
+    room.status = 'playing';
+    room.state = { board: initCheckersBoard(), turn: 1, p1: room.state.p1, p2: room.state.p2, winner: null, multiJumpFrom: null };
+    io.to(`gm:${rid}`).emit('checkers:state', room.state);
   });
 
   socket.on('wb:setoptions', ({ roomId, lang } = {}) => {
@@ -1760,6 +1821,67 @@ async function checkEnglishWord(word) {
     req.setTimeout(3000, () => { req.destroy(); resolve(true); });
   });
 }
+
+// ── CHECKERS HELPERS ───────────────────────────────────────────────────────────
+function initCheckersBoard() {
+  const b = Array(64).fill(0);
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if ((r + c) % 2 === 1) {
+        if (r < 3) b[r*8+c] = 2;
+        if (r > 4) b[r*8+c] = 1;
+      }
+    }
+  }
+  return b;
+}
+function ckCaptures(board, idx, player) {
+  const r = Math.floor(idx/8), c = idx%8;
+  const isKing = board[idx] === 3 || board[idx] === 4;
+  const opp = player === 1 ? [2,4] : [1,3];
+  const dirs = [];
+  if (player === 1 || isKing) dirs.push([-1,-1],[-1,1]);
+  if (player === 2 || isKing) dirs.push([1,-1],[1,1]);
+  const out = [];
+  for (const [dr,dc] of dirs) {
+    const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+    if (mr<0||mr>7||mc<0||mc>7||lr<0||lr>7||lc<0||lc>7) continue;
+    if (opp.includes(board[mr*8+mc]) && board[lr*8+lc]===0) out.push({to:lr*8+lc,over:mr*8+mc});
+  }
+  return out;
+}
+function ckMoves(board, idx, player) {
+  const r = Math.floor(idx/8), c = idx%8;
+  const isKing = board[idx] === 3 || board[idx] === 4;
+  const dirs = [];
+  if (player === 1 || isKing) dirs.push([-1,-1],[-1,1]);
+  if (player === 2 || isKing) dirs.push([1,-1],[1,1]);
+  const out = [];
+  for (const [dr,dc] of dirs) {
+    const nr=r+dr, nc=c+dc;
+    if (nr>=0&&nr<8&&nc>=0&&nc<8&&board[nr*8+nc]===0) out.push({to:nr*8+nc});
+  }
+  return out;
+}
+function ckMustCapture(board, player) {
+  const pieces = player===1?[1,3]:[2,4];
+  return Array.from({length:64},(_,i)=>i).filter(i=>pieces.includes(board[i])&&ckCaptures(board,i,player).length>0);
+}
+function ckPromote(board, idx) {
+  const r = Math.floor(idx/8);
+  if (board[idx]===1 && r===0) board[idx]=3;
+  if (board[idx]===2 && r===7) board[idx]=4;
+}
+function ckWinner(board, nextTurn) {
+  const pieces = nextTurn===1?[1,3]:[2,4];
+  if (!board.some(v=>pieces.includes(v))) return nextTurn===1?2:1;
+  for (let i=0;i<64;i++) {
+    if (!pieces.includes(board[i])) continue;
+    if (ckCaptures(board,i,nextTurn).length>0||ckMoves(board,i,nextTurn).length>0) return null;
+  }
+  return nextTurn===1?2:1;
+}
+// ────────────────────────────────────────────────────────────────────────────────
 
 function shuffle(arr) {
   const a = [...arr];

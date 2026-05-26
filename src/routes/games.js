@@ -5,7 +5,7 @@ const { requireLogin } = require('../middleware/requireLogin');
 const gameStore = require('../games/store');
 const { pool } = require('../config/db');
 
-const GAME_TYPES = { xo: 'XO', wordbomb: 'Word Bomb', trivia: 'Trivia', typerace: 'Typing Race', rps: 'Rock Paper Scissors', drawguess: 'Draw & Guess', spyfall: 'Spyfall' };
+const GAME_TYPES = { xo: 'XO', wordbomb: 'Word Bomb', trivia: 'Trivia', typerace: 'Typing Race', rps: 'Rock Paper Scissors', drawguess: 'Draw & Guess', spyfall: 'Spyfall', checkers: 'หมากฮอส' };
 
 router.get('/arcade', requireLogin, (req, res) => {
   res.render('pages/arcade', { title: 'Arcade' });

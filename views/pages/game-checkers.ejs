@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/arcade.css">
+<script>
+  window.__ROOM_ID__ = '<%- roomId %>';
+  window.__USER__    = <%- JSON.stringify(user) %>;
+</script>
+<style>
+.ck-wrap { display:flex; flex-direction:column; align-items:center; gap:18px; padding:24px 16px; }
+.ck-info { display:flex; align-items:center; gap:20px; font-size:14px; color:#a1a1aa; }
+.ck-player { display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:10px; background:#0c0c18; border:2px solid transparent; transition:border-color .2s; }
+.ck-player.active { border-color:#f59e0b; }
+.ck-piece-dot { width:20px; height:20px; border-radius:50%; flex-shrink:0; }
+.ck-vs { color:#3f3f46; font-weight:700; }
+.ck-status { font-size:14px; color:#71717a; font-weight:600; min-height:22px; text-align:center; }
+.ck-board-wrap { position:relative; }
+.ck-board {
+  display:grid; grid-template-columns:repeat(8,1fr);
+  border:2px solid #2a2a3a; border-radius:4px; overflow:hidden;
+  width:min(420px,92vw); height:min(420px,92vw);
+}
+.ck-cell {
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  cursor:default; position:relative; transition:background .1s;
+}
+.ck-cell.dark { background:#1a1d2e; }
+.ck-cell.light { background:#0d0d16; }
+.ck-cell.selectable { cursor:pointer; }
+.ck-cell.selectable:hover { background:#252540; }
+.ck-cell.selected { background:#2d2d52; }
+.ck-cell.can-move { background:#1a2a1a; cursor:pointer; }
+.ck-cell.can-move::after { content:''; width:30%; height:30%; border-radius:50%; background:rgba(74,222,128,.45); position:absolute; }
+.ck-cell.can-move:hover { background:#1f3a1f; }
+.ck-piece {
+  width:70%; height:70%; border-radius:50%; position:relative;
+  box-shadow:0 2px 6px rgba(0,0,0,.5); transition:transform .1s;
+  border:3px solid rgba(255,255,255,.15);
+}
+.ck-piece.p1 { background:radial-gradient(circle at 35% 35%, #fb923c, #b45309); }
+.ck-piece.p2 { background:radial-gradient(circle at 35% 35%, #818cf8, #3730a3); }
+.ck-piece.king::after { content:'♛'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.9em; color:rgba(255,255,255,.9); }
+.ck-piece.selected-piece { transform:scale(1.12); box-shadow:0 0 0 3px #f59e0b, 0 4px 12px rgba(0,0,0,.6); }
+.ck-result { font-size:1.4rem; font-weight:700; color:#a5b4fc; text-align:center; }
+.ck-actions { display:flex; gap:12px; }
+.ck-score { display:flex; gap:24px; }
+.ck-score-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.ck-score-label { font-size:11px; color:#52525b; text-transform:uppercase; letter-spacing:.05em; }
+.ck-score-val { font-size:20px; font-weight:700; color:#f4f4f5; }
+</style>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="gm-page">
+
+  <div class="gm-topbar">
+    <a href="/arcade" class="gm-back">← Arcade</a>
+    <div class="gm-room-info">
+      <span class="gm-room-label">ห้อง</span>
+      <span class="gm-room-id"><%- roomId %></span>
+      <button class="gm-copy-btn" id="copy-link-btn">🔗 แชร์</button>
+    </div>
+    <div class="gm-players" id="gm-players"></div>
+  </div>
+
+  <!-- Lobby -->
+  <div id="ck-lobby" class="gm-lobby">
+    <div class="gm-lobby-card">
+      <div class="gm-lobby-icon">🏁</div>
+      <h2>หมากฮอส — ห้อง <%- roomId %></h2>
+      <p class="gm-lobby-rules" style="font-size:13px;color:#71717a;line-height:1.7">
+        เล่นบนกระดาน 8×8 — เคลื่อนหมากแนวทแยงไปข้างหน้า<br>
+        กระโดดข้ามหมากฝ่ายตรงข้ามเพื่อกิน — ถ้ากินได้ต้องกิน<br>
+        หมากถึงฝั่งตรงข้ามกลายเป็น <strong style="color:#f59e0b">ดำ ♛</strong> เดินได้ทุกทิศ
+      </p>
+      <p id="lobby-status" style="color:#71717a;font-size:14px">รอผู้เล่นเข้าร่วม…</p>
+      <div id="lobby-players" class="lobby-player-list"></div>
+      <button id="ck-start-btn" class="btn-primary btn-lg hidden">เริ่มเกม ▶</button>
+      <div id="gm-invite-wrap"></div>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="ck-game" class="hidden">
+    <div class="ck-wrap">
+      <div class="ck-info">
+        <div class="ck-player" id="ck-p1">
+          <div class="ck-piece-dot" style="background:#fb923c"></div>
+          <span id="ck-p1-name">—</span>
+          <span id="ck-p1-count" style="font-size:12px;color:#71717a"></span>
+        </div>
+        <span class="ck-vs">VS</span>
+        <div class="ck-player" id="ck-p2">
+          <div class="ck-piece-dot" style="background:#818cf8"></div>
+          <span id="ck-p2-name">—</span>
+          <span id="ck-p2-count" style="font-size:12px;color:#71717a"></span>
+        </div>
+      </div>
+      <div class="ck-status" id="ck-status">รอเริ่ม</div>
+      <div class="ck-board-wrap">
+        <div class="ck-board" id="ck-board"></div>
+      </div>
+      <div id="ck-result" class="ck-result hidden"></div>
+      <div id="ck-actions" class="ck-actions hidden">
+        <button id="ck-restart-btn" class="btn-primary">เล่นใหม่ 🔄</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game-checkers.js"></script>
+<script src="/js/game-invite.js"></script>
+</body>
+</html>
