@@ -88,6 +88,7 @@ async function initDb() {
        used BOOLEAN DEFAULT FALSE
      )`,
     `CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens(token)`,
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
@@ -138,8 +139,8 @@ Rock Paper Scissors · Draw & Guess · Spyfall · หมากฮอส
 
 ลองใช้งานได้เลย — เจอบักหรืออยากแนะนำฟีเจอร์ไหน คอมเมนต์ไว้ได้เลยครับ! 🚀`;
   await pool.query(`
-    INSERT INTO posts (user_id, text, created_at, last_activity_at)
-    SELECT id, $1, NOW(), NOW() FROM users WHERE username = 'VoidSector'
+    INSERT INTO posts (user_id, text, created_at, last_activity_at, is_pinned)
+    SELECT id, $1, NOW(), NOW(), TRUE FROM users WHERE username = 'VoidSector'
     AND NOT EXISTS (SELECT 1 FROM posts WHERE text = $1)
   `, [WELCOME]).catch(() => {});
 

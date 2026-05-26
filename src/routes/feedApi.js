@@ -17,7 +17,7 @@ router.get('/feed', requireLogin, async (req, res) => {
     let rows;
     if (targetId) {
       ({ rows } = await pool.query(
-        `SELECT p.id, p.user_id, u.username, u.avatar, p.text, p.image, p.created_at,
+        `SELECT p.id, p.user_id, u.username, u.avatar, p.text, p.image, p.created_at, p.is_pinned,
                 COUNT(DISTINCT l.user_id)::int AS like_count,
                 EXISTS(SELECT 1 FROM post_likes WHERE post_id=p.id AND user_id=$1) AS liked,
                 COUNT(DISTINCT c.id)::int AS comment_count
@@ -27,7 +27,7 @@ router.get('/feed', requireLogin, async (req, res) => {
          LEFT JOIN post_comments c ON c.post_id = p.id
          WHERE p.user_id = $2
          GROUP BY p.id, u.username, u.avatar
-         ORDER BY p.created_at DESC
+         ORDER BY p.is_pinned DESC, p.created_at DESC
          LIMIT $3 OFFSET $4`,
         [me, targetId, limit, offset]
       ));

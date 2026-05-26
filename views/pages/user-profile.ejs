@@ -3,6 +3,10 @@
 <head><%- include('../partials/head') %>
 <link rel="stylesheet" href="/css/social.css">
 <link rel="stylesheet" href="/css/profile.css">
+<style>
+.pinned-post { border-color: #a16207 !important; }
+.pinned-label { font-size: 11px; color: #a16207; font-weight: 600; letter-spacing: .04em; margin-bottom: 6px; }
+</style>
 </head>
 <body class="profile-body">
 <%- include('../partials/topbar') %>
@@ -144,7 +148,8 @@ function buildCommentHtml(c, postId, isReply=false){
 
 function buildPost(p){
   const isOwn = p.user_id === ME_ID;
-  return `<div class="post-card" id="post-${p.id}">
+  return `<div class="post-card${p.is_pinned?' pinned-post':''}" id="post-${p.id}">
+    ${p.is_pinned?'<div class="pinned-label">📌 ปักหมุด</div>':''}
     <div class="post-header">
       <div class="social-avatar-wrap sm">${avatarHtml(p.avatar,p.username)}</div>
       <div class="post-meta">
