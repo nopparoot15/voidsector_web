@@ -80,6 +80,14 @@ async function initDb() {
     `CREATE INDEX IF NOT EXISTS idx_wb_invites_to ON whiteboard_invites(to_user_id, status)`,
     `UPDATE users SET avatar = NULL WHERE avatar = '/uploads/avatars/default.png'`,
     `ALTER TABLE whiteboard_invites ADD COLUMN IF NOT EXISTS join_url TEXT`,
+    `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+       id SERIAL PRIMARY KEY,
+       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       token VARCHAR(64) NOT NULL UNIQUE,
+       expires_at TIMESTAMPTZ NOT NULL,
+       used BOOLEAN DEFAULT FALSE
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens(token)`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
