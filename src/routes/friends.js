@@ -27,9 +27,11 @@ router.post('/friends/request', requireLogin, async (req, res) => {
 
   const targetId = user.rows[0].id;
   await pool.query(
-    `INSERT INTO friend_requests(from_user_id,to_user_id)
-     VALUES ($1,$2)
-     ON CONFLICT DO NOTHING`,
+    `INSERT INTO friend_requests(from_user_id,to_user_id,status,created_at)
+     VALUES ($1,$2,'pending',NOW())
+     ON CONFLICT (from_user_id,to_user_id) DO UPDATE
+       SET status='pending', created_at=NOW()
+     WHERE friend_requests.status <> 'pending'`,
     [me, targetId]
   );
   pool.query(
