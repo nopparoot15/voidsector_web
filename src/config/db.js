@@ -69,6 +69,15 @@ async function initDb() {
        user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
        PRIMARY KEY(comment_id, user_id)
      )`,
+    `CREATE TABLE IF NOT EXISTS whiteboard_invites (
+       id SERIAL PRIMARY KEY,
+       room_id TEXT NOT NULL,
+       from_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+       to_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+       status VARCHAR(20) DEFAULT 'pending',
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_wb_invites_to ON whiteboard_invites(to_user_id, status)`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
