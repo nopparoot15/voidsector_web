@@ -40,6 +40,7 @@
   });
 
   socket.on('gm:players', ({ players: pl }) => {
+    showOfflineNotice(pl);
     players = pl;
     renderLobby({ players: pl, host: roomData?.host });
     updateChips(pl);
@@ -140,7 +141,7 @@
     if (!players.length) return;
     document.getElementById('rps-scoreboard').innerHTML = players.map(p => `
       <div class="rps-score-item ${p.userId === me.id ? 'is-me' : ''}">
-        <span class="rps-score-name">${esc(p.username)}</span>
+        <span class="rps-score-name">${esc(p.username)}${p.offline?' 🔴':''}</span>
         <span class="rps-score-val">${scores[p.userId] || 0}</span>
       </div>`).join('<div class="rps-score-sep">–</div>');
   }
@@ -156,7 +157,7 @@
       <h2>${isWinner ? 'คุณชนะ!' : `${esc(winPlayer?.username || '?')} ชนะ!`}</h2>`;
     document.getElementById('rps-final-scores').innerHTML = players.map(p => `
       <div class="rps-final-row ${p.userId === winner ? 'is-winner' : ''}">
-        <span>${esc(p.username)}</span><span>${scores[p.userId] || 0} แต้ม</span>
+        <span>${esc(p.username)}${p.offline?' 🔴':''}</span><span>${scores[p.userId] || 0} แต้ม</span>
       </div>`).join('');
     document.getElementById('rps-history').innerHTML = history.map(h => {
       const [p1, p2] = players;
@@ -175,7 +176,7 @@
   function renderLobby({ players: pl, host }) {
     lobbyPlayers.innerHTML = pl.map(p => `
       <div class="lobby-player-item">
-        <span>${esc(p.username)}</span>
+        <span>${esc(p.username)}${p.offline?' 🔴':''}</span>
         ${p.userId === host ? '<span class="host-tag">HOST</span>' : ''}
       </div>`).join('');
     document.getElementById('rps-start-btn').classList.toggle('hidden', pl.length !== 2 || !roomData || roomData.host !== me.id);
@@ -183,7 +184,7 @@
 
   function updateChips(pl) {
     document.getElementById('gm-players').innerHTML = pl.map(p =>
-      `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`).join('');
+      `<span class="gm-player-chip ${p.userId===me.id?'is-me':''}${p.offline?' offline':''}">${esc(p.username)}${p.offline?' 🔴':''}</span>`).join('');
   }
 
   window.playAgain = () => socket.emit('gm:new_game', { roomId });
@@ -200,5 +201,17 @@
     renderLobby({ players, host: roomData?.host });
   });
 
+  function showOfflineNotice(pl) {
+    const gone = pl.find(p => p.offline && p.userId !== me.id);
+    let el = document.getElementById('gm-offline-notice');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'gm-offline-notice';
+      el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fca5a5;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;display:none;';
+      document.body.appendChild(el);
+    }
+    if (gone) { el.textContent = '⚠️ ' + gone.username + ' ออกจากเกม'; el.style.display='block'; }
+    else { el.style.display='none'; }
+  }
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();

@@ -43,6 +43,7 @@
   });
 
   socket.on('gm:players', ({ players: pl }) => {
+    showOfflineNotice(pl);
     players = pl;
     renderLobbyPlayers({ players: pl, host: roomData?.host });
     updateChips(pl);
@@ -145,7 +146,7 @@
       .sort((a, b) => b.pts - a.pts);
     scoreboardEl.innerHTML = sorted.map(p => `
       <div class="tq-score-item ${p.userId === me.id ? 'is-me' : ''}">
-        <span class="tq-score-name">${esc(p.username)}</span>
+        <span class="tq-score-name">${esc(p.username)}${p.offline?' 🔴':''}</span>
         <span class="tq-score-pts">${p.pts}</span>
       </div>`).join('');
   }
@@ -167,7 +168,7 @@
           ${sorted.map((p, i) => `
             <div class="gm-score-row">
               <span class="gm-score-rank">${ranks[i] || (i+1)}</span>
-              <span class="gm-score-name">${esc(p.username)}</span>
+              <span class="gm-score-name">${esc(p.username)}${p.offline?' 🔴':''}</span>
               <span class="gm-score-pts">${p.pts} pts</span>
             </div>`).join('')}
         </div>
@@ -181,14 +182,14 @@
   function renderLobbyPlayers({ players: pl, host }) {
     lobbyPlayers.innerHTML = pl.map(p => `
       <div class="lobby-player-item">
-        <span>${esc(p.username)}</span>
+        <span>${esc(p.username)}${p.offline?' 🔴':''}</span>
         ${p.userId === host ? '<span class="host-tag">HOST</span>' : ''}
       </div>`).join('');
   }
 
   function updateChips(pl) {
     document.getElementById('gm-players').innerHTML = pl.map(p =>
-      `<span class="gm-player-chip ${p.userId === me.id ? 'is-me' : ''}">${esc(p.username)}</span>`
+      `<span class="gm-player-chip ${p.userId===me.id?'is-me':''}${p.offline?' offline':''}">${esc(p.username)}${p.offline?' 🔴':''}</span>`
     ).join('');
   }
 
@@ -202,5 +203,17 @@
     startBtn.classList.toggle('hidden', roomData?.host !== me.id);
   });
 
+  function showOfflineNotice(pl) {
+    const gone = pl.find(p => p.offline && p.userId !== me.id);
+    let el = document.getElementById('gm-offline-notice');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'gm-offline-notice';
+      el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fca5a5;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;display:none;';
+      document.body.appendChild(el);
+    }
+    if (gone) { el.textContent = '⚠️ ' + gone.username + ' ออกจากเกม'; el.style.display='block'; }
+    else { el.style.display='none'; }
+  }
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();
