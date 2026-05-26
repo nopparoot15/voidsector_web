@@ -205,9 +205,26 @@
     const isPlayer = player === 1 || player === 2;
 
     if (state.winner) {
-      const winPlayer=players.find(p=>p.userId===state.winner);
-      const isMe=state.winner===me.id;
-      resultEl.textContent=isMe?'🎉 คุณชนะ!':`😔 ${esc(winPlayer?.username||'?')} ชนะ`;
+      const winPlayer = players.find(p=>p.userId===state.winner);
+      const loserId = state.winner===state.p1 ? state.p2 : state.p1;
+      const losePlayer = players.find(p=>p.userId===loserId);
+      const iWon = state.winner===me.id;
+      const iLost = loserId===me.id;
+      const wName = esc(winPlayer?.username||'?');
+      const lName = esc(losePlayer?.username||'?');
+      let msg;
+      if (state.reason==='resign') {
+        msg = iWon ? `🎉 คุณชนะ! — ${lName} ยอมแพ้`
+            : iLost ? `🏳 คุณยอมแพ้ — ${wName} ชนะ`
+            : `🏳 ${lName} ยอมแพ้ — ${wName} ชนะ`;
+      } else if (state.reason==='timeout') {
+        msg = iWon ? `🎉 คุณชนะ! — ${lName} หมดเวลา`
+            : iLost ? `⏰ คุณหมดเวลา — ${wName} ชนะ`
+            : `⏰ ${lName} หมดเวลา — ${wName} ชนะ`;
+      } else {
+        msg = iWon ? `🎉 คุณชนะ!` : `😔 ${wName} ชนะ`;
+      }
+      resultEl.textContent = msg;
       resultEl.classList.remove('hidden');
       actionsEl.classList.remove('hidden');
       resignBtn.classList.add('hidden');
