@@ -1,28 +1,41 @@
 <!DOCTYPE html>
 <html lang="th">
-<head><%- include('../partials/head') %></head>
-<body class="auth-body">
-<main class="auth-main">
-  <div class="auth-card">
-    <div class="auth-logo">🌐 VoidSector</div>
-    <h1 class="auth-title">เข้าสู่ระบบ</h1>
-    <% if (error) { %>
-      <div class="alert-error"><%= error %></div>
-    <% } %>
-    <form method="POST" action="/auth/login" class="auth-form">
-      <div class="form-group">
-        <label for="email">อีเมลหรือชื่อผู้ใช้</label>
-        <input type="text" id="email" name="email" placeholder="email หรือ username" required autocomplete="username">
-      </div>
-      <div class="form-group">
-        <label for="password">รหัสผ่าน</label>
-        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
-      </div>
-      <button type="submit" class="btn-primary btn-full">เข้าสู่ระบบ</button>
-    </form>
-    <p class="auth-switch"><a href="/forgot-password">ลืมรหัสผ่าน?</a></p>
-    <p class="auth-switch">ยังไม่มีบัญชี? <a href="/register">สมัครสมาชิกฟรี</a></p>
+<head><%- include('../partials/head') %>
+<link rel="stylesheet" href="/css/social.css">
+</head>
+<body class="landing-body">
+
+<div class="fb-landing">
+
+  <!-- Left: Branding -->
+  <div class="fb-landing-left">
+    <div class="fb-logo">VoidSector</div>
+    <p class="fb-tagline">ติดตามข่าวสาร เชื่อมต่อกับเพื่อน<br>และสนุกไปด้วยกันในที่เดียว</p>
   </div>
-</main>
+
+  <!-- Right: Login form -->
+  <div class="fb-landing-right">
+    <div class="fb-login-card">
+      <% if (error) { %>
+        <div class="fb-login-error"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/auth/login" class="fb-login-form">
+        <input type="hidden" name="back" value="/">
+        <input type="text"     name="email"    placeholder="อีเมล หรือ ชื่อผู้ใช้" class="fb-input" required autofocus autocomplete="username">
+        <input type="password" name="password" placeholder="รหัสผ่าน"              class="fb-input" required autocomplete="current-password">
+        <button type="submit" class="fb-btn-login">เข้าสู่ระบบ</button>
+      </form>
+
+      <a href="/forgot-password" class="fb-forgot">ลืมรหัสผ่าน?</a>
+
+      <div class="fb-divider"></div>
+
+      <a href="/register" class="fb-btn-register">สร้างบัญชีใหม่</a>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>
