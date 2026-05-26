@@ -93,6 +93,51 @@ async function initDb() {
     await pool.query(m).catch(() => {});
   }
 
+  // Seed welcome post once (idempotent)
+  const WELCOME = `🌌 ยินดีต้อนรับสู่ VoidSector!
+
+เว็บนี้ทำมาสำหรับคนที่ชอบเรียน เล่น และแชทในที่เดียว — ไม่ต้องสมัครหลายแพลตฟอร์ม
+
+────────────────────
+📚 เรียนภาษา
+────────────────────
+ไปที่เมนู "เรียน" → เลือกภาษาที่สนใจ → ทำ Placement Test วัดระดับ → เรียนทีละ Lesson พร้อมระบบ Flashcard ช่วยจำคำศัพท์ และดูอันดับของคุณได้ที่ Leaderboard
+
+────────────────────
+🛠️ Tools
+────────────────────
+• Code Editor — เขียนและรันโค้ด Python / JavaScript / C# ได้เลยในเบราว์เซอร์
+• Calculator — เครื่องคิดเลขวิทยาศาสตร์
+• Terminal
+
+────────────────────
+🎮 Arcade — เล่นคนเดียว
+────────────────────
+2048 · Snake · Memory Match · Breakout
+
+────────────────────
+👥 Arcade — Multiplayer
+────────────────────
+สร้างห้อง → แชร์ลิงก์ให้เพื่อน → เล่นได้เลย
+
+XO · Word Bomb · Trivia · Typing Race
+Rock Paper Scissors · Draw & Guess · Spyfall · หมากฮอส
+
+────────────────────
+💬 Social
+────────────────────
+• Feed — โพสต์และแชร์ความคิด
+• DM — แชทส่วนตัวกับเพื่อน
+• Friends — เพิ่มเพื่อนและดูโปรไฟล์
+
+ลองใช้งานได้เลย — เจอบักหรืออยากแนะนำฟีเจอร์ไหน คอมเมนต์ไว้ได้เลยครับ! 🚀`;
+  await pool.query(`
+    INSERT INTO posts (user_id, text, created_at, last_activity_at)
+    SELECT id, $1, NOW(), NOW() FROM users
+    WHERE NOT EXISTS (SELECT 1 FROM posts WHERE text = $1)
+    ORDER BY id ASC LIMIT 1
+  `, [WELCOME]).catch(() => {});
+
   console.log('✅ Schema ready');
 }
 
