@@ -99,6 +99,8 @@
 .arcade-card--solo-snake .arcade-play-btn { background: #22c55e; }
 .arcade-card--solo-memory { --ac: #38bdf8; }
 .arcade-card--solo-memory .arcade-play-btn { background: #0ea5e9; }
+.arcade-card--solo-breakout { --ac: #ef4444; }
+.arcade-card--solo-breakout .arcade-play-btn { background: #ef4444; }
 .arcade-badge--solo { background: rgba(255,255,255,.08); color: rgba(235,245,255,.6); }
 
 .arcade-card-icon {

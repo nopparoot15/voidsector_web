@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><%- include('../partials/head') %>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;color:#e8eaf0;font-family:'Inter','Noto Sans Thai',sans-serif;min-height:100vh}
+.game-wrap{max-width:520px;margin:0 auto;padding:16px}
+.game-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.back-btn{background:rgba(255,255,255,.07);border:none;color:#aab;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.back-btn:hover{background:rgba(255,255,255,.12)}
+.game-title{font-size:28px;font-weight:800;color:#ef4444}
+.stat-bar{display:flex;gap:10px;margin-bottom:14px}
+.stat-box{background:#1e2230;border-radius:10px;padding:10px 14px;text-align:center;flex:1}
+.stat-label{font-size:11px;color:#667;text-transform:uppercase;letter-spacing:.05em}
+.stat-val{font-size:20px;font-weight:700;color:#ef4444}
+.canvas-wrap{position:relative;border-radius:12px;overflow:hidden}
+canvas{display:block;width:100%;background:#0a0a14;border-radius:12px}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border-radius:12px}
+.overlay h2{font-size:28px;font-weight:800}
+.overlay-sub{color:#aab;font-size:14px;text-align:center;line-height:1.6}
+.start-btn{background:#ef4444;color:#fff;border:none;padding:12px 32px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.start-btn:hover{background:#f87171}
+.hint{text-align:center;color:#555;font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<%- include('../partials/topbar') %>
+<div class="game-wrap">
+  <div class="game-header">
+    <a href="/arcade" class="back-btn">← Arcade</a>
+    <span class="game-title">🧱 Breakout</span>
+  </div>
+  <div class="stat-bar">
+    <div class="stat-box"><div class="stat-label">คะแนน</div><div class="stat-val" id="score">0</div></div>
+    <div class="stat-box"><div class="stat-label">ชีวิต</div><div class="stat-val" id="lives">❤️❤️❤️</div></div>
+    <div class="stat-box"><div class="stat-label">ด่าน</div><div class="stat-val" id="level">1</div></div>
+  </div>
+  <div class="canvas-wrap" id="wrap">
+    <canvas id="c"></canvas>
+    <div class="overlay" id="overlay">
+      <h2 style="color:#ef4444">🧱 Breakout</h2>
+      <div class="overlay-sub">ใช้เมาส์ / แตะ เพื่อเลื่อนแป้น<br>ทำลายอิฐทั้งหมดให้ได้</div>
+      <button class="start-btn" onclick="startGame()">เริ่มเกม</button>
+    </div>
+  </div>
+  <p class="hint">เลื่อนเมาส์หรือสไลด์นิ้วเพื่อควบคุมแป้น</p>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('wrap');
+
+// Responsive canvas size
+function resize() {
+  const w = wrap.clientWidth;
+  canvas.width = w;
+  canvas.height = Math.round(w * 0.85);
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (!running) drawIdle(); });
+
+// Game state
+let bx, by, bdx, bdy, pr, br;
+let padX, padW, padH;
+let bricks, score, lives, level, running=false, animId;
+const ROWS=5, COLS=8, PAD_SPEED=8;
+let mouseX = -1;
+
+const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6'];
+
+function init(lvl) {
+  const W=canvas.width, H=canvas.height;
+  br = W * 0.022;
+  padW = W * 0.18;
+  padH = H * 0.025;
+  padX = W/2 - padW/2;
+
+  const speed = 3.5 + lvl * 0.6;
+  bx = W/2; by = H*0.6;
+  bdx = speed * (Math.random() > 0.5 ? 1 : -1);
+  bdy = -speed;
+
+  const bW = (W - 20) / COLS;
+  const bH = H * 0.055;
+  bricks = [];
+  for (let r=0; r<ROWS; r++) {
+    for (let c=0; c<COLS; c++) {
+      bricks.push({ x: 10 + c*bW, y: 36 + r*(bH+4), w: bW-4, h: bH, color: COLORS[r], alive: true });
+    }
+  }
+}
+
+function startGame() {
+  score = score || 0; lives = 3; level = 1;
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('lives').textContent='❤️❤️❤️';
+  document.getElementById('level').textContent=level;
+  document.getElementById('score').textContent=score=0;
+  init(level);
+  running=true;
+  cancelAnimationFrame(animId);
+  loop();
+}
+
+function nextLevel() {
+  level++;
+  document.getElementById('level').textContent=level;
+  init(level);
+}
+
+function loop() {
+  if (!running) return;
+  update();
+  draw();
+  animId = requestAnimationFrame(loop);
+}
+
+function update() {
+  const W=canvas.width, H=canvas.height;
+
+  // Paddle follow mouse/touch
+  if (mouseX >= 0) {
+    padX = mouseX - padW/2;
+  }
+  padX = Math.max(0, Math.min(W - padW, padX));
+
+  // Move ball
+  bx += bdx; by += bdy;
+
+  // Wall bounce
+  if (bx - br < 0) { bx = br; bdx = Math.abs(bdx); }
+  if (bx + br > W) { bx = W-br; bdx = -Math.abs(bdx); }
+  if (by - br < 0) { by = br; bdy = Math.abs(bdy); }
+
+  // Paddle collision
+  if (by + br >= H - padH - 4 && by + br <= H - 2 &&
+      bx >= padX - br && bx <= padX + padW + br) {
+    bdy = -Math.abs(bdy);
+    // Angle based on hit position
+    const hit = (bx - (padX + padW/2)) / (padW/2);
+    bdx = hit * 5;
+  }
+
+  // Bottom — lose life
+  if (by - br > H) {
+    lives--;
+    const hearts = ['','❤️','❤️❤️','❤️❤️❤️'];
+    document.getElementById('lives').textContent = lives > 0 ? hearts[lives] : '💀';
+    if (lives <= 0) { gameOver(false); return; }
+    bx=W/2; by=H*0.6;
+    const sp=3.5+level*0.6;
+    bdx=sp*(Math.random()>.5?1:-1); bdy=-sp;
+  }
+
+  // Brick collision
+  let allDead = true;
+  for (const b of bricks) {
+    if (!b.alive) continue;
+    allDead = false;
+    if (bx+br > b.x && bx-br < b.x+b.w && by+br > b.y && by-br < b.y+b.h) {
+      b.alive = false;
+      score += 10 * level;
+      document.getElementById('score').textContent = score;
+      // Determine bounce direction
+      const overlapL = (bx+br) - b.x;
+      const overlapR = (b.x+b.w) - (bx-br);
+      const overlapT = (by+br) - b.y;
+      const overlapB = (b.y+b.h) - (by-br);
+      const minH = Math.min(overlapL, overlapR);
+      const minV = Math.min(overlapT, overlapB);
+      if (minH < minV) bdx = -bdx; else bdy = -bdy;
+      break;
+    }
+  }
+  if (allDead) { nextLevel(); }
+}
+
+function draw() {
+  const W=canvas.width, H=canvas.height;
+  ctx.fillStyle='#0a0a14'; ctx.fillRect(0,0,W,H);
+
+  // Bricks
+  bricks.forEach(b => {
+    if (!b.alive) return;
+    ctx.fillStyle = b.color;
+    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.12)';
+    ctx.fillRect(b.x+2, b.y+2, b.w-4, 4);
+  });
+
+  // Paddle
+  const grd = ctx.createLinearGradient(padX, H-padH-4, padX+padW, H-4);
+  grd.addColorStop(0,'#ef4444'); grd.addColorStop(1,'#f97316');
+  ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.roundRect(padX, H-padH-4, padW, padH, padH/2); ctx.fill();
+
+  // Ball
+  ctx.fillStyle='#f4f4f5';
+  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.4)';
+  ctx.beginPath(); ctx.arc(bx-br*.3, by-br*.3, br*.35, 0, Math.PI*2); ctx.fill();
+}
+
+function drawIdle() {
+  const W=canvas.width, H=canvas.height;
+  ctx.fillStyle='#0a0a14'; ctx.fillRect(0,0,W,H);
+}
+
+function gameOver(won) {
+  running=false;
+  cancelAnimationFrame(animId);
+  const ov=document.getElementById('overlay');
+  ov.innerHTML=`<h2 style="color:${won?'#22c55e':'#ef4444'}">${won?'🎉 ชนะ!':'💀 Game Over'}</h2>
+    <div class="overlay-sub">คะแนน: <strong style="color:#ef4444">${score}</strong>${won?' — ผ่านทุกด่านแล้ว!':''}</div>
+    <button class="start-btn" onclick="startGame()">เล่นใหม่</button>`;
+  ov.style.display='flex';
+}
+
+// Mouse / touch control
+wrap.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+});
+wrap.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
+}, { passive: false });
+
+drawIdle();
+</script>
+</body>
+</html>

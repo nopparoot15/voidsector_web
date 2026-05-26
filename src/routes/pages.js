@@ -126,6 +126,10 @@ router.get('/solo/memory', requireFullAccount, (req, res) => {
   res.render('pages/solo-memory', { title: 'Memory Match' });
 });
 
+router.get('/solo/breakout', requireFullAccount, (req, res) => {
+  res.render('pages/solo-breakout', { title: 'Breakout' });
+});
+
 router.get('/leaderboard', requireFullAccount, (req, res) => {
   res.render('pages/leaderboard', { title: 'Leaderboard' });
 });
