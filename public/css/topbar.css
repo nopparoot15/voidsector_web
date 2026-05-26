@@ -328,7 +328,7 @@
 ========================= */
 .vs-toast-wrap{
   position: fixed;
-  bottom: 24px;
+  top: 70px;
   right: 14px;
   left: auto;
   z-index: 9999;
