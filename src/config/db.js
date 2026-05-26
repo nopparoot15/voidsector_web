@@ -93,7 +93,13 @@ async function initDb() {
     await pool.query(m).catch(() => {});
   }
 
-  // Seed welcome post once (idempotent)
+  // Seed system account + welcome post once (idempotent)
+  await pool.query(`
+    INSERT INTO users (username, email, password_hash, xp)
+    VALUES ('VoidSector', 'system@voidsector.internal', 'disabled', 0)
+    ON CONFLICT (username) DO NOTHING
+  `).catch(() => {});
+
   const WELCOME = `🌌 ยินดีต้อนรับสู่ VoidSector!
 
 เว็บนี้ทำมาสำหรับคนที่ชอบเรียน เล่น และแชทในที่เดียว — ไม่ต้องสมัครหลายแพลตฟอร์ม
@@ -133,9 +139,8 @@ Rock Paper Scissors · Draw & Guess · Spyfall · หมากฮอส
 ลองใช้งานได้เลย — เจอบักหรืออยากแนะนำฟีเจอร์ไหน คอมเมนต์ไว้ได้เลยครับ! 🚀`;
   await pool.query(`
     INSERT INTO posts (user_id, text, created_at, last_activity_at)
-    SELECT id, $1, NOW(), NOW() FROM users
-    WHERE NOT EXISTS (SELECT 1 FROM posts WHERE text = $1)
-    ORDER BY id ASC LIMIT 1
+    SELECT id, $1, NOW(), NOW() FROM users WHERE username = 'VoidSector'
+    AND NOT EXISTS (SELECT 1 FROM posts WHERE text = $1)
   `, [WELCOME]).catch(() => {});
 
   console.log('✅ Schema ready');
