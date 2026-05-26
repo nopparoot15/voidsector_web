@@ -427,7 +427,7 @@ div.innerHTML = `
     if (msg) { msg.className = 'vs-dd__hint'; msg.textContent = 'Sending request…'; }
 
     try {
-      const r = await fetch('/api/friends/request', {
+      const r = await fetch('/friends/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -600,7 +600,7 @@ div.innerHTML = `
       if (!id) return;
       btn.disabled = true;
       try {
-        const url = `/api/friends/requests/${encodeURIComponent(id)}/${action === 'accept' ? 'accept' : 'deny'}`;
+        const url = `/friends/requests/${encodeURIComponent(id)}/${action === 'accept' ? 'accept' : 'deny'}`;
         await fetch(url, { method: 'POST', credentials: 'include' });
       } catch (_) {}
       fetchSummary();
