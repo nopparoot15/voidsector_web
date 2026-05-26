@@ -703,6 +703,7 @@ input.fb-search-input {
 .fb-panel-read-all:hover { background: rgba(6,182,212,.12); }
 
 .fb-panel-search {
+  position: relative;
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
