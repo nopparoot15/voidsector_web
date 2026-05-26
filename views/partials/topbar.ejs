@@ -54,7 +54,7 @@
       <!-- Avatar -->
       <a href="/profile" class="fb-topbar-avatar" title="<%= user.username %>">
         <% if (user.avatar) { %>
-          <img src="<%= user.avatar %>" alt="<%= user.username %>">
+          <img src="<%= user.avatar %>" alt="<%= user.username %>" onerror="this.style.display='none'">
         <% } else { %>
           <span class="fb-topbar-avatar__init"><%= user.username.charAt(0).toUpperCase() %></span>
         <% } %>

@@ -33,7 +33,7 @@
     <div class="fb-profile-info-row">
       <div class="fb-avatar-wrap" id="avatar-wrap">
         <% if (userData.avatar) { %>
-          <img src="<%- userData.avatar %>" class="fb-avatar-img" id="avatar-img" alt="avatar">
+          <img src="<%- userData.avatar %>" class="fb-avatar-img" id="avatar-img" alt="avatar" onerror="this.style.display='none'">
         <% } else { %>
           <div class="fb-avatar-init" id="avatar-placeholder"><%= userData.username.slice(0,1).toUpperCase() %></div>
         <% } %>
@@ -102,7 +102,7 @@
         <div class="create-post-top">
           <div class="fb-avatar-sm-wrap">
             <% if (userData.avatar) { %>
-              <img src="<%- userData.avatar %>" class="fb-avatar-sm" alt="">
+              <img src="<%- userData.avatar %>" class="fb-avatar-sm" alt="" onerror="this.style.display='none'">
             <% } else { %>
               <div class="fb-avatar-sm-init"><%= userData.username.slice(0,1).toUpperCase() %></div>
             <% } %>
@@ -517,7 +517,7 @@ function enterCoverReposition(sourceImg) {
     grid.innerHTML = friends.map(f=>`
       <a class="fb-friend-item" href="/user/${encodeURIComponent(f.username)}">
         ${f.avatar
-          ? `<img src="${f.avatar}" class="fb-friend-avatar" alt="">`
+          ? `<img src="${f.avatar}" class="fb-friend-avatar" alt="" onerror="this.style.display='none'">`
           : `<div class="fb-friend-avatar-init">${esc((f.username||'?').slice(0,1).toUpperCase())}</div>`}
         <span class="fb-friend-name">${esc(f.username)}</span>
       </a>`).join('');
