@@ -126,6 +126,7 @@ function vsBumpDmToTop(container, friendId, ts){
       roomId,
       from_user_id: inv.from_user_id || null,
       from_username: String(inv.from_username || 'Someone'),
+      join_url: inv.join_url || null,
       created_at: inv.at || new Date().toISOString(),
     });
     // cap
@@ -258,6 +259,7 @@ function vsBumpDmToTop(container, friendId, ts){
       item.className = 'vs-dd__item';
       item.dataset.wpRoomId = inv.roomId || inv.room_id || '';
       item.dataset.wpFromUserId = String(inv.from_user_id || '');
+      item.dataset.joinUrl = inv.join_url || (inv.roomId ? `/watch/r/${encodeURIComponent(inv.roomId)}` : '');
 
       const fromName = inv.from_username || inv.username || 'Unknown';
       const createdAt = inv.created_at || inv.at || '';
@@ -508,10 +510,16 @@ div.innerHTML = `
     // watch party invite notifications (realtime)
     s.on('wp:invite_notify', (p = {}) => {
       pushWpInvite(p);
-      // update notifications dropdown + badge immediately
       const serverAlerts = Number(lastSummary?.counts?.alerts) || 0;
       setBadge('notifications', serverAlerts + (wpInvitesLocal || []).length);
       renderAlerts(lastSummary?.friend_requests || [], lastSummary?.whiteboard_invites || [], wpInvitesLocal || []);
+      const from = p.from_username ? `@${p.from_username}` : 'Someone';
+      const joinUrl = p.join_url || (p.roomId ? `/watch/r/${encodeURIComponent(p.roomId)}` : '');
+      showToast(`📺 ${from} ชวนคุณดู Watch Party`, {
+        ttlMs: 12000,
+        actionText: 'เข้าร่วม',
+        onAction: () => { if (joinUrl) window.location.href = joinUrl; }
+      });
     });
 
     // general notifications (likes, comments, friend requests)
@@ -580,7 +588,8 @@ div.innerHTML = `
         setBadge('notifications', serverAlerts + (wpInvitesLocal || []).length);
         renderAlerts(lastSummary?.friend_requests || [], lastSummary?.whiteboard_invites || [], wpInvitesLocal || []);
         if (action === 'wp-join') {
-          window.location.href = `/watch/r/${encodeURIComponent(roomId)}`;
+          const joinUrl = item?.dataset.joinUrl;
+          window.location.href = joinUrl || `/watch/r/${encodeURIComponent(roomId)}`;
         }
         return;
       }

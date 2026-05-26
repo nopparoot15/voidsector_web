@@ -2,6 +2,7 @@
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const https = require('https');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
@@ -73,6 +74,37 @@ function createApp() {
   app.use('/', friendsRoutes);
   app.use('/', authRoutes);
   app.use('/', pageRoutes);
+
+  // Code execution proxy — must be before 404 handler
+  app.post('/api/run-code', (req, res) => {
+    const { language, code, stdin = '' } = req.body || {};
+    const langMap = { python: 'py3', javascript: 'js' };
+    const lang = langMap[language];
+    if (!lang) return res.json({ output: '', error: 'Language not supported for execution', exitCode: 1 });
+    const body = JSON.stringify({ code, language: lang, input: stdin });
+    const options = {
+      hostname: 'api.codex.jaagrav.in',
+      path: '/',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    };
+    const apiReq = https.request(options, apiRes => {
+      let data = '';
+      apiRes.on('data', chunk => { data += chunk; });
+      apiRes.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          res.json({ output: parsed.output || '', error: parsed.error || '', exitCode: parsed.error ? 1 : 0 });
+        } catch {
+          res.json({ output: data, error: '', exitCode: 0 });
+        }
+      });
+    });
+    apiReq.on('error', e => res.json({ output: '', error: e.message, exitCode: 1 }));
+    apiReq.setTimeout(15000, () => { apiReq.destroy(); res.json({ output: '', error: 'Execution timeout', exitCode: 1 }); });
+    apiReq.write(body);
+    apiReq.end();
+  });
 
   app.use((req, res) => res.status(404).render('pages/notfound', { title: '404' }));
   app.use((err, req, res, next) => {

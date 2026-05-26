@@ -45,6 +45,28 @@ router.post('/watch/rooms/:roomId/invite', requireLogin, async (req, res) => {
     if (okIds.length === 0) return res.status(400).json({ ok: false, reason: 'not_friends' });
 
     const out = watchPartyStore.invite(roomId, me, okIds);
+
+    // Notify each invited friend in real-time
+    const io = req.app.get('io');
+    if (io) {
+      const origin = `${req.protocol}://${req.get('host')}`;
+      const room2 = watchPartyStore.get(roomId);
+      const joinUrl = room2?.roomJoinKey
+        ? `${origin}/watch/r/${encodeURIComponent(roomId)}?k=${encodeURIComponent(room2.roomJoinKey)}`
+        : `${origin}/watch/r/${encodeURIComponent(roomId)}`;
+      const from_username = req.session.user.username;
+      const from_user_id = me;
+      for (const toId of okIds) {
+        io.to(`user:${toId}`).emit('wp:invite_notify', {
+          roomId,
+          from_user_id,
+          from_username,
+          join_url: joinUrl,
+          at: new Date().toISOString(),
+        });
+      }
+    }
+
     res.json({ ok: true, added: out.added, friendIds: okIds });
   } catch (e) {
     console.warn('watch invite failed:', e.code || e.message);
