@@ -24,14 +24,14 @@
   aspect-ratio:1; display:flex; align-items:center; justify-content:center;
   cursor:default; position:relative; transition:background .1s;
 }
-.ck-cell.dark { background:#1a1d2e; }
-.ck-cell.light { background:#0d0d16; }
+.ck-cell.dark  { background:#09090f; }
+.ck-cell.light { background:#2a2060; }
 .ck-cell.selectable { cursor:pointer; }
-.ck-cell.selectable:hover { background:#252540; }
-.ck-cell.selected { background:#2d2d52; }
-.ck-cell.can-move { background:#1a2a1a; cursor:pointer; }
-.ck-cell.can-move::after { content:''; width:30%; height:30%; border-radius:50%; background:rgba(74,222,128,.45); position:absolute; }
-.ck-cell.can-move:hover { background:#1f3a1f; }
+.ck-cell.selectable:hover { background:#1a1540; }
+.ck-cell.selected { background:#3b3080; }
+.ck-cell.can-move { background:#0d2010; cursor:pointer; }
+.ck-cell.can-move::after { content:''; width:34%; height:34%; border-radius:50%; background:rgba(74,222,128,.65); position:absolute; pointer-events:none; }
+.ck-cell.can-move:hover { background:#122818; }
 .ck-piece {
   width:70%; height:70%; border-radius:50%; position:relative;
   box-shadow:0 2px 6px rgba(0,0,0,.5); transition:transform .1s;
