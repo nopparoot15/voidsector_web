@@ -78,19 +78,19 @@ function createApp() {
   // Code execution proxy — must be before 404 handler
   app.post('/api/run-code', (req, res) => {
     const { language, code, stdin = '' } = req.body || {};
-    const supported = ['python', 'javascript', 'csharp'];
-    if (!supported.includes(language) || !code) {
+    const compilerMap = {
+      python:     'cpython-3.12.7',
+      javascript: 'nodejs-18.20.4',
+      csharp:     'mono-6.12.0.199',
+    };
+    const compiler = compilerMap[language];
+    if (!compiler || !code) {
       return res.json({ output: '', error: 'Language not supported', exitCode: 1 });
     }
-    const body = JSON.stringify({
-      language,
-      version: '*',
-      files: [{ content: code }],
-      stdin: stdin || '',
-    });
+    const body = JSON.stringify({ compiler, code, stdin: stdin || '' });
     const options = {
-      hostname: 'emkc.org',
-      path: '/api/v2/piston/execute',
+      hostname: 'wandbox.org',
+      path: '/api/compile.json',
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
     };
@@ -100,8 +100,10 @@ function createApp() {
       apiRes.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          const run = parsed.run || {};
-          res.json({ output: run.stdout || '', error: run.stderr || '', exitCode: run.code ?? 0 });
+          const out = parsed.program_output || '';
+          const err = parsed.program_error || parsed.compiler_error || '';
+          const code = parseInt(parsed.status ?? '0', 10);
+          res.json({ output: out, error: err, exitCode: code });
         } catch {
           res.json({ output: data, error: '', exitCode: 0 });
         }

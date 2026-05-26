@@ -50,7 +50,7 @@ body{background:#0f1117;color:#e8eaf0;font-family:'Inter','Noto Sans Thai',sans-
   <button class="new-game-btn" onclick="startGame()">เริ่มใหม่</button>
 </div>
 <script>
-const EMOJIS='🐶🐱🦊🐻🦁🐯🦋🌈🍕🍔🎸🎯🚀🌙⭐🎃🦄🍓🎲🦖🐙🌺🎵🏆'.split('');
+const EMOJIS=[...'🐶🐱🦊🐻🦁🐯🦋🌈🍕🍔🎸🎯🚀🌙⭐🎃🦄🍓🎲🦖🐙🌺🎵🏆'];
 let flipped=[], matched=0, total=0, flipCount=0, lock=false, elapsed=0, timerI=null, cols=4, rows=4;
 
 function setSize(c, btn){
