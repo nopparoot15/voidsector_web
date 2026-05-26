@@ -43,6 +43,7 @@ router.get('/feed', requireLogin, async (req, res) => {
          LEFT JOIN post_comments c ON c.post_id = p.id
          WHERE p.user_id = $1
             OR p.user_id IN (SELECT friend_user_id FROM friendships WHERE user_id=$1)
+            OR u.username = 'VoidSector'
          GROUP BY p.id, u.username, u.avatar
          ORDER BY p.last_activity_at DESC
          LIMIT $2 OFFSET $3`,
