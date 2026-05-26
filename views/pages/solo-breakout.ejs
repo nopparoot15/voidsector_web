@@ -66,6 +66,7 @@ let bricks, score, lives, level, running=false, animId;
 const ROWS=5, COLS=8, PAD_SPEED=8;
 let mouseX = -1;
 let ballHeld = false; // ball sitting on paddle, waiting for click
+let suppressLaunch = false; // ignore the click that started the game
 
 const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6'];
 
@@ -99,6 +100,7 @@ function startGame() {
   document.getElementById('score').textContent=score=0;
   init(level);
   holdBall();
+  suppressLaunch = true;
   running=true;
   cancelAnimationFrame(animId);
   loop();
@@ -253,7 +255,10 @@ wrap.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
 });
-wrap.addEventListener('click', () => { if (running) launchBall(); });
+wrap.addEventListener('click', () => {
+  if (suppressLaunch) { suppressLaunch = false; return; }
+  if (running) launchBall();
+});
 wrap.addEventListener('touchmove', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
