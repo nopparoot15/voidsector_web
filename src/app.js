@@ -80,20 +80,14 @@ function createApp() {
     const { language, code, stdin = '' } = req.body || {};
     if (!code) return res.json({ output: '', error: 'Language not supported', exitCode: 1 });
 
-    // C# → Rextester (.NET Core, supports C# 7+)
+    // C# → Codapi (.NET, supports C# 7+, free no-key API)
     if (language === 'csharp') {
-      const params = new URLSearchParams({
-        LanguageChoiceWrapper: '28',
-        Program: code,
-        Input: stdin || '',
-        CompilerArgs: '',
-      });
-      const body = params.toString();
+      const body = JSON.stringify({ sandbox: 'dotnet', command: 'run', files: { '': code } });
       const options = {
-        hostname: 'rextester.com',
-        path: '/rundotnet/api',
+        hostname: 'api.codapi.org',
+        path: '/v1/exec',
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
       };
       const apiReq = https.request(options, apiRes => {
         let data = '';
@@ -101,9 +95,9 @@ function createApp() {
         apiRes.on('end', () => {
           try {
             const parsed = JSON.parse(data);
-            const out = parsed.Result || '';
-            const err = parsed.Errors || '';
-            res.json({ output: out, error: err, exitCode: err ? 1 : 0 });
+            const out = parsed.stdout || '';
+            const err = parsed.stderr || '';
+            res.json({ output: out, error: err, exitCode: parsed.ok ? 0 : 1 });
           } catch {
             res.json({ output: data, error: '', exitCode: 0 });
           }
