@@ -225,6 +225,39 @@ io.on('connection', (socket) => {
     });
   }));
 
+  socket.on('wb:invite', async ({ roomId, friendIds } = {}, cb) => {
+    const uid = Number(socket.data.userId);
+    const rid = String(roomId || '');
+    if (!rid || !Number.isFinite(uid) || uid <= 0) return cb?.({ ok: false, reason: 'not_identified' });
+
+    const out = whiteboardStore.invite(rid, uid, friendIds);
+    if (!out.ok) return cb?.({ ok: false, reason: out.reason });
+
+    const ids = (Array.isArray(friendIds) ? friendIds : []).map(Number).filter(n => Number.isFinite(n) && n > 0);
+    const origin = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : 'http://localhost:3000';
+    const room = whiteboardStore.get(rid);
+    const joinUrl = room?.roomJoinKey
+      ? `${origin}/whiteboard/r/${encodeURIComponent(rid)}?k=${encodeURIComponent(room.roomJoinKey)}`
+      : `${origin}/whiteboard/r/${encodeURIComponent(rid)}`;
+
+    for (const toId of ids) {
+      pool.query(
+        `INSERT INTO whiteboard_invites(room_id, from_user_id, to_user_id, status)
+         VALUES($1,$2,$3,'pending')`,
+        [rid, uid, toId]
+      ).catch(() => {});
+      io.to(`user:${toId}`).emit('vs:notification', {
+        type: 'whiteboard_invite',
+        from_username: socket.data.username,
+        room_id: rid,
+        join_url: joinUrl,
+      });
+    }
+    cb?.({ ok: true, added: out.added });
+  });
+
   // ── WATCH PARTY ─────────────────────────────────────────────────────────────
   socket.on('wp:time_sync', ({ t0 } = {}) => {
     socket.emit('wp:time_sync', { t0: Number(t0) || 0, ts: Date.now() });
