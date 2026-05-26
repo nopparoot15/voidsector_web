@@ -1844,9 +1844,24 @@ function ckCaptures(board, idx, player) {
   if (player === 2 || isKing) dirs.push([1,-1],[1,1]);
   const out = [];
   for (const [dr,dc] of dirs) {
-    const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
-    if (mr<0||mr>7||mc<0||mc>7||lr<0||lr>7||lc<0||lc>7) continue;
-    if (opp.includes(board[mr*8+mc]) && board[lr*8+lc]===0) out.push({to:lr*8+lc,over:mr*8+mc});
+    if (isKing) {
+      let nr=r+dr, nc=c+dc;
+      while (nr>=0&&nr<8&&nc>=0&&nc<8) {
+        if (opp.includes(board[nr*8+nc])) {
+          let lr=nr+dr, lc=nc+dc;
+          while (lr>=0&&lr<8&&lc>=0&&lc<8&&board[lr*8+lc]===0) {
+            out.push({to:lr*8+lc,over:nr*8+nc});
+            lr+=dr; lc+=dc;
+          }
+          break;
+        } else if (board[nr*8+nc]!==0) break;
+        nr+=dr; nc+=dc;
+      }
+    } else {
+      const mr=r+dr, mc=c+dc, lr=r+2*dr, lc=c+2*dc;
+      if (mr<0||mr>7||mc<0||mc>7||lr<0||lr>7||lc<0||lc>7) continue;
+      if (opp.includes(board[mr*8+mc])&&board[lr*8+lc]===0) out.push({to:lr*8+lc,over:mr*8+mc});
+    }
   }
   return out;
 }
@@ -1858,8 +1873,16 @@ function ckMoves(board, idx, player) {
   if (player === 2 || isKing) dirs.push([1,-1],[1,1]);
   const out = [];
   for (const [dr,dc] of dirs) {
-    const nr=r+dr, nc=c+dc;
-    if (nr>=0&&nr<8&&nc>=0&&nc<8&&board[nr*8+nc]===0) out.push({to:nr*8+nc});
+    if (isKing) {
+      let nr=r+dr, nc=c+dc;
+      while (nr>=0&&nr<8&&nc>=0&&nc<8&&board[nr*8+nc]===0) {
+        out.push({to:nr*8+nc});
+        nr+=dr; nc+=dc;
+      }
+    } else {
+      const nr=r+dr, nc=c+dc;
+      if (nr>=0&&nr<8&&nc>=0&&nc<8&&board[nr*8+nc]===0) out.push({to:nr*8+nc});
+    }
   }
   return out;
 }

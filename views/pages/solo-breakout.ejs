@@ -135,10 +135,10 @@ function update() {
   // Paddle collision
   if (by + br >= H - padH - 4 && by + br <= H - 2 &&
       bx >= padX - br && bx <= padX + padW + br) {
-    bdy = -Math.abs(bdy);
-    // Angle based on hit position
+    const spd = Math.hypot(bdx, bdy);
     const hit = (bx - (padX + padW/2)) / (padW/2);
-    bdx = hit * 5;
+    bdx = Math.max(-0.8, Math.min(0.8, hit)) * spd;
+    bdy = -Math.sqrt(spd*spd - bdx*bdx);
   }
 
   // Bottom — lose life

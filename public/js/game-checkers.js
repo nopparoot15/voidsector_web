@@ -67,17 +67,32 @@
 
   // ── Board logic (client-side, mirrors server) ─────────────────────────────
   function captures(board, idx, player) {
-    const r = Math.floor(idx/8), c = idx%8;
-    const isKing = board[idx]===3||board[idx]===4;
-    const opp = player===1?[2,4]:[1,3];
+    const r=Math.floor(idx/8),c=idx%8;
+    const isKing=board[idx]===3||board[idx]===4;
+    const opp=player===1?[2,4]:[1,3];
     const dirs=[];
-    if(player===1||isKing) dirs.push([-1,-1],[-1,1]);
-    if(player===2||isKing) dirs.push([1,-1],[1,1]);
+    if(player===1||isKing)dirs.push([-1,-1],[-1,1]);
+    if(player===2||isKing)dirs.push([1,-1],[1,1]);
     const out=[];
     for(const[dr,dc]of dirs){
-      const mr=r+dr,mc=c+dc,lr=r+2*dr,lc=c+2*dc;
-      if(mr<0||mr>7||mc<0||mc>7||lr<0||lr>7||lc<0||lc>7)continue;
-      if(opp.includes(board[mr*8+mc])&&board[lr*8+lc]===0)out.push({to:lr*8+lc,over:mr*8+mc});
+      if(isKing){
+        let nr=r+dr,nc=c+dc;
+        while(nr>=0&&nr<8&&nc>=0&&nc<8){
+          if(opp.includes(board[nr*8+nc])){
+            let lr=nr+dr,lc=nc+dc;
+            while(lr>=0&&lr<8&&lc>=0&&lc<8&&board[lr*8+lc]===0){
+              out.push({to:lr*8+lc,over:nr*8+nc});
+              lr+=dr;lc+=dc;
+            }
+            break;
+          } else if(board[nr*8+nc]!==0) break;
+          nr+=dr;nc+=dc;
+        }
+      } else {
+        const mr=r+dr,mc=c+dc,lr=r+2*dr,lc=c+2*dc;
+        if(mr<0||mr>7||mc<0||mc>7||lr<0||lr>7||lc<0||lc>7)continue;
+        if(opp.includes(board[mr*8+mc])&&board[lr*8+lc]===0)out.push({to:lr*8+lc,over:mr*8+mc});
+      }
     }
     return out;
   }
@@ -87,10 +102,20 @@
     const dirs=[];
     if(player===1||isKing)dirs.push([-1,-1],[-1,1]);
     if(player===2||isKing)dirs.push([1,-1],[1,1]);
-    return dirs.map(([dr,dc])=>({to:(r+dr)*8+(c+dc)})).filter(({to})=>{
-      const nr=Math.floor(to/8),nc=to%8;
-      return nr>=0&&nr<8&&nc>=0&&nc<8&&board[to]===0;
-    });
+    const out=[];
+    for(const[dr,dc]of dirs){
+      if(isKing){
+        let nr=r+dr,nc=c+dc;
+        while(nr>=0&&nr<8&&nc>=0&&nc<8&&board[nr*8+nc]===0){
+          out.push({to:nr*8+nc});
+          nr+=dr;nc+=dc;
+        }
+      } else {
+        const nr=r+dr,nc=c+dc;
+        if(nr>=0&&nr<8&&nc>=0&&nc<8&&board[nr*8+nc]===0)out.push({to:nr*8+nc});
+      }
+    }
+    return out;
   }
   function mustCapturePieces(board, player) {
     const pieces=player===1?[1,3]:[2,4];
