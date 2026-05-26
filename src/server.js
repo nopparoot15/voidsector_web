@@ -1881,9 +1881,8 @@ function ckCaptures(board, idx, player) {
   const r = Math.floor(idx/8), c = idx%8;
   const isKing = board[idx] === 3 || board[idx] === 4;
   const opp = player === 1 ? [2,4] : [1,3];
-  const dirs = [];
-  if (player === 1 || isKing) dirs.push([-1,-1],[-1,1]);
-  if (player === 2 || isKing) dirs.push([1,-1],[1,1]);
+  // All pieces can capture in any direction (Thai checkers rule)
+  const dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
   const out = [];
   for (const [dr,dc] of dirs) {
     if (isKing) {
