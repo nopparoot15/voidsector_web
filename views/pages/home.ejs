@@ -370,8 +370,8 @@ function bumpPost(card){
       clearTimeout(modal._t);
       modal._t=setTimeout(()=>{ if(idx<u.stories.length-1){idx++;render();}else modal.remove(); },5000);
     }
-    render();
     document.body.appendChild(modal);
+    render();
   }
 
   // Create story modal
