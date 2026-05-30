@@ -11,6 +11,7 @@ const { seedAll } = require('../data/seed');
 const { whiteboardStore } = require('./whiteboard/store');
 const { watchPartyStore } = require('./watchparty/store');
 const gameStore = require('./games/store');
+const { checkAndAward } = require('./helpers/badges');
 const https = require('https');
 
 const app = createApp();
@@ -827,6 +828,7 @@ io.on('connection', (socket) => {
       st.winLine = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
         .find(([a,b,c2]) => st.board[a] === winner && st.board[b] === winner && st.board[c2] === winner);
       room.status = 'ended';
+      checkAndAward(st.winner).catch(() => {});
     } else if (st.board.every(v => v !== 0)) {
       st.winner = 'draw';
       room.status = 'ended';
@@ -890,7 +892,7 @@ io.on('connection', (socket) => {
       st.multiJumpFrom = null;
       st.turn = player===1 ? 2 : 1;
       const w = ckWinner(b, st.turn);
-      if (w) { st.winner = w===1 ? st.p1 : st.p2; st.reason = 'normal'; room.status = 'ended'; }
+      if (w) { st.winner = w===1 ? st.p1 : st.p2; st.reason = 'normal'; room.status = 'ended'; checkAndAward(st.winner).catch(() => {}); }
     }
     if (st.winner) {
       gameStore.clearTimer(rid, 'cktimer');
@@ -901,6 +903,7 @@ io.on('connection', (socket) => {
         st.winner = st.turn === 1 ? st.p2 : st.p1;
         st.reason = 'timeout';
         room.status = 'ended';
+        checkAndAward(st.winner).catch(() => {});
         io.to(`gm:${rid}`).emit('checkers:state', st);
       }, CK_TURN_MS);
     }
@@ -921,6 +924,7 @@ io.on('connection', (socket) => {
       st.winner = st.turn === 1 ? st.p2 : st.p1;
       st.reason = 'timeout';
       room.status = 'ended';
+      checkAndAward(st.winner).catch(() => {});
       io.to(`gm:${rid}`).emit('checkers:state', st);
     }, CK_TURN_MS);
     io.to(`gm:${rid}`).emit('checkers:state', room.state);
@@ -2083,6 +2087,7 @@ function advanceWBTurn(rid, timeout = false) {
     st.phase = 'ended';
     st.winner = alive[0]?.userId || null;
     room.status = 'ended';
+    if (st.winner) checkAndAward(st.winner).catch(() => {});
     io.to(`gm:${rid}`).emit('wb:state', st);
     return;
   }
@@ -2142,6 +2147,8 @@ function nextTriviaQuestion(rid) {
   if (st.questionIdx >= st.totalQuestions) {
     st.phase = 'ended';
     room.status = 'ended';
+    const tqWinnerId = Object.entries(st.scores).reduce((a, b) => b[1] > a[1] ? b : a, [null, -1])[0];
+    if (tqWinnerId) checkAndAward(Number(tqWinnerId)).catch(() => {});
     io.to(`gm:${rid}`).emit('tq:ended', { scores: st.scores });
     return;
   }
@@ -2158,6 +2165,8 @@ function endTypeRace(rid) {
   gameStore.clearTimer(rid, 'trend');
   let rank = Object.keys(st.finished).length + 1;
   room.players.forEach(p => { if (st.finished[p.userId] === undefined) st.finished[p.userId] = rank++; });
+  const trWinnerId = Object.entries(st.finished).find(([, r]) => r === 1)?.[0];
+  if (trWinnerId) checkAndAward(Number(trWinnerId)).catch(() => {});
   io.to(`gm:${rid}`).emit('tr:ended', { state: st });
 }
 
@@ -2189,6 +2198,7 @@ function resolveRPS(rid, timeout) {
     if (gameOver) {
       room.status = 'ended'; st.phase = 'ended';
       const finalWinner = room.players.reduce((a, b) => st.scores[a.userId] >= st.scores[b.userId] ? a : b).userId;
+      checkAndAward(finalWinner).catch(() => {});
       io.to(`gm:${rid}`).emit('rps:ended', { scores: st.scores, winner: finalWinner });
     } else {
       st.round++; st.choices = {}; st.phase = 'choosing';
