@@ -419,7 +419,8 @@ function bumpPost(card){
       ov.querySelector('#sfb-close').onclick=closeViewer;
       ov.querySelector('#sfb-prev').onclick=e=>{e.stopPropagation();prevUser();};
       ov.querySelector('#sfb-next').onclick=e=>{e.stopPropagation();nextUser();};
-      ov.querySelector('#sfb-del')?.onclick=async e=>{
+      const delBtn=ov.querySelector('#sfb-del');
+      if(delBtn) delBtn.onclick=async e=>{
         e.stopPropagation();
         if(!confirm('ลบ Story นี้?')) return;
         await fetch(`/api/stories/${s.id}`,{method:'DELETE'});
