@@ -101,19 +101,6 @@ const TARGET_ID = <%- JSON.stringify(target.id) %>;
 const TARGET_USERNAME = '<%- target.username %>';
 const ME_ID = <%- JSON.stringify(locals.user?.id || null) %>;
 
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function timeAgo(d){
-  const s=Math.floor((Date.now()-new Date(d))/1000);
-  if(s<60) return 'เมื่อกี้';
-  if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
-  if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
-  return Math.floor(s/86400)+' วันที่แล้ว';
-}
-function avatarHtml(avatar, username){
-  if(avatar) return `<img src="${avatar}" class="social-avatar-img" alt="">`;
-  return `<div class="social-avatar-placeholder">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
-}
-
 // ── Posts feed ────────────────────────────────────────────────────
 let offset=0, loading=false, done=false;
 const postList = document.getElementById('their-posts');

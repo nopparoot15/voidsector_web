@@ -91,12 +91,7 @@
     return `${m}:${String(s).padStart(2, '0')}`;
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(
-      /[&<>"']/g,
-      (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])
-    );
-  }
+  const escapeHtml = esc;
 
   function showUrlError(msg) {
     if (!els.urlError) return;

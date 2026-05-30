@@ -95,11 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
       `:<span class="c-mag">${esc(cwd)}</span>$ `;
   }
 
-  function esc(s) {
-    return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
 
   function line(text, cls = '') {
     const div = document.createElement('div');

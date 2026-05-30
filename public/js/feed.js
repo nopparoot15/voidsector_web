@@ -3,14 +3,7 @@
   const form = document.getElementById('feedForm');
   const status = document.getElementById('feedStatus');
 
-  function escapeHtml(str){
-    return String(str ?? '')
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#039;');
-  }
+  const escapeHtml = esc;
 
   function timeAgo(iso){
     const t = new Date(iso);

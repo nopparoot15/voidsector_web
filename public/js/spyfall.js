@@ -71,10 +71,6 @@
   let pendingAccuseUid  = null;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  function esc(s) {
-    return String(s || '').replace(/[&<>"']/g, m =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  }
   function show(...els) { els.forEach(e => e?.classList.remove('hidden')); }
   function hide(...els) { els.forEach(e => e?.classList.add('hidden')); }
 

@@ -4,10 +4,6 @@
   const empty   = document.getElementById('lbEmpty');
   const refresh = document.getElementById('lbRefresh');
 
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
   function medal(rank) {
     return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
   }

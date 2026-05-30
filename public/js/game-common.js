@@ -1,10 +1,6 @@
 'use strict';
 /* ── Shared utilities for all multiplayer game pages ── */
 
-function esc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 function renderLobbyPlayersHTML(pl, host) {
   const el = document.getElementById('lobby-players');
   if (!el) return;

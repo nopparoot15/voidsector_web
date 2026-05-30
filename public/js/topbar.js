@@ -162,14 +162,7 @@ function vsBumpDmToTop(container, friendId, ts){
     else el.setAttribute('hidden', 'hidden');
   }
 
-  function escapeHtml(s) {
-    return String(s ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
+  const escapeHtml = esc;
 
   function fmtTime(iso) {
     if (!iso) return '';

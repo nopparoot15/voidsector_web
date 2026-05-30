@@ -999,10 +999,6 @@
 
   // ── Helpers ──────────────────────────────────────────────────────────
   function normalize(s) { return String(s).toLowerCase().trim().replace(/\s+/g, ' '); }
-  function esc(s) {
-    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
   // ── Text-to-Speech ────────────────────────────────────────────────────
   var currentAudio = null;
   function speak(text, lang) {

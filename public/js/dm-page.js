@@ -29,14 +29,7 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+  const escapeHtml = esc;
 
   async function jpost(url, body) {
     const r = await fetch(url, {

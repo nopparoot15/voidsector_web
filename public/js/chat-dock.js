@@ -125,12 +125,6 @@
   // ── Utils ─────────────────────────────────────────────────────────────────
   function norm(s) { return String(s || '').trim().toLowerCase(); }
 
-  function esc(s) {
-    return String(s ?? '')
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;');
-  }
-
   function avatarHtml(avatar, name) {
     const init = String(name || '?').trim().charAt(0).toUpperCase();
     if (avatar) return `<img src="${esc(avatar)}" alt="">`;

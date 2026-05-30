@@ -115,15 +115,6 @@
 (function(){
   if (!<%- JSON.stringify(!!locals.user) %>) return;
 
-  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function timeAgo(d){
-    const s=Math.floor((Date.now()-new Date(d))/1000);
-    if(s<60) return 'เมื่อกี้';
-    if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
-    if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
-    return Math.floor(s/86400)+' วันที่แล้ว';
-  }
-
   // ── Sound ─────────────────────────────────────────────────────
   let audioCtx;
   function getAudioCtx(){
