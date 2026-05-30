@@ -1,4 +1,5 @@
 <meta charset="UTF-8">
+<script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('vs-theme')||'dark');})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><%= typeof title !== 'undefined' ? title + ' — VoidSector' : 'VoidSector' %></title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
@@ -7,5 +8,14 @@
 <link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/topbar.css?v=6">
 <link rel="stylesheet" href="/css/chat-dock.css?v=2">
-<script>document.addEventListener('keydown',function(e){if(e.key==='Backspace'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)&&!document.activeElement.isContentEditable)e.preventDefault();});</script>
+<script>
+document.addEventListener('keydown',function(e){if(e.key==='Backspace'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)&&!document.activeElement.isContentEditable)e.preventDefault();});
+// Shared utilities — global, used by all pages
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function timeAgo(d){var s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return'เมื่อกี้';if(s<3600)return Math.floor(s/60)+' นาทีที่แล้ว';if(s<86400)return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';return Math.floor(s/86400)+' วันที่แล้ว';}
+function avatarHtml(a,u,c){c=c||'';if(a)return'<img src="'+a+'" class="social-avatar-img'+(c?' '+c:'')+'" alt="" onerror="this.src=\'/images/avatar-default.svg\';this.onerror=null">';return'<div class="social-avatar-placeholder'+(c?' '+c:'')+'">'+(u||'?').slice(0,1).toUpperCase()+'</div>';}
+var VSTheme={toggle:function(){var t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('vs-theme',t);}};
+// Service worker for push notifications
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
+</script>
 <script defer src="/js/animations.js"></script>

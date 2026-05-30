@@ -19,6 +19,10 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: true, credentials: true } });
 app.set('io', io);
 
+// ─── Matchmaking queue ────────────────────────────────────────────────────────
+const matchQueue = {}; // { gameType: [{ userId, username, socketId }] }
+const MATCHABLE_GAMES = new Set(['xo','rps','checkers','typerace','wordbomb','trivia']);
+
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   // Identity set from handshake auth — no race condition with wb:/wp: events
@@ -343,8 +347,45 @@ io.on('connection', (socket) => {
     io.to(`wp:${rid}`).emit('wp:react', { username, emoji: e, ts: Date.now() });
   }));
 
+  // ── Matchmaking ─────────────────────────────────────────────────────────────
+  socket.on('gm:queue:join', ({ gameType } = {}) => {
+    const userId   = Number(socket.data.userId);
+    const username = socket.data.username;
+    if (!userId || !username || !MATCHABLE_GAMES.has(gameType)) return;
+    for (const gt in matchQueue) {
+      matchQueue[gt] = (matchQueue[gt] || []).filter(p => p.userId !== userId);
+    }
+    if (!matchQueue[gameType]) matchQueue[gameType] = [];
+    if (matchQueue[gameType].find(p => p.userId === userId)) return;
+    matchQueue[gameType].push({ userId, username, socketId: socket.id });
+    socket.emit('gm:queue:status', { status: 'searching', gameType });
+    if (matchQueue[gameType].length >= 2) {
+      const [p1, p2] = matchQueue[gameType].splice(0, 2);
+      const room = gameStore.create(gameType, p1.userId, p1.username);
+      gameStore.addPlayer(room.id, p2.userId, p2.username);
+      io.to(p1.socketId).emit('gm:queue:matched', { roomId: room.id, gameType });
+      io.to(p2.socketId).emit('gm:queue:matched', { roomId: room.id, gameType });
+    }
+  });
+
+  socket.on('gm:queue:leave', () => {
+    const userId = Number(socket.data.userId);
+    if (!userId) return;
+    for (const gt in matchQueue) {
+      matchQueue[gt] = (matchQueue[gt] || []).filter(p => p.userId !== userId);
+    }
+    socket.emit('gm:queue:status', { status: 'idle' });
+  });
+
   // ── Disconnect ──────────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
+    // Remove from matchmaking queue
+    const userId = Number(socket.data.userId);
+    if (userId) {
+      for (const gt in matchQueue) {
+        matchQueue[gt] = (matchQueue[gt] || []).filter(p => p.userId !== userId);
+      }
+    }
     const wbRid = socket.data.wbRoomId;
     if (wbRid) {
       const out = whiteboardStore.removePresence(wbRid, socket.id);

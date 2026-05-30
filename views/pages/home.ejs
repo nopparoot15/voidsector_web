@@ -69,6 +69,14 @@
         </div>
       </div>
     </div>
+    <!-- Stories -->
+    <div id="stories-row" class="stories-row">
+      <button class="story-add-btn" id="story-add-btn" title="เพิ่ม Story">
+        <div class="story-add-ring">+</div>
+        <span class="story-label">Story ของฉัน</span>
+      </button>
+    </div>
+
     <div id="feed-list"></div>
     <div id="feed-loading" class="feed-loading">กำลังโหลด…</div>
     <div id="feed-end" class="feed-end hidden">— ดูครบแล้ว —</div>
@@ -79,19 +87,7 @@
 <script>
 const ME_ID = <%- JSON.stringify(user.id) %>;
 const ME_NAME = <%- JSON.stringify(user.username) %>;
-
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function timeAgo(d){
-  const s=Math.floor((Date.now()-new Date(d))/1000);
-  if(s<60) return 'เมื่อกี้';
-  if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
-  if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
-  return Math.floor(s/86400)+' วันที่แล้ว';
-}
-function avatarHtml(avatar, username, size=''){
-  if(avatar) return `<img src="${avatar}" class="social-avatar-img${size?' '+size:''}" alt="" onerror="this.src='/images/avatar-default.svg';this.onerror=null">`;
-  return `<div class="social-avatar-placeholder${size?' '+size:''}">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
-}
+const ME_AVATAR = <%- JSON.stringify(user.avatar || null) %>;
 
 let feedOffset=0, feedLoading=false, feedDone=false;
 const feedList = document.getElementById('feed-list');
@@ -136,7 +132,11 @@ async function loadFeed(){
   try{
     const r = await fetch(`/api/feed?limit=10&offset=${feedOffset}`);
     const {ok,posts} = await r.json();
-    if(!ok||!posts.length){ feedDone=true; feedLoadingEl.classList.add('hidden'); feedEndEl.classList.remove('hidden'); return; }
+    if(!ok||!posts.length){
+      feedDone=true; feedLoadingEl.classList.add('hidden'); feedEndEl.classList.remove('hidden');
+      if(feedOffset===0) feedList.innerHTML=`<div class="feed-empty"><div class="feed-empty-icon">👥</div><h3>ยังไม่มีโพสต์</h3><p>เพิ่มเพื่อนเพื่อเห็นโพสต์ของพวกเขา หรือเริ่มโพสต์ด้วยตัวเอง!</p><a href="/friends" class="btn-primary" style="display:inline-block;padding:10px 24px;text-decoration:none">หาเพื่อน →</a></div>`;
+      return;
+    }
     posts.forEach(p => feedList.insertAdjacentHTML('beforeend', buildPost(p)));
     feedOffset += posts.length;
     if(posts.length<10){ feedDone=true; feedEndEl.classList.remove('hidden'); feedLoadingEl.classList.add('hidden'); }
@@ -315,6 +315,115 @@ function bumpPost(card){
   card.classList.add('post-bumped');
   setTimeout(() => card.classList.remove('post-bumped'), 1000);
 }
+
+// ── Stories ──────────────────────────────────────────────────────
+(function(){
+  const row = document.getElementById('stories-row');
+  const addBtn = document.getElementById('story-add-btn');
+  const seenSet = new Set(JSON.parse(localStorage.getItem('vs-seen-stories')||'[]'));
+
+  async function loadStories(){
+    try{
+      const r = await fetch('/api/stories');
+      const { ok, users=[] } = await r.json();
+      if(!ok) return;
+      // Remove old bubbles except add btn
+      row.querySelectorAll('.story-bubble').forEach(b=>b.remove());
+      users.forEach(u=>{
+        const seen = u.stories.every(s=>seenSet.has(s.id));
+        const bubble = document.createElement('div');
+        bubble.className='story-bubble';
+        bubble.innerHTML=`<div class="story-ring${seen?' seen':''}"><div class="story-ring-inner">${avatarHtml(u.avatar,u.username)}</div></div><span class="story-label">${esc(u.username)}</span>`;
+        bubble.addEventListener('click',()=>viewStories(u, seen));
+        row.appendChild(bubble);
+      });
+    }catch(e){}
+  }
+
+  function viewStories(u, alreadySeen){
+    let idx=0;
+    const modal = document.createElement('div');
+    modal.className='story-modal';
+    function render(){
+      const s=u.stories[idx];
+      seenSet.add(s.id);
+      localStorage.setItem('vs-seen-stories',JSON.stringify([...seenSet]));
+      modal.innerHTML=`
+        <div class="story-viewer">
+          <div class="story-progress"><div class="story-progress-bar" id="sp-bar"></div></div>
+          <div class="story-viewer-head">
+            ${avatarHtml(u.avatar,u.username,'xs')}
+            <span style="font-size:13px;font-weight:600">${esc(u.username)}</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.6);margin-left:4px">${timeAgo(s.created_at)}</span>
+            <button class="story-viewer-close" id="sv-close">✕</button>
+          </div>
+          ${s.image?`<img class="story-viewer-img" src="${s.image}" alt="">`:''}
+          ${s.text?`<div class="story-viewer-text">${esc(s.text)}</div>`:''}
+        </div>`;
+      document.getElementById('sv-close').onclick=()=>modal.remove();
+      modal.onclick=e=>{
+        if(e.target===modal){modal.remove();return;}
+        const rect=modal.querySelector('.story-viewer').getBoundingClientRect();
+        if(e.clientX<rect.left+rect.width/2){ if(idx>0){idx--;render();} }
+        else{ if(idx<u.stories.length-1){idx++;render();}else modal.remove(); }
+      };
+      clearTimeout(modal._t);
+      modal._t=setTimeout(()=>{ if(idx<u.stories.length-1){idx++;render();}else modal.remove(); },5000);
+    }
+    render();
+    document.body.appendChild(modal);
+  }
+
+  // Create story modal
+  const createModal=document.createElement('div');
+  createModal.className='story-create-modal hidden';
+  createModal.innerHTML=`
+    <div class="story-create-box">
+      <h3 style="font-weight:700">เพิ่ม Story</h3>
+      <textarea id="story-text" placeholder="บอกเล่าอะไรสักอย่าง… (หายไปใน 24 ชม.)" rows="4" maxlength="500"></textarea>
+      <label style="font-size:13px;color:var(--text-sub);cursor:pointer">📷 แนบรูป <input type="file" id="story-file" accept="image/*" style="display:none"></label>
+      <div id="story-preview-wrap" class="hidden"><img id="story-preview" style="max-width:100%;border-radius:8px;max-height:200px"></div>
+      <div class="story-create-actions">
+        <button class="btn-outline" id="story-cancel">ยกเลิก</button>
+        <button class="btn-primary" id="story-submit">โพสต์ Story</button>
+      </div>
+    </div>`;
+  document.body.appendChild(createModal);
+
+  let storyImageData=null;
+  document.getElementById('story-file').addEventListener('change',function(){
+    const file=this.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image(); img.onload=()=>{
+        const MAX=1200;let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        storyImageData=c.toDataURL('image/jpeg',0.8);
+        document.getElementById('story-preview').src=storyImageData;
+        document.getElementById('story-preview-wrap').classList.remove('hidden');
+      };img.src=e.target.result;
+    };reader.readAsDataURL(file);
+  });
+
+  addBtn.addEventListener('click',()=>createModal.classList.remove('hidden'));
+  document.getElementById('story-cancel').addEventListener('click',()=>createModal.classList.add('hidden'));
+  document.getElementById('story-submit').addEventListener('click',async()=>{
+    const text=document.getElementById('story-text').value.trim();
+    if(!text&&!storyImageData){alert('ใส่ข้อความหรือรูปก่อน');return;}
+    const btn=document.getElementById('story-submit');
+    btn.disabled=true; btn.textContent='กำลังโพสต์…';
+    try{
+      const r=await fetch('/api/stories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,image:storyImageData||''})});
+      const {ok}=await r.json();
+      if(ok){createModal.classList.add('hidden');document.getElementById('story-text').value='';storyImageData=null;document.getElementById('story-preview-wrap').classList.add('hidden');loadStories();}
+    }catch(e){}
+    btn.disabled=false; btn.textContent='โพสต์ Story';
+  });
+
+  loadStories();
+})();
 
 const feedSocket = window.VS_SOCKET || io();
 

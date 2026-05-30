@@ -61,10 +61,24 @@
 
   </div>
 
-  <!-- Multiplayer Games -->
+  <!-- Quick Match -->
   <div class="section-header" style="margin-top:48px;">
     <h2 style="font-size:22px;">👥 Multiplayer</h2>
     <p class="section-sub">สร้างห้อง — แชร์ลิงก์ — เล่นกับเพื่อน</p>
+  </div>
+
+  <div class="quick-match-section">
+    <div class="quick-match-title">⚡ Quick Match</div>
+    <div class="quick-match-sub">กดปุ่มเดียว — ระบบหาคู่ให้อัตโนมัติ</div>
+    <div class="quick-match-grid">
+      <button class="qm-btn" data-qm="xo">⭕ XO</button>
+      <button class="qm-btn" data-qm="rps">✊ RPS</button>
+      <button class="qm-btn" data-qm="checkers">🏁 หมากฮอส</button>
+      <button class="qm-btn" data-qm="typerace">⌨️ Typing Race</button>
+      <button class="qm-btn" data-qm="wordbomb">💣 Word Bomb</button>
+      <button class="qm-btn" data-qm="trivia">❓ Trivia</button>
+    </div>
+    <div class="qm-status" id="qm-status"></div>
   </div>
 
   <div class="arcade-grid">
@@ -230,9 +244,46 @@ function joinRoom(game, roomId) {
   window.location.href = `/arcade/${game}/${roomId}`;
 }
 
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+// ── Quick Match ──────────────────────────────────────────────────
+(function(){
+  const socket = window.VS_SOCKET || io({ auth: { userId: window.VS_ME?.id, username: window.VS_ME?.username } });
+  const statusEl = document.getElementById('qm-status');
+  let activeGameType = null;
+
+  document.querySelectorAll('.qm-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const gt = btn.dataset.qm;
+      if(activeGameType === gt){
+        socket.emit('gm:queue:leave');
+        activeGameType = null;
+        document.querySelectorAll('.qm-btn').forEach(b=>b.classList.remove('searching'));
+        if(statusEl) statusEl.textContent='';
+        return;
+      }
+      document.querySelectorAll('.qm-btn').forEach(b=>b.classList.remove('searching'));
+      btn.classList.add('searching');
+      activeGameType = gt;
+      socket.emit('gm:queue:join', { gameType: gt });
+      if(statusEl) statusEl.textContent='🔍 กำลังหาคู่สำหรับ ' + btn.textContent.trim() + ' — กดอีกครั้งเพื่อยกเลิก';
+    });
+  });
+
+  socket.on('gm:queue:status', ({ status }) => {
+    if(status === 'idle'){
+      document.querySelectorAll('.qm-btn').forEach(b=>b.classList.remove('searching'));
+      activeGameType = null;
+      if(statusEl) statusEl.textContent='';
+    }
+  });
+
+  socket.on('gm:queue:matched', ({ roomId, gameType }) => {
+    document.querySelectorAll('.qm-btn').forEach(b=>b.classList.remove('searching'));
+    if(statusEl) statusEl.textContent='✅ เจอคู่แล้ว! กำลังเข้าห้อง…';
+    setTimeout(()=>{ window.location.href = `/arcade/${gameType}/${roomId}`; }, 500);
+  });
+
+  window.addEventListener('beforeunload', ()=>socket.emit('gm:queue:leave'));
+})();
 
 document.querySelectorAll('.arcade-play-btn').forEach(btn => {
   btn.addEventListener('click', () => openPanel(btn, btn.dataset.game));

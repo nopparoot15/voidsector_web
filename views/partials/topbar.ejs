@@ -13,9 +13,10 @@
       <span class="fb-topbar-logo__dot"></span>
       <span class="fb-topbar-logo__text">VS</span>
     </a>
-    <div class="fb-topbar-search">
+    <div class="fb-topbar-search" style="position:relative">
       <svg class="fb-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <input type="text" placeholder="ค้นหา VoidSector" class="fb-search-input" id="globalSearch" autocomplete="off">
+      <div class="search-dropdown hidden" id="search-dropdown"></div>
     </div>
   </div>
 
@@ -40,6 +41,11 @@
 
   <!-- RIGHT: user / auth -->
   <div class="fb-topbar__right">
+    <!-- Theme toggle -->
+    <button class="theme-toggle-btn" onclick="VSTheme.toggle()" title="เปลี่ยนธีม" id="theme-toggle-btn">
+      <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" width="20" height="20" style="display:none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
     <% if (user) { %>
       <!-- Chat button -->
       <button class="fb-topbar-icon-btn" id="chat-btn" title="แชท">
@@ -444,16 +450,29 @@
   });
 })();
 
+// ── Theme icon sync ──────────────────────────────────────────────
+(function(){
+  function syncIcon(){
+    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const d = document.getElementById('theme-icon-dark');
+    const l = document.getElementById('theme-icon-light');
+    if(d) d.style.display = dark ? '' : 'none';
+    if(l) l.style.display = dark ? 'none' : '';
+  }
+  syncIcon();
+  const origToggle = VSTheme.toggle.bind(VSTheme);
+  VSTheme.toggle = function(){ origToggle(); syncIcon(); };
+})();
+
 // ── Search ───────────────────────────────────────────────────────
 (function(){
-  const inp = document.getElementById('globalSearch');
-  const drop = document.getElementById('fb-search-drop');
-  if (!inp) return;
+  const inp  = document.getElementById('globalSearch');
+  const drop = document.getElementById('search-dropdown');
+  if (!inp || !drop) return;
   let timer;
-  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function avatarHtml(avatar, username){
-    if(avatar) return `<img src="${avatar}" class="fb-drop-avatar-img" alt="">`;
-    return `<div class="fb-drop-avatar-init">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
+  function avHtml(a, u){
+    if(a) return `<img src="${a}" class="search-result-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover" alt="" onerror="this.style.display='none'">`;
+    return `<div class="search-result-avatar">${esc((u||'?').slice(0,1).toUpperCase())}</div>`;
   }
   inp.addEventListener('input', ()=>{
     clearTimeout(timer);
@@ -461,31 +480,42 @@
     if(!q){ drop.classList.add('hidden'); drop.innerHTML=''; return; }
     timer = setTimeout(async ()=>{
       try{
-        const r = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
-        const {ok,users} = await r.json();
-        if(!ok||!users.length){ drop.classList.add('hidden'); drop.innerHTML=''; return; }
-        drop.innerHTML = users.map(u=>`
-          <a class="fb-drop-item" href="/user/${encodeURIComponent(u.username)}">
-            <div class="fb-drop-avatar">${avatarHtml(u.avatar, u.username)}</div>
-            <span class="fb-drop-name">${esc(u.username)}</span>
-          </a>`).join('');
-        const rect = inp.getBoundingClientRect();
-        drop.style.left = rect.left + 'px';
-        drop.style.top  = (rect.bottom + 6) + 'px';
-        drop.style.width = rect.width + 'px';
+        const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const { ok, users=[], posts=[] } = await r.json();
+        if(!ok||(users.length+posts.length===0)){
+          drop.innerHTML='<div class="search-no-results">ไม่พบผลลัพธ์</div>';
+          drop.classList.remove('hidden'); return;
+        }
+        let html = '';
+        if(users.length){
+          html += '<div class="search-section-label">ผู้ใช้</div>';
+          html += users.map(u=>`
+            <a class="search-result-item" href="/user/${encodeURIComponent(u.username)}">
+              ${avHtml(u.avatar, u.username)}
+              <div><div class="search-result-name">${esc(u.username)}</div></div>
+            </a>`).join('');
+        }
+        if(posts.length){
+          html += '<div class="search-section-label">โพสต์</div>';
+          html += posts.map(p=>`
+            <a class="search-result-item" href="/user/${encodeURIComponent(p.username)}">
+              ${avHtml(p.avatar, p.username)}
+              <div>
+                <div class="search-result-name">${esc(p.username)}</div>
+                <div class="search-result-sub">${esc((p.text||'').slice(0,60))}</div>
+              </div>
+            </a>`).join('');
+        }
+        drop.innerHTML = html;
         drop.classList.remove('hidden');
       }catch(e){}
-    }, 250);
+    }, 280);
   });
   inp.addEventListener('keydown', e=>{
-    if(e.key==='Enter'){
-      const q=inp.value.trim();
-      if(q){ drop.classList.add('hidden'); window.location.href='/user/'+encodeURIComponent(q); }
-    }
-    if(e.key==='Escape'){ drop.classList.add('hidden'); }
+    if(e.key==='Escape'){ drop.classList.add('hidden'); inp.blur(); }
   });
   document.addEventListener('click', e=>{
-    if(!inp.contains(e.target)&&!drop.contains(e.target)) drop.classList.add('hidden');
+    if(!inp.closest('.fb-topbar-search').contains(e.target)) drop.classList.add('hidden');
   });
 })();
 </script>

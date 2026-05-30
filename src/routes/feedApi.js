@@ -2,6 +2,8 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireLogin, requireFullAccount } = require('../middleware/requireLogin');
+const { checkAndAward } = require('../helpers/badges');
+const { sendPush } = require('./pushApi');
 
 const router = express.Router();
 
@@ -83,6 +85,7 @@ router.post('/feed', requireFullAccount, async (req, res) => {
       [p.id]
     );
     res.json({ ok: true, post });
+    checkAndAward(me).catch(() => {});
   } catch (e) {
     console.error('[feed post]', e.message);
     res.status(500).json({ ok: false });
@@ -121,6 +124,7 @@ router.post('/feed/:id/like', requireFullAccount, async (req, res) => {
       req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification', {
         type: 'like', from_username: req.session.user.username, post_id: id
       });
+      sendPush(post.user_id, { title: 'VoidSector', body: `${req.session.user.username} ถูกใจโพสต์ของคุณ`, url: '/' }).catch(() => {});
     }
   }
   req.app.get('io')?.emit('feed:like', { post_id: id, count: r.count });
@@ -180,6 +184,7 @@ router.post('/feed/:id/comments', requireFullAccount, async (req, res) => {
     req.app.get('io')?.to(`user:${post.user_id}`).emit('vs:notification', {
       type: 'comment', from_username: req.session.user.username, post_id: id
     });
+    sendPush(post.user_id, { title: 'VoidSector', body: `${req.session.user.username} แสดงความคิดเห็นในโพสต์ของคุณ`, url: '/' }).catch(() => {});
   }
   const comment = {
     id: inserted.id,

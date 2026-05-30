@@ -58,6 +58,7 @@
       <button class="fb-prof-tab fb-prof-tab--active" data-tab="posts">โพสต์</button>
       <button class="fb-prof-tab" data-tab="friends">เพื่อนๆ</button>
       <button class="fb-prof-tab" data-tab="stats">สถิติ</button>
+      <button class="fb-prof-tab" data-tab="badges">Badges</button>
     </div>
   </div>
 
@@ -84,6 +85,11 @@
           <span class="fb-info-icon">🏅</span>
           <span>Level <strong><%= level %></strong></span>
         </div>
+      </div>
+
+      <div class="fb-info-card hidden" id="tab-badges">
+        <h3 class="fb-info-title">Badges</h3>
+        <div class="badges-grid" id="badges-grid"><div style="font-size:13px;color:var(--muted)">กำลังโหลด…</div></div>
       </div>
 
       <div class="fb-info-card" id="tab-friends-sidebar">
@@ -136,19 +142,27 @@
 <script>
 const ME_ID = <%- JSON.stringify(userData.id) %>;
 const ME_NAME = <%- JSON.stringify(userData.username) %>;
-const MY_AVATAR = <%- JSON.stringify(userData.avatar || '') %>;
+const MY_AVATAR = <%- JSON.stringify(userData.avatar || null) %>;
 
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function timeAgo(d){
-  const s=Math.floor((Date.now()-new Date(d))/1000);
-  if(s<60) return 'เมื่อกี้';
-  if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
-  if(s<86400) return Math.floor(s/3600)+' ชั่วโมงที่แล้ว';
-  return Math.floor(s/86400)+' วันที่แล้ว';
-}
-function avatarHtml(avatar, username, cls=''){
-  if(avatar) return `<img src="${avatar}" class="social-avatar-img${cls?' '+cls:''}" alt="">`;
-  return `<div class="social-avatar-placeholder${cls?' '+cls:''}">${esc((username||'?').slice(0,1).toUpperCase())}</div>`;
+// ── Badges ───────────────────────────────────────────────────────
+let badgesLoaded = false;
+async function loadBadges(){
+  if(badgesLoaded) return;
+  badgesLoaded = true;
+  try{
+    const r = await fetch(`/api/badges/${ME_ID}`);
+    const { ok, badges=[] } = await r.json();
+    const grid = document.getElementById('badges-grid');
+    if(!ok || !badges.length){
+      grid.innerHTML='<div style="font-size:13px;color:var(--muted)">ยังไม่มี Badge — ทำกิจกรรมเพื่อปลดล็อก!</div>';
+      return;
+    }
+    grid.innerHTML = badges.map(b=>`
+      <div class="badge-chip" title="${esc(b.desc||'')}">
+        <span class="badge-chip-icon">${b.icon}</span>
+        <span>${esc(b.name)}</span>
+      </div>`).join('');
+  }catch(e){}
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────
@@ -156,6 +170,11 @@ document.querySelectorAll('.fb-prof-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.fb-prof-tab').forEach(b => b.classList.remove('fb-prof-tab--active'));
     btn.classList.add('fb-prof-tab--active');
+    const tab = btn.dataset.tab;
+    // Show/hide badge panel
+    const badgesPanel = document.getElementById('tab-badges');
+    if(badgesPanel) badgesPanel.classList.toggle('hidden', tab !== 'badges');
+    if(tab === 'badges') loadBadges();
   });
 });
 

@@ -89,6 +89,29 @@ async function initDb() {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens(token)`,
     `ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE`,
+    `CREATE TABLE IF NOT EXISTS stories (
+       id SERIAL PRIMARY KEY,
+       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       text TEXT,
+       image TEXT,
+       created_at TIMESTAMPTZ DEFAULT NOW(),
+       expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours'
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_stories_active ON stories(user_id, expires_at)`,
+    `CREATE TABLE IF NOT EXISTS user_achievements (
+       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       slug VARCHAR(50) NOT NULL,
+       earned_at TIMESTAMPTZ DEFAULT NOW(),
+       PRIMARY KEY(user_id, slug)
+     )`,
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+       id SERIAL PRIMARY KEY,
+       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       endpoint TEXT NOT NULL UNIQUE,
+       keys_json TEXT NOT NULL,
+       created_at TIMESTAMPTZ DEFAULT NOW()
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id)`,
   ];
   for (const m of migrations) {
     await pool.query(m).catch(() => {});
