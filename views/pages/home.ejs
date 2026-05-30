@@ -318,108 +318,230 @@ function bumpPost(card){
 
 // ── Stories ──────────────────────────────────────────────────────
 (function(){
+  const MY_ID = <%- JSON.stringify(user?.id || null) %>;
   const row = document.getElementById('stories-row');
   const addBtn = document.getElementById('story-add-btn');
   const seenSet = new Set(JSON.parse(localStorage.getItem('vs-seen-stories')||'[]'));
+  let allStoryUsers = [];
+  let storyKeyHandler = null;
 
   async function loadStories(){
     try{
       const r = await fetch('/api/stories');
       const { ok, users=[] } = await r.json();
       if(!ok) return;
-      // Remove old bubbles except add btn
+      allStoryUsers = users;
       row.querySelectorAll('.story-bubble').forEach(b=>b.remove());
-      users.forEach(u=>{
+      users.forEach((u,i)=>{
         const seen = u.stories.every(s=>seenSet.has(s.id));
         const bubble = document.createElement('div');
-        bubble.className='story-bubble';
-        bubble.innerHTML=`<div class="story-ring${seen?' seen':''}"><div class="story-ring-inner">${avatarHtml(u.avatar,u.username)}</div></div><span class="story-label">${esc(u.username)}</span>`;
-        bubble.addEventListener('click',()=>viewStories(u, seen));
+        bubble.className = 'story-bubble';
+        bubble.innerHTML = `<div class="story-ring${seen?' seen':''}"><div class="story-ring-inner">${avatarHtml(u.avatar,u.username)}</div></div><span class="story-label">${esc(u.username)}</span>`;
+        bubble.addEventListener('click', ()=>openStoryViewer(i));
         row.appendChild(bubble);
       });
     }catch(e){}
   }
 
-  function viewStories(u, alreadySeen){
-    let idx=0;
-    const modal = document.createElement('div');
-    modal.className='story-modal';
-    function render(){
-      const s=u.stories[idx];
-      seenSet.add(s.id);
-      localStorage.setItem('vs-seen-stories',JSON.stringify([...seenSet]));
-      modal.innerHTML=`
-        <div class="story-viewer">
-          <div class="story-progress"><div class="story-progress-bar" id="sp-bar"></div></div>
-          <div class="story-viewer-head">
-            <div class="social-avatar-wrap xs">${avatarHtml(u.avatar,u.username)}</div>
-            <span style="font-size:13px;font-weight:600">${esc(u.username)}</span>
-            <span style="font-size:11px;color:rgba(255,255,255,.6);margin-left:4px">${timeAgo(s.created_at)}</span>
-            <button class="story-viewer-close" id="sv-close">✕</button>
-          </div>
-          ${s.image?`<img class="story-viewer-img" src="${s.image}" alt="">`:''}
-          ${s.text?`<div class="story-viewer-text">${esc(s.text)}</div>`:''}
-        </div>`;
-      document.getElementById('sv-close').onclick=()=>modal.remove();
-      modal.onclick=e=>{
-        if(e.target===modal){modal.remove();return;}
-        const rect=modal.querySelector('.story-viewer').getBoundingClientRect();
-        if(e.clientX<rect.left+rect.width/2){ if(idx>0){idx--;render();} }
-        else{ if(idx<u.stories.length-1){idx++;render();}else modal.remove(); }
-      };
-      clearTimeout(modal._t);
-      modal._t=setTimeout(()=>{ if(idx<u.stories.length-1){idx++;render();}else modal.remove(); },5000);
+  function openStoryViewer(startIdx){
+    let uIdx=startIdx, sIdx=0;
+    const ov=document.createElement('div');
+    ov.className='sfb-overlay';
+
+    if(storyKeyHandler) document.removeEventListener('keydown', storyKeyHandler);
+    storyKeyHandler=e=>{
+      if(e.key==='Escape') closeViewer();
+      else if(e.key==='ArrowRight') goFwd();
+      else if(e.key==='ArrowLeft') goBack();
+    };
+    document.addEventListener('keydown', storyKeyHandler);
+
+    function closeViewer(){
+      clearTimeout(ov._t); ov.remove();
+      document.removeEventListener('keydown', storyKeyHandler);
+      storyKeyHandler=null;
     }
-    document.body.appendChild(modal);
+
+    function render(){
+      const u=allStoryUsers[uIdx], s=u.stories[sIdx];
+      const isOwn=u.user_id===MY_ID;
+      const isVideo=s.image&&s.image.startsWith('data:video/');
+      seenSet.add(s.id);
+      localStorage.setItem('vs-seen-stories', JSON.stringify([...seenSet]));
+
+      ov.innerHTML=`
+        <div class="sfb-left">
+          <div class="sfb-left-title">สตอรี่</div>
+          <div class="sfb-left-sub">เรื่องราวทั้งหมด</div>
+          ${allStoryUsers.map((usr,i)=>{
+            const useen=usr.stories.every(st=>seenSet.has(st.id));
+            return `<div class="sfb-uitem${i===uIdx?' sfb-uactive':''}" data-i="${i}">
+              <div class="sfb-uavatar">
+                <div class="social-avatar-wrap sm">${avatarHtml(usr.avatar,usr.username)}</div>
+                ${!useen?'<span class="sfb-udot"></span>':''}
+              </div>
+              <div>
+                <div class="sfb-uname">${esc(usr.username)}</div>
+                <div class="sfb-utime">${timeAgo(usr.stories[0].created_at)}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="sfb-main">
+          <button class="sfb-arrow${uIdx===0?' sfb-arrow-hidden':''}" id="sfb-prev">&#8249;</button>
+          <div class="sfb-card">
+            <div class="sfb-bars">
+              ${u.stories.map((_,i)=>`<div class="sfb-bar"><div class="sfb-bfill${i<sIdx?' sfb-bdone':i===sIdx?' sfb-bactive':''}"></div></div>`).join('')}
+            </div>
+            <div class="sfb-head">
+              <div class="social-avatar-wrap xs">${avatarHtml(u.avatar,u.username)}</div>
+              <div class="sfb-hinfo">
+                <div class="sfb-hname">${esc(u.username)}</div>
+                <div class="sfb-htime">${timeAgo(s.created_at)}</div>
+              </div>
+              ${isOwn?`<button class="sfb-del" id="sfb-del" title="ลบ Story">🗑</button>`:''}
+              <button class="sfb-x" id="sfb-close">✕</button>
+            </div>
+            ${s.image?(isVideo?`<video class="sfb-vid" src="${esc(s.image)}" autoplay loop playsinline muted></video>`:`<img class="sfb-img" src="${esc(s.image)}" alt="">`):''}
+            ${s.text&&s.image?`<div class="sfb-overlay-text">${esc(s.text)}</div>`:''}
+            ${s.text&&!s.image?`<div class="sfb-textbg"><div class="sfb-textcontent">${esc(s.text)}</div></div>`:''}
+            ${!s.image&&!s.text?`<div class="sfb-textbg"><div class="sfb-textcontent" style="font-size:40px">📭</div></div>`:''}
+            <div class="sfb-foot">
+              <div class="sfb-reply-row">
+                <input class="sfb-reply-in" placeholder="ตอบกลับ ${esc(u.username)}…" readonly>
+                <div class="sfb-emojis">❤️ 😮 😢 😡</div>
+              </div>
+            </div>
+          </div>
+          <button class="sfb-arrow${uIdx===allStoryUsers.length-1?' sfb-arrow-hidden':''}" id="sfb-next">&#8250;</button>
+        </div>`;
+
+      ov.querySelector('#sfb-close').onclick=closeViewer;
+      ov.querySelector('#sfb-prev').onclick=e=>{e.stopPropagation();prevUser();};
+      ov.querySelector('#sfb-next').onclick=e=>{e.stopPropagation();nextUser();};
+      ov.querySelector('#sfb-del')?.onclick=async e=>{
+        e.stopPropagation();
+        if(!confirm('ลบ Story นี้?')) return;
+        await fetch(`/api/stories/${s.id}`,{method:'DELETE'});
+        u.stories.splice(sIdx,1);
+        if(!u.stories.length){
+          allStoryUsers.splice(uIdx,1);
+          if(!allStoryUsers.length){closeViewer();loadStories();return;}
+          uIdx=Math.min(uIdx,allStoryUsers.length-1);sIdx=0;
+        } else {sIdx=Math.min(sIdx,u.stories.length-1);}
+        loadStories();render();
+      };
+      ov.querySelectorAll('.sfb-uitem').forEach(el=>{
+        el.onclick=()=>{uIdx=Number(el.dataset.i);sIdx=0;render();};
+      });
+      ov.querySelector('.sfb-card').onclick=e=>{
+        if(e.target.closest('.sfb-head,.sfb-foot')) return;
+        const rect=ov.querySelector('.sfb-card').getBoundingClientRect();
+        if(e.clientX<rect.left+rect.width/2) goBack(); else goFwd();
+      };
+      clearTimeout(ov._t);
+      ov._t=setTimeout(goFwd,5000);
+    }
+
+    function goFwd(){if(sIdx<allStoryUsers[uIdx].stories.length-1){sIdx++;render();}else nextUser();}
+    function goBack(){if(sIdx>0){sIdx--;render();}else if(uIdx>0){uIdx--;sIdx=allStoryUsers[uIdx].stories.length-1;render();}}
+    function nextUser(){if(uIdx<allStoryUsers.length-1){uIdx++;sIdx=0;render();}else closeViewer();}
+    function prevUser(){if(uIdx>0){uIdx--;sIdx=0;render();}}
+
+    document.body.appendChild(ov);
     render();
   }
 
-  // Create story modal
+  // ── Create story modal ───────────────────────────────────────────
   const createModal=document.createElement('div');
-  createModal.className='story-create-modal hidden';
+  createModal.className='sfb-create-ov hidden';
   createModal.innerHTML=`
-    <div class="story-create-box">
-      <h3 style="font-weight:700">เพิ่ม Story</h3>
-      <textarea id="story-text" placeholder="บอกเล่าอะไรสักอย่าง… (หายไปใน 24 ชม.)" rows="4" maxlength="500"></textarea>
-      <label style="font-size:13px;color:var(--text-sub);cursor:pointer">📷 แนบรูป <input type="file" id="story-file" accept="image/*" style="display:none"></label>
-      <div id="story-preview-wrap" class="hidden"><img id="story-preview" style="max-width:100%;border-radius:8px;max-height:200px"></div>
-      <div class="story-create-actions">
-        <button class="btn-outline" id="story-cancel">ยกเลิก</button>
-        <button class="btn-primary" id="story-submit">โพสต์ Story</button>
+    <div class="sfb-create-box">
+      <div class="sfb-create-head">
+        <span style="font-weight:700;font-size:18px">สร้าง Story</span>
+        <button class="sfb-x" id="scr-close">✕</button>
+      </div>
+      <div id="scr-drop" class="sfb-drop-area">
+        <input type="file" id="story-file" accept="image/*,video/*" style="display:none">
+        <div class="sfb-drop-inner">
+          <div style="font-size:48px">🖼️</div>
+          <div style="font-weight:600;margin-top:10px">เลือกภาพหรือวิดีโอ</div>
+          <div style="font-size:13px;color:var(--text-sub);margin-top:4px">PNG · JPG · GIF · MP4 · สูงสุด 5MB</div>
+          <button class="btn-primary" style="margin-top:16px" id="scr-pick">เลือกไฟล์</button>
+        </div>
+      </div>
+      <div id="scr-pv-wrap" class="sfb-pv-wrap hidden">
+        <div class="sfb-pv-card">
+          <img id="scr-img" class="sfb-pv-media hidden" alt="">
+          <video id="scr-vid" class="sfb-pv-media hidden" muted playsinline controls></video>
+          <div class="sfb-pv-textrow">
+            <input id="scr-txt" class="sfb-pv-txtinput" placeholder="เพิ่มข้อความบนภาพ... (ไม่บังคับ)" maxlength="150">
+          </div>
+        </div>
+        <button class="btn-outline" id="scr-resel" style="margin-top:8px;width:100%">เลือกไฟล์ใหม่</button>
+      </div>
+      <div class="sfb-create-actions">
+        <button class="btn-outline" id="scr-cancel">ยกเลิก</button>
+        <button class="btn-primary" id="scr-submit" disabled>โพสต์ Story</button>
       </div>
     </div>`;
   document.body.appendChild(createModal);
 
-  let storyImageData=null;
+  let storyMedia=null;
+
+  function resetCreate(){
+    storyMedia=null;
+    document.getElementById('scr-img').src='';
+    document.getElementById('scr-vid').src='';
+    document.getElementById('scr-txt').value='';
+    document.getElementById('scr-img').classList.add('hidden');
+    document.getElementById('scr-vid').classList.add('hidden');
+    document.getElementById('scr-pv-wrap').classList.add('hidden');
+    document.getElementById('scr-drop').classList.remove('hidden');
+    document.getElementById('scr-submit').disabled=true;
+  }
+
+  document.getElementById('scr-pick').onclick=()=>document.getElementById('story-file').click();
+  document.getElementById('scr-resel').onclick=()=>document.getElementById('story-file').click();
+  document.getElementById('scr-close').onclick=()=>{createModal.classList.add('hidden');resetCreate();};
+  document.getElementById('scr-cancel').onclick=()=>{createModal.classList.add('hidden');resetCreate();};
+
   document.getElementById('story-file').addEventListener('change',function(){
-    const file=this.files[0]; if(!file)return;
+    const file=this.files[0]; if(!file) return;
+    if(file.size>5*1024*1024){alert('ไฟล์ใหญ่เกิน 5MB');return;}
+    const isVid=file.type.startsWith('video/');
     const reader=new FileReader();
     reader.onload=e=>{
-      const img=new Image(); img.onload=()=>{
-        const MAX=1200;let w=img.width,h=img.height;
-        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
-        const c=document.createElement('canvas');c.width=w;c.height=h;
-        c.getContext('2d').drawImage(img,0,0,w,h);
-        storyImageData=c.toDataURL('image/jpeg',0.8);
-        document.getElementById('story-preview').src=storyImageData;
-        document.getElementById('story-preview-wrap').classList.remove('hidden');
-      };img.src=e.target.result;
-    };reader.readAsDataURL(file);
+      storyMedia={type:isVid?'video':'image',data:e.target.result};
+      const img=document.getElementById('scr-img'),vid=document.getElementById('scr-vid');
+      if(isVid){vid.src=e.target.result;vid.classList.remove('hidden');img.classList.add('hidden');}
+      else{img.src=e.target.result;img.classList.remove('hidden');vid.classList.add('hidden');}
+      document.getElementById('scr-pv-wrap').classList.remove('hidden');
+      document.getElementById('scr-drop').classList.add('hidden');
+      document.getElementById('scr-submit').disabled=false;
+    };
+    reader.readAsDataURL(file);
+    this.value='';
   });
 
-  addBtn.addEventListener('click',()=>createModal.classList.remove('hidden'));
-  document.getElementById('story-cancel').addEventListener('click',()=>createModal.classList.add('hidden'));
-  document.getElementById('story-submit').addEventListener('click',async()=>{
-    const text=document.getElementById('story-text').value.trim();
-    if(!text&&!storyImageData){alert('ใส่ข้อความหรือรูปก่อน');return;}
-    const btn=document.getElementById('story-submit');
+  document.getElementById('scr-submit').addEventListener('click',async()=>{
+    if(!storyMedia) return;
+    const text=document.getElementById('scr-txt').value.trim();
+    const btn=document.getElementById('scr-submit');
     btn.disabled=true; btn.textContent='กำลังโพสต์…';
     try{
-      const r=await fetch('/api/stories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,image:storyImageData||''})});
-      const {ok}=await r.json();
-      if(ok){createModal.classList.add('hidden');document.getElementById('story-text').value='';storyImageData=null;document.getElementById('story-preview-wrap').classList.add('hidden');loadStories();}
+      const r=await fetch('/api/stories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,image:storyMedia.data})});
+      const {ok,reason}=await r.json();
+      if(ok){createModal.classList.add('hidden');resetCreate();loadStories();}
+      else alert(reason==='media_too_large'?'ไฟล์ใหญ่เกิน 5MB':'โพสต์ไม่สำเร็จ');
     }catch(e){}
     btn.disabled=false; btn.textContent='โพสต์ Story';
+  });
+
+  addBtn.addEventListener('click',()=>{
+    const myIdx=allStoryUsers.findIndex(u=>u.user_id===MY_ID);
+    if(myIdx>=0) openStoryViewer(myIdx);
+    else createModal.classList.remove('hidden');
   });
 
   loadStories();

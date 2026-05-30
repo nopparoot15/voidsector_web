@@ -5,7 +5,7 @@ const { requireLogin, requireFullAccount } = require('../middleware/requireLogin
 const { checkAndAward } = require('../helpers/badges');
 
 const router = express.Router();
-const MAX_IMAGE_BYTES = 500 * 1024;
+const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
 
 router.get('/stories', requireLogin, async (req, res) => {
   const me = Number(req.session.user.id);
@@ -38,8 +38,11 @@ router.post('/stories', requireFullAccount, async (req, res) => {
   let image  = null;
   const raw  = (req.body.image || '').trim();
   if (raw) {
-    if (!raw.startsWith('data:image/') || Buffer.byteLength(raw) > MAX_IMAGE_BYTES) {
-      return res.status(400).json({ ok: false, reason: 'image_too_large' });
+    if (!raw.startsWith('data:image/') && !raw.startsWith('data:video/')) {
+      return res.status(400).json({ ok: false, reason: 'invalid_media' });
+    }
+    if (Buffer.byteLength(raw) > MAX_MEDIA_BYTES) {
+      return res.status(400).json({ ok: false, reason: 'media_too_large' });
     }
     image = raw;
   }
