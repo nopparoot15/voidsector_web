@@ -352,7 +352,7 @@ function bumpPost(card){
         <div class="story-viewer">
           <div class="story-progress"><div class="story-progress-bar" id="sp-bar"></div></div>
           <div class="story-viewer-head">
-            ${avatarHtml(u.avatar,u.username,'xs')}
+            <div class="social-avatar-wrap xs">${avatarHtml(u.avatar,u.username)}</div>
             <span style="font-size:13px;font-weight:600">${esc(u.username)}</span>
             <span style="font-size:11px;color:rgba(255,255,255,.6);margin-left:4px">${timeAgo(s.created_at)}</span>
             <button class="story-viewer-close" id="sv-close">✕</button>
