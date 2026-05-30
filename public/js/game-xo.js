@@ -16,13 +16,11 @@
   const resultEl   = document.getElementById('xo-result');
   const actionsEl  = document.getElementById('xo-actions');
   const restartBtn = document.getElementById('xo-restart-btn');
-  const lobbyPlayers = document.getElementById('lobby-players');
 
   let state = null;
   let roomData = null;
   let players = [];
 
-  // Share link
   document.getElementById('copy-link-btn').addEventListener('click', () => {
     navigator.clipboard.writeText(location.href).then(() => {
       document.getElementById('copy-link-btn').textContent = '✓ คัดลอกแล้ว';
@@ -46,7 +44,7 @@
     showOfflineNotice(pl);
     players = pl;
     renderLobbyPlayers({ players: pl, host: roomData?.host });
-    updatePlayerChips(pl);
+    updateChips(pl);
   });
 
   socket.on('gm:started', ({ state: st }) => startGame(st));
@@ -126,32 +124,8 @@
   }
 
   function renderLobbyPlayers({ players: pl, host }) {
-    lobbyPlayers.innerHTML = pl.map(p => `
-      <div class="lobby-player-item">
-        <span>${esc(p.username)}${p.offline?' 🔴':''}</span>
-        ${p.userId === host ? '<span class="host-tag">HOST</span>' : ''}
-      </div>`).join('');
+    renderLobbyPlayersHTML(pl, host);
     document.getElementById('lobby-status').textContent =
       pl.length < 2 ? `รอผู้เล่นเข้าร่วม… (${pl.length}/2)` : 'พร้อมเริ่มแล้ว!';
   }
-
-  function updatePlayerChips(pl) {
-    document.getElementById('gm-players').innerHTML = pl.map(p =>
-      `<span class="gm-player-chip ${p.userId===me.id?'is-me':''}${p.offline?' offline':''}">${esc(p.username)}${p.offline?' 🔴':''}</span>`
-    ).join('');
-  }
-
-  function showOfflineNotice(pl) {
-    const gone = pl.find(p => p.offline && p.userId !== me.id);
-    let el = document.getElementById('gm-offline-notice');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'gm-offline-notice';
-      el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fca5a5;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;display:none;';
-      document.body.appendChild(el);
-    }
-    if (gone) { el.textContent = '⚠️ ' + gone.username + ' ออกจากเกม'; el.style.display='block'; }
-    else { el.style.display='none'; }
-  }
-  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();

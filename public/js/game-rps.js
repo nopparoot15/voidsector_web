@@ -174,17 +174,8 @@
   }
 
   function renderLobby({ players: pl, host }) {
-    lobbyPlayers.innerHTML = pl.map(p => `
-      <div class="lobby-player-item">
-        <span>${esc(p.username)}${p.offline?' 🔴':''}</span>
-        ${p.userId === host ? '<span class="host-tag">HOST</span>' : ''}
-      </div>`).join('');
+    renderLobbyPlayersHTML(pl, host);
     document.getElementById('rps-start-btn').classList.toggle('hidden', pl.length !== 2 || !roomData || roomData.host !== me.id);
-  }
-
-  function updateChips(pl) {
-    document.getElementById('gm-players').innerHTML = pl.map(p =>
-      `<span class="gm-player-chip ${p.userId===me.id?'is-me':''}${p.offline?' offline':''}">${esc(p.username)}${p.offline?' 🔴':''}</span>`).join('');
   }
 
   window.playAgain = () => socket.emit('gm:new_game', { roomId });
@@ -201,17 +192,4 @@
     renderLobby({ players, host: roomData?.host });
   });
 
-  function showOfflineNotice(pl) {
-    const gone = pl.find(p => p.offline && p.userId !== me.id);
-    let el = document.getElementById('gm-offline-notice');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'gm-offline-notice';
-      el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fca5a5;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;display:none;';
-      document.body.appendChild(el);
-    }
-    if (gone) { el.textContent = '⚠️ ' + gone.username + ' ออกจากเกม'; el.style.display='block'; }
-    else { el.style.display='none'; }
-  }
-  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();

@@ -39,6 +39,7 @@
   });
 
   socket.on('gm:players', ({ players: pl }) => {
+    showOfflineNotice(pl);
     players = pl;
     renderLobbyPlayers({ players: pl, host: roomData?.host });
     updateChips(pl);
@@ -274,20 +275,8 @@
   }
 
   function renderLobbyPlayers({ players: pl, host }) {
-    lobbyPlayers.innerHTML = pl.map(p => `
-      <div class="lobby-player-item">
-        <span>${esc(p.username)}</span>
-        ${p.userId===host?'<span class="host-tag">HOST</span>':''}
-      </div>`).join('');
+    renderLobbyPlayersHTML(pl, host);
     document.getElementById('lobby-status').textContent =
-      pl.length<2?`รอผู้เล่นเข้าร่วม… (${pl.length}/2)`:'พร้อมเริ่ม!';
+      pl.length < 2 ? `รอผู้เล่นเข้าร่วม… (${pl.length}/2)` : 'พร้อมเริ่ม!';
   }
-
-  function updateChips(pl) {
-    document.getElementById('gm-players').innerHTML = pl.map(p =>
-      `<span class="gm-player-chip ${p.userId===me.id?'is-me':''}">${esc(p.username)}</span>`
-    ).join('');
-  }
-
-  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 })();
