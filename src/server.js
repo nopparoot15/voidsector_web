@@ -378,6 +378,14 @@ io.on('connection', (socket) => {
           gmRoom.offlinePlayers.add(userId);
           const players = gmRoom.players.map(p => ({ userId: p.userId, username: p.username, offline: gmRoom.offlinePlayers.has(p.userId) }));
           io.to(`gm:${gmRid}`).emit('gm:players', { players });
+          // Pause checkers timer when a player disconnects
+          if (gmRoom.gameType === 'checkers' && gmRoom.state && !gmRoom.state.winner && !gmRoom.state.paused) {
+            const st = gmRoom.state;
+            st.pausedTimeLeft = Math.max(3000, st.timerEndsAt - Date.now());
+            st.paused = true;
+            gameStore.clearTimer(gmRid, 'cktimer');
+            io.to(`gm:${gmRid}`).emit('checkers:state', st);
+          }
           // Remove player permanently if they don't reconnect within 60s
           gameStore.setTimer(gmRid, `dc_${userId}`, () => {
             const r = gameStore.get(gmRid);
@@ -394,6 +402,7 @@ io.on('connection', (socket) => {
               if (remaining) {
                 st.winner = remaining.userId;
                 st.reason = 'abandon';
+                st.paused = false;
                 r.status = 'ended';
                 gameStore.clearTimer(gmRid, 'cktimer');
                 io.to(`gm:${gmRid}`).emit('checkers:state', st);
@@ -427,6 +436,28 @@ io.on('connection', (socket) => {
     if (wasOffline) {
       room.offlinePlayers.delete(userId);
       gameStore.clearTimer(room.id, `dc_${userId}`);
+      // Resume checkers if paused and both players are now back
+      if (room.gameType === 'checkers' && room.status === 'playing' && room.state?.paused && !room.state.winner) {
+        const st = room.state;
+        const p1Back = !room.offlinePlayers?.has(st.p1);
+        const p2Back = !room.offlinePlayers?.has(st.p2);
+        if (p1Back && p2Back) {
+          const CK_TURN_MS = 30000;
+          const resume = st.pausedTimeLeft || CK_TURN_MS;
+          st.paused = false;
+          delete st.pausedTimeLeft;
+          st.timerEndsAt = Date.now() + resume;
+          gameStore.setTimer(room.id, 'cktimer', () => {
+            const r = gameStore.get(room.id);
+            if (!r || !r.state || r.state.winner || r.state.paused) return;
+            const s = r.state;
+            s.winner = s.turn === 1 ? s.p2 : s.p1;
+            s.reason = 'timeout';
+            r.status = 'ended';
+            io.to(`gm:${room.id}`).emit('checkers:state', s);
+          }, resume);
+        }
+      }
     }
 
     const playersWithStatus = room.players.map(p => ({ userId: p.userId, username: p.username, offline: room.offlinePlayers?.has(p.userId) || false }));
@@ -782,6 +813,7 @@ io.on('connection', (socket) => {
     const room = gameStore.get(rid);
     if (!room || room.gameType !== 'checkers' || room.status !== 'playing') return;
     const st = room.state;
+    if (st.paused) return;
     const player = st.p1===userId ? 1 : st.p2===userId ? 2 : 0;
     if (!player || player !== st.turn) return;
     const pieces = player===1?[1,3]:[2,4];

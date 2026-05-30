@@ -73,8 +73,10 @@
   function startTimer() {
     clearInterval(timerInterval);
     if (!state || state.winner) { timerEl.textContent = '—'; timerEl.className = 'ck-timer'; return; }
+    if (state.paused) { timerEl.textContent = '⏸'; timerEl.className = 'ck-timer'; return; }
     timerInterval = setInterval(() => {
       if (!state || state.winner) { clearInterval(timerInterval); timerEl.textContent = '—'; timerEl.className = 'ck-timer'; return; }
+      if (state.paused) { clearInterval(timerInterval); timerEl.textContent = '⏸'; timerEl.className = 'ck-timer'; return; }
       const left = Math.max(0, Math.ceil((state.timerEndsAt - Date.now()) / 1000));
       timerEl.textContent = left + 's';
       timerEl.className = 'ck-timer' + (left <= 10 ? ' danger' : '');
@@ -163,7 +165,7 @@
     const myPieces = player===1?[1,3]:player===2?[2,4]:[];
     const must = mustCapturePieces(state.board, player);
     const validTargets = selected!=null ? getValidTargets(selected) : [];
-    const canSelectIdxs = player && player===state.turn && !state.winner
+    const canSelectIdxs = player && player===state.turn && !state.winner && !state.paused
       ? (state.multiJumpFrom!=null ? [state.multiJumpFrom]
         : must.length>0 ? must
         : Array.from({length:64},(_,i)=>i).filter(i=>myPieces.includes(state.board[i])&&(captures(state.board,i,player).length>0||moves(state.board,i,player).length>0)))
@@ -243,7 +245,9 @@
       actionsEl.classList.toggle('hidden', !isPlayer);
       resignBtn.classList.toggle('hidden', !isPlayer);
       restartBtn.classList.add('hidden');
-      if (player && player===state.turn) {
+      if (state.paused) {
+        statusEl.textContent = '⏸ เกมหยุดชั่วคราว — รอผู้เล่นกลับมา';
+      } else if (player && player===state.turn) {
         statusEl.textContent = state.multiJumpFrom!=null ? '🔴 กระโดดต่อได้อีก!' : (must.length>0?'⚠️ ต้องกินหมาก!':'ตาคุณ — เลือกหมาก');
       } else {
         const cur=players.find(p=>p.userId===(state.turn===1?state.p1:state.p2));
